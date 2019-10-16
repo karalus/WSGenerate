@@ -1,0 +1,291 @@
+«IMPORT com::artofarc::wsimport»
+
+«IMPORT javax::wsdl»
+
+«EXTENSION oaw::extensions::db»
+«EXTENSION oaw::extensions::wsdl»
+
+
+«DEFINE Root(Definition definition) FOR Model»
+«FOREACH definition.getSOAPBindings().portType.toSet() AS portType»
+«IF bindingDefinition.generateServer(portType)»
+«EXPAND Provider(definition, portType)»
+«ENDIF»
+«IF bindingDefinition.generateClient(portType)»
+«EXPAND Consumer(definition, portType)»
+«ENDIF»
+«ENDFOREACH»
+«ENDDEFINE»
+
+«DEFINE Provider(Definition definition, PortType portType) FOR Model»
+«FILE "plsql/" + WSDL2PackageName(portType, 'A') + ".PKS"-»
+PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+PROMPT Creating PACKAGE «WSDL2PackageName(portType, 'A')» in «getDBSchema()»
+PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+PROMPT
+
+
+CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, 'A')» IS
+  /**
+  * <pre>
+  *
+  *  <br/>
+  *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
+  *  documentBaseURI:     «definition.documentBaseURI»
+  *  technische Schicht:  api(a)                   -   Applikation-Interface
+  *  <br/>
+  *
+  *  <b>Beschreibung:</b>
+  *
+«definition.getDocumentation().formatDocumentation("  * ")-»
+  *
+  *  </pre>
+  *  @headcom
+  *  <pre>
+  *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+  *
+  */
+
+«FOREACH definition.getSOAPBindings(portType) AS binding-»
+«FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
+«LET portType.getOperation(bindingOperation.name, null, null) AS operation-»
+  /**
+  * WSDL Operation: «operation.name»
+  *
+«operation.getDocumentation().formatDocumentation("  * ")-»
+  *
+  * @param   p_param_in             IN  eingehende Message des Service.
+  * @param   p_param_out            OUT ausgehende Message des Service.
+  * @param   p_error_out            OUT ausgehende Fault Message des Service.
+  *
+  */
+  PROCEDURE «getOracleName(definition.targetNamespace, operation)» (
+      p_param_in               IN         «getParameterOracleFQN(getInputElementQName(binding, operation.name))»
+«IF !binding.isJmsTransport()-»
+    , p_param_out              OUT NOCOPY «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»
+«IF getFaultElementQName(binding, operation.name) != null-»
+    , p_error_out              OUT NOCOPY «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»
+«ENDIF-»
+«ENDIF-»
+  );
+«ENDLET-»
+«ENDFOREACH»
+«ENDFOREACH»
+
+END «WSDL2PackageName(portType, 'A')»;
+/
+PROMPT ++++++++++++++++++++++++
+show errors
+PROMPT ++++++++++++++++++++++++
+«ENDFILE»
+«REM»========================================================================«ENDREM»
+«FOREACH definition.getSOAPBindings(portType) AS binding»
+«IF isHttpTransport(binding)»
+«FILE "plsql/" + WSDL2PackageName(portType, 'X') + ".PKS"-»
+PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+PROMPT Creating PACKAGE «WSDL2PackageName(portType, 'X')» in «getDBSchema()»
+PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+PROMPT
+
+
+CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, 'X')» IS
+  /**
+  * <pre>
+  *
+  *  <br/>
+  *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
+  *  documentBaseURI:     «definition.documentBaseURI»
+  *  technische Schicht:  api(a)                   -   Applikation-Interface
+  *  <br/>
+  *
+  *  <b>Beschreibung:</b>
+  *
+«definition.getDocumentation().formatDocumentation("  * ")-»
+  *
+  *  </pre>
+  *  @headcom
+  *  <pre>
+  *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+  *
+  */
+
+  c_PortType_URI CONSTANT VARCHAR(1024) := '«definition.targetNamespace»';
+
+«FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
+«LET portType.getOperation(bindingOperation.name, null, null) AS operation-»
+  /**
+  * XML Wrapper für «operation.name»
+  */
+  PROCEDURE «getOracleName(definition.targetNamespace, operation)» (
+      p_param_in               IN         CLOB
+    , p_param_out              OUT NOCOPY CLOB
+    , p_fault_out              OUT        NUMBER
+  );
+«ENDLET-»
+«ENDFOREACH»
+
+END «WSDL2PackageName(portType, 'X')»;
+/
+PROMPT ++++++++++++++++++++++++
+show errors
+PROMPT ++++++++++++++++++++++++
+«ENDFILE»
+«ENDIF»
+«REM»========================================================================«ENDREM»
+«IF isJmsTransport(binding)»
+«FILE "plsql/" + WSDL2PackageName(portType, 'L') + ".PKS"-»
+PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+PROMPT Creating PACKAGE «WSDL2PackageName(portType, 'L')» in «getDBSchema()»
+PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+PROMPT
+
+
+CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, 'L')» IS
+  /**
+  * <pre>
+  *
+  *  <br/>
+  *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
+  *  documentBaseURI:     «definition.documentBaseURI»
+  *  technische Schicht:  api(a)                   -   Applikation-Interface
+  *  <br/>
+  *
+  *  <b>Beschreibung:</b>
+  *
+«definition.getDocumentation().formatDocumentation("  * ")-»
+  *
+  *  </pre>
+  *  @headcom
+  *  <pre>
+  *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+  *
+  */
+
+  c_PortType_URI CONSTANT VARCHAR(1024) := '«definition.targetNamespace»';
+
+
+  /**
+  * Queue Listener
+  */
+  PROCEDURE handleMessage (
+      context           RAW
+    , reginfo           sys.aq$_reg_info
+    , descr             sys.aq$_descriptor
+    , payload           RAW
+    , payloadl          NUMBER
+  );
+
+
+END «WSDL2PackageName(portType, 'L')»;
+/
+PROMPT ++++++++++++++++++++++++
+show errors
+PROMPT ++++++++++++++++++++++++
+«ENDFILE»
+
+«LET getPort(definition, binding) AS port»
+«FILE "plsql/" + WSDL2PackageName(portType, 'L') + ".SQL"-»
+DECLARE
+  v_test integer;
+
+  reginfo1 	sys.aq$_reg_info;
+  reginfolist 	sys.aq$_reg_info_list;
+BEGIN
+  select count(*) into v_test from DBA_QUEUE_TABLES where QUEUE_TABLE = '«getAQQueueTable(port, false)»' AND owner = '«getDBSchema()»';
+  IF v_test = 0 THEN
+    DBMS_AQADM.CREATE_QUEUE_TABLE(
+       Queue_table        => '«getDBSchema()».«getAQQueueTable(port, false)»'
+      ,Queue_payload_type => 'SYS.AQ$_JMS_TEXT_MESSAGE'
+      ,multiple_consumers => FALSE);
+
+    dbms_aqadm.start_queue('«getDBSchema()».«getAQDeadLetterQueueName(port, false)»', false, true);
+  END IF;
+
+  select count(*) into v_test from DBA_QUEUES where name = '«getAQQueueName(port)»' AND owner = '«getDBSchema()»';
+  IF v_test = 0 THEN
+    DBMS_AQADM.CREATE_QUEUE(
+     Queue_name          => '«getDBSchema()».«getAQQueueName(port)»',
+     Queue_table         => '«getDBSchema()».«getAQQueueTable(port, false)»');
+
+    dbms_aqadm.start_queue( queue_name => '«getDBSchema()».«getAQQueueName(port)»' );
+  END IF;
+
+  reginfo1 := sys.aq$_reg_info('«getDBSchema()».«getAQQueueName(port)»', DBMS_AQ.NAMESPACE_AQ, 'plsql://«getDBSchema()».«WSDL2PackageName(portType, 'L')».handleMessage?PR=0', HEXTORAW('FF'));
+  reginfolist := sys.aq$_reg_info_list(reginfo1);
+  sys.dbms_aq.register(reginfolist, 1);
+END;
+/
+«ENDFILE»
+«ENDLET»
+
+«ENDIF»
+«ENDFOREACH»
+«ENDDEFINE»
+
+«DEFINE Consumer(Definition definition, PortType portType) FOR Model»
+«FILE "plsql/" + WSDL2PackageName(portType, 'E') + ".PKS"-»
+PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+PROMPT Creating PACKAGE «WSDL2PackageName(portType, 'E')» in «getDBSchema()»
+PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+PROMPT
+
+
+CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, 'E')» IS
+  /**
+  * <pre>
+  *
+  *  <br/>
+  *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
+  *  documentBaseURI:     «definition.documentBaseURI»
+  *  technische Schicht:  api(a)                   -   Applikation-Interface
+  *  <br/>
+  *
+  *  <b>Beschreibung:</b>
+  *
+«definition.getDocumentation().formatDocumentation("  * ")-»
+  *
+  *  </pre>
+  *  @headcom
+  *  <pre>
+  *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+  *
+  */
+
+  c_PortType_URI CONSTANT VARCHAR(1024) := '«definition.targetNamespace»';
+
+«FOREACH definition.getSOAPBindings(portType) AS binding-»
+«FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
+«LET portType.getOperation(bindingOperation.name, null, null) AS operation-»
+  /**
+  * WSDL Operation: «operation.name»
+  *
+«operation.getDocumentation().formatDocumentation("  * ")-»
+  *
+  * @param   p_param_in             IN  eingehende Message des Service.
+«IF !binding.isJmsTransport()-»
+  * @param   p_param_out            OUT ausgehende Message des Service.
+«IF getFaultElementQName(binding, operation.name) != null-»
+  * @param   p_error_out            OUT ausgehende Fault Message des Service.
+«ENDIF-»
+«ENDIF-»
+  *
+  */
+  PROCEDURE «getOracleName(definition.targetNamespace, operation)» (
+      p_param_in               IN OUT NOCOPY «getParameterOracleFQN(getInputElementQName(binding, operation.name))»
+«IF !binding.isJmsTransport()-»
+    , p_param_out              OUT    NOCOPY «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»
+«IF getFaultElementQName(binding, operation.name) != null-»
+    , p_error_out              OUT    NOCOPY «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»
+«ENDIF-»
+«ENDIF-»
+  );
+«ENDLET-»
+«ENDFOREACH»
+«ENDFOREACH»
+END «WSDL2PackageName(portType, 'E')»;
+/
+PROMPT ++++++++++++++++++++++++
+show errors
+PROMPT ++++++++++++++++++++++++
+«ENDFILE»
+«ENDDEFINE»

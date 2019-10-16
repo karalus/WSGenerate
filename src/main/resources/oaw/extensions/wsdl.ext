@@ -1,0 +1,93 @@
+import java::util;
+
+import javax::wsdl;
+import javax::wsdl::extensions;
+import javax::wsdl::extensions::schema;
+import javax::wsdl::extensions::soap;
+import javax::wsdl::extensions::soap12;
+import javax::xml::namespace;
+
+import org::w3c::dom;
+
+private Object firstValue(Map map) : map.values().selectFirst(true);
+private Collection values(Map map) : Map.metaType.getOperation("values", {}).evaluate(map, {});
+
+Collection[Binding] getBindings(Definition def) : def.bindings.values();
+private String getTransportSOAP12(Binding this) : extensibilityElements.typeSelect(SOAP12Binding).first().transportURI;
+private String getTransportSOAP11(Binding this) : extensibilityElements.typeSelect(SOAPBinding).first().transportURI;
+String getTransport(Binding this) : let t = getTransportSOAP11() : t != null ? t : getTransportSOAP12();
+boolean isHttpTransport(Binding this) : getTransport() == "http://schemas.xmlsoap.org/soap/http";
+boolean isJmsTransport(Binding this) : getTransport() == "http://www.w3.org/2010/soapjms/";
+private cached boolean isSOAP12(Binding this) : getTransportSOAP12() != null;	
+private cached boolean isSOAP11(Binding this) : getTransportSOAP11() != null;
+Collection[Binding] getSOAPBindings(Definition this) : getBindings().select(b|b.isSOAP11() || b.isSOAP12());
+// prefer SOAP11
+cached Collection[Binding] getSOAPBindings(Definition this, PortType portType) : let sb = getBindings().select(b|b.portType == portType) : let transports = sb.getTransport().toSet() :
+	transports.collect(t|let b = sb.selectFirst(b|b.getTransportSOAP11() == t) : b != null ? b : sb.selectFirst(b|b.getTransportSOAP12() == t));
+private Collection[Service] getServices(Definition this) : services.values();
+private Collection[Port] getPorts(Service this) : ports.values();
+Port getPort(Definition this, Binding binding) : getServices().getPorts().selectFirst(p|p.binding == binding);
+private String getLocationSOAP12(Port this) : extensibilityElements.typeSelect(SOAP12Address).first().locationURI;
+private String getLocationSOAP11(Port this) : extensibilityElements.typeSelect(SOAPAddress).first().locationURI;
+cached String getLocation(Port this) : let a = getLocationSOAP11() : a != null ? a : getLocationSOAP12();
+
+List[BindingOperation] getOperations(Binding this) : bindingOperations;
+
+QName getInputElementQName(Binding this, String operation) :
+	portType.getOperation(operation, null, null).input.message.getFirstPart(getInputBodyParts(operation)).elementName;
+private List[String] getInputBodyParts(Binding this, String operation) : let bindingInput = getBindingOperation(operation, null, null).bindingInput :
+	isSOAP12() ? getSOAP12Body(bindingInput).parts : getSOAPBody(bindingInput).parts;
+
+QName getOutputElementQName(Binding this, String operation) :
+	portType.getOperation(operation, null, null).output.message.getFirstPart(getOutputBodyParts(operation)).elementName;
+private List[String] getOutputBodyParts(Binding this, String operation) : let bindingOutput = getBindingOperation(operation, null, null).bindingOutput :
+	isSOAP12() ? getSOAP12Body(bindingOutput).parts : getSOAPBody(bindingOutput).parts;
+
+QName getFaultElementQName(Binding this, String operation) :
+	portType.getOperation(operation, null, null).getFirstFault().message.getFirstPart().elementName;
+
+boolean hasInputHeaderParts(Binding this, String operation) : let bindingInput = getBindingOperation(operation, null, null).bindingInput :
+	isSOAP12() ? getSOAP12Headers(bindingInput).size > 0 : getSOAPHeaders(bindingInput).size > 0;
+List[Part] getInputHeaderParts(Binding this, String operation, Definition def) : let bindingInput = getBindingOperation(operation, null, null).bindingInput :
+	isSOAP12() ? getSOAP12Headers(bindingInput).getPart(def) : getSOAPHeaders(bindingInput).getPart(def);
+
+private SOAP12Body getSOAP12Body(ElementExtensible this) : extensibilityElements.typeSelect(SOAP12Body).first();
+private SOAPBody getSOAPBody(ElementExtensible this) : extensibilityElements.typeSelect(SOAPBody).first();
+private List[SOAP12Header] getSOAP12Headers(ElementExtensible this) : extensibilityElements.typeSelect(SOAP12Header);
+private List[SOAPHeader] getSOAPHeaders(ElementExtensible this) : extensibilityElements.typeSelect(SOAPHeader);
+// We don't support messages with more than one element in the body
+private Part getFirstPart(Message message, List[String] parts) : parts == null || parts.isEmpty ? message.parts.firstValue() : message.getPart(parts.get(0));
+private Part getPart(SOAP12Header header, Definition def) : def.getMessage(header.message).getPart(header.part);
+private Part getPart(SOAPHeader header, Definition def) : def.getMessage(header.message).getPart(header.part);
+
+private PortType getFirstPortType(Definition definition) : definition.portTypes.firstValue();
+private Part getFirstPart(Message message) : message.parts.firstValue();
+private Fault getFirstFault(Operation operation) : operation.faults.firstValue();
+
+// Die Schemas der WSDL rekursiv (mit imports und includes) nach dem Element durchsuchen
+cached String getSchemaLocation(Definition definition, QName element) :
+	definition.getSchemas().find3(definition.targetNamespace, element).selectFirst(e|e != null).schemaLocationURI;
+
+private SchemaReference find3(Schema schema, String defaultNamespace, QName element) :
+	let tns = schema.element.getAttribute("targetNamespace") : find4(schema, tns.length > 0 ? tns : defaultNamespace, null, element);
+private SchemaReference find2(SchemaImport schemaImport, QName element) : schemaImport.referencedSchema == null ? null :
+	find4(schemaImport.referencedSchema, schemaImport.namespaceURI, schemaImport, element);
+private SchemaReference find3(SchemaReference schemaInclude, String targetNamespace, QName element) :
+	find4(schemaInclude.referencedSchema, targetNamespace, schemaInclude, element);
+private SchemaReference find4(Schema schema, String targetNamespace, SchemaReference src, QName element) :
+	targetNamespace == element.namespaceURI && isInSchema(schema, element) ? src :
+		(let r = schema.getSchemaImports().find2(element).selectFirst(e|e != null) : r != null ? r :
+			schema.getSchemaIncludes().find3(targetNamespace, element).selectFirst(e|e != null));
+
+private List[Schema] getSchemas(Definition definition) : definition.types.extensibilityElements.typeSelect(Schema);
+private List[SchemaReference] getSchemaIncludes(Schema schema) : schema.includes;
+private List[SchemaImport] getSchemaImports(Schema schema) : let list = {} :
+	schema.imports.values().collect(e|list.addAll((List[SchemaImport]) e)) -> list;
+
+private boolean isInSchema(Schema schema, QName element) : isInNodeList(element.localPart, schema.element.childNodes, 0);
+private boolean isInNodeList(String name, NodeList nl, int i) :
+	i < nl.length ? isMatch(name, nl.item(i)) || isInNodeList(name, nl, i + 1) : false;
+private boolean isMatch(String name, Node n) : false;
+private boolean isMatch(String name, Element e) : e.localName == "element" && e.getAttribute("name") == name;
+
+String getDocumentation(WSDLElement this) : documentationElement.textContent;

@@ -1,0 +1,10 @@
+import com::artofarc::wsimport;
+
+extension oaw::extensions::db;
+
+context Model WARNING "Too many WSDLs" :
+	serviceNamespaces.wsdls.size == 2;
+
+context Model WARNING "Either generateClient or generateServer must be true" :
+	generateClient() || generateServer();
+	

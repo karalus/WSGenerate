@@ -1,0 +1,8 @@
+import org::w3c::dom;
+
+String getElementName(Element element) : element.localName;
+String getElementText(Element element) : element.textContent;
+
+String getAttributeValue(Element element, String name) : ((Attr) element.attributes.getNamedItem(name)).value;
+List[Element] getChildElements(Element element) : addToList(element.childNodes, 0, {}).typeSelect(Element);
+private List[Node] addToList(NodeList this, int i, List[Node] result) : i < length ? (result.add(item(i)) -> addToList(i + 1, result)) : result;

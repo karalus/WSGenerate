@@ -1,0 +1,213 @@
+import org::w3::_2001::xmlschema;
+import javax::xml::bind;
+import javax::xml::namespace;
+
+import com::artofarc::wsimport;
+
+extension oaw::extensions::dom;
+
+// XML Schema model extensions
+QName createQName(String namespaceURI, String localPart) : JAVA com.artofarc.wsimport.ModelUtilities.createQName(java.lang.String, java.lang.String);
+cached List[Schema] getXSDModels(ServiceNamespace this) : schemas.toList();
+
+private cached boolean isElementFormDefaultQualified(ServiceNamespace this) : getXSDModels().first().elementFormDefault == FormChoice::QUALIFIED;
+//private cached boolean isAttributeFormDefaultQualified(ServiceNamespace this) : attributeFormDefault == "qualified";
+
+// Eclipse displays error when using value property because "T JAXBElement.getValue()" is not recognized by syntax highlighting
+Object getValue(JAXBElement this) : metaType.getProperty("value").get(this);
+// "extension" is a keyword, we need to get the property this way
+ExtensionType getExtension(ComplexContent this) : metaType.getProperty("extension").get(this);
+List[Object] getDocumentationContent(Annotated this) : annotation.appinfoOrDocumentation.typeSelect(Documentation).content;
+List[Appinfo] appinfos(Annotated this) : annotation.appinfoOrDocumentation.typeSelect(Appinfo);
+List[org::w3c::dom::Element] domElements(Appinfo appinfo) : appinfo.content.typeSelect(org::w3c::dom::Element);
+
+cached List[TopLevelComplexType] complexTypes(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(ComplexType);
+cached List[TopLevelComplexType] complexTypesNotAbstract(ServiceNamespace ns) : complexTypes(ns).reject(ct|ct.abstract);
+cached List[TopLevelSimpleType] simpleTypes(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(SimpleType);
+cached List[TopLevelElement] topLevelElements(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(TopLevelElement);
+cached List[TopLevelAttribute] topLevelAttributes(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(TopLevelAttribute);
+cached List[NamedGroup] namedGroups(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(NamedGroup);
+cached List[NamedAttributeGroup] namedAttributeGroups(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(NamedAttributeGroup);
+
+private Facet getFirstFacetForName(List[Object] facets, String name) : facets.typeSelect(JAXBElement).selectFirst(e|e.name.localPart == name).getValue();
+private boolean isEnumerationFacet(Object this) : false;
+private boolean isEnumerationFacet(JAXBElement this) : name.localPart == "enumeration";
+List[Facet] getEnumerationFacets(List[Object] facets) : facets.typeSelect(JAXBElement).select(e|e.name.localPart == "enumeration").getValue();
+NumFacet getFacetLength(List[Object] this) : getFirstFacetForName("length");
+NumFacet getFacetMinLength(List[Object] this) : getFirstFacetForName("minLength");
+NumFacet getFacetMaxLength(List[Object] this) : getFirstFacetForName("maxLength");
+TotalDigits getFacetTotalDigits(List[Object] facets) : facets.typeSelect(TotalDigits).first();
+NumFacet getFacetFractionDigits(List[Object] this) : getFirstFacetForName("fractionDigits");
+NumFacet getFacetMinInclusive(List[Object] this) : getFirstFacetForName("minInclusive");
+NumFacet getFacetMaxInclusive(List[Object] this) : getFirstFacetForName("maxInclusive");
+//NumFacet getFacetMinExclusive(List[Object] this) : getFirstFacetForName("minExclusive");
+//NumFacet getFacetMaxExclusive(List[Object] this) : getFirstFacetForName("maxExclusive");
+// All of them apply: http://docstore.mik.ua/orelly/xml/schema/ch05_01.htm
+List[Pattern] getPatternFacets(List[Object] facets) : facets.typeSelect(Pattern);
+
+TopLevelComplexType findReferencedComplexType(ServiceNamespace owner, QName type) : owner.findUsedServiceNamespace(type.namespaceURI).findComplexType(type);
+TopLevelSimpleType findReferencedSimpleType(ServiceNamespace owner, QName type) : owner.findUsedServiceNamespace(type.namespaceURI).findSimpleType(type);
+NamedGroup findReferencedGroup(ServiceNamespace owner, QName ref) : owner.findUsedServiceNamespace(ref.namespaceURI).findGroup(ref.localPart);
+TopLevelElement findReferencedElement(ServiceNamespace owner, QName ref) : owner.findUsedServiceNamespace(ref.namespaceURI).findElement(ref.localPart);
+
+cached TopLevelComplexType findComplexType(ServiceNamespace owner, QName type) : complexTypes(owner).selectFirst(e|e.name == type.localPart);
+cached TopLevelComplexType findComplexType(ServiceNamespace owner, String name) : complexTypes(owner).selectFirst(e|e.name == name);
+cached TopLevelSimpleType findSimpleType(ServiceNamespace owner, QName type) : simpleTypes(owner).selectFirst(e|e.name == type.localPart);
+cached NamedGroup findGroup(ServiceNamespace owner, String name) : namedGroups(owner).selectFirst(e|e.name == name);
+cached NamedAttributeGroup findAttributeGroup(ServiceNamespace owner, String name) : namedAttributeGroups(owner).selectFirst(e|e.name == name);
+cached TopLevelElement findElement(ServiceNamespace owner, String name) : topLevelElements(owner).selectFirst(e|e.name == name);
+cached TopLevelAttribute findAttribute(ServiceNamespace owner, String name) : topLevelAttributes(owner).selectFirst(e|e.name == name);
+
+cached List[TopLevelElement] topLevelElementsWithAnonymousSimpleType(ServiceNamespace ns) : topLevelElements(ns).select(e|e.simpleType != null);
+cached List[NamedGroup] namedGroupsWithAnonymousSimpleType(ServiceNamespace ns) : namedGroups(ns).select(g|g.elements().exists(e|e.simpleType != null));
+cached List[TopLevelElement] topLevelElementsWithAnonymousComplexType(ServiceNamespace ns) : topLevelElements(ns).select(e|e.complexType != null);
+cached List[NamedGroup] namedGroupsWithAnonymousComplexType(ServiceNamespace ns) : namedGroups(ns).select(g|g.elements().exists(e|e.complexType != null));
+
+// TODO: Generate fehlen. Für diese Attribute müssen 2l und 4l Funktionen und ein Table Type generiert werden.
+cached List[TopLevelAttribute] topLevelAttributesWithAnonymousSimpleTypeList(ServiceNamespace ns) :
+	topLevelAttributes(ns).select(e|e.simpleType != null && ns.isSimpleTypeList(e.simpleType));
+cached List[NamedAttributeGroup] namedAttributeGroupsWithAnonymousSimpleTypeList(ServiceNamespace ns) :
+	namedAttributeGroups(ns).select(g|g.attributeOrAttributeGroup.typeSelect(Attribute).exists(e|e.simpleType != null && ns.isSimpleTypeList(e.simpleType)));
+
+List[Element] elements(RealGroup group) : group.particle.typeSelect(JAXBElement).getValue().typeSelect(ExplicitGroup).first().elements();
+List[Element] elements(ExplicitGroup group) : group.particle.typeSelect(JAXBElement).getValue().typeSelect(Element);
+
+// Extensions um Typen und BasisTypen finden
+boolean isBuiltInType(QName this) : namespaceURI == javax::xml::XMLConstants::W3C_XML_SCHEMA_NS_URI;
+
+cached boolean hasSimpleType(ServiceNamespace owner, Element this) :
+	simpleType != null ||
+	type != null && (type.isBuiltInType() || findReferencedSimpleType(owner, type) != null) ||
+ 	ref != null && (let ns = owner.findUsedServiceNamespace(ref.namespaceURI) : hasSimpleType(ns, findElement(ns, ref.localPart)));
+
+cached SimpleType getSimpleType(ServiceNamespace owner, Element this) :
+	type != null ? (isBuiltInType(type) ? null : findReferencedSimpleType(owner, type)) :
+		(ref != null ? (let ns = owner.findUsedServiceNamespace(ref.namespaceURI) : getSimpleType(ns, findElement(ns, ref.localPart))) :
+			(simpleType != null ? simpleType : null));
+
+SimpleType getSimpleType(ServiceNamespace owner, Attribute this) :
+	type != null ? (isBuiltInType(type) ? null : findReferencedSimpleType(owner, type)) :
+		(ref != null ? (let ns = owner.findUsedServiceNamespace(ref.namespaceURI) : getSimpleType(ns, findAttribute(ns, ref.localPart))) :
+			(simpleType != null ? simpleType : null));
+
+QName getBaseType(SimpleType this) :
+	restriction.base != null ? restriction.base :
+		(restriction.simpleType != null ? getBaseType(restriction.simpleType) :
+			(list.itemType != null ? list.itemType :
+				(list.simpleType != null ? getBaseType(list.simpleType) :
+					(union != null ? createQName(javax::xml::XMLConstants::W3C_XML_SCHEMA_NS_URI, "string") : null))));
+
+boolean isSimpleTypeList(ServiceNamespace this, Element e) : let st = getSimpleType(e) : st != null && isSimpleTypeList(st);
+boolean isSimpleTypeList(ServiceNamespace this, Attribute a) : let st = getSimpleType(a) : st != null && isSimpleTypeList(st);
+cached boolean isSimpleTypeList(ServiceNamespace owner, SimpleType this) :
+	list != null || union != null ||
+	restriction.base != null && !isBuiltInType(restriction.base) && (let ns = owner.findUsedServiceNamespace(restriction.base.namespaceURI) : ns.isSimpleTypeList(findSimpleType(ns, restriction.base))) ||
+	restriction.simpleType != null && isSimpleTypeList(owner, restriction.simpleType) ;
+
+TopLevelSimpleType getBaseTypeForListType(ServiceNamespace owner, SimpleType this) :
+	restriction.base != null ? (let ns = owner.findUsedServiceNamespace(restriction.base.namespaceURI) : ns.getBaseTypeForListType(findSimpleType(ns, restriction.base))) :
+		(restriction.simpleType != null ? owner.getBaseTypeForListType(restriction.simpleType) :
+			(list.itemType != null ? (isBuiltInType(list.itemType) ? null : findReferencedSimpleType(owner, list.itemType)) :
+				null)); //(list.simpleType != null ? list.simpleType : null)));
+
+ComplexType getComplexType(ServiceNamespace owner, Element this) : complexType != null ? complexType : getNonLocalComplexType(owner);
+cached TopLevelComplexType getNonLocalComplexType(Element this, ServiceNamespace owner) :
+	type != null && !type.isBuiltInType() ? findReferencedComplexType(owner, type) :
+		(ref != null ? (let ns = owner.findUsedServiceNamespace(ref.namespaceURI) : getNonLocalComplexType(findElement(ns, ref.localPart), ns)) : null);
+
+cached ServiceNamespace getTypeNamespace(ServiceNamespace owner, Element this) :
+	type != null ? owner.findUsedServiceNamespace(type.namespaceURI) :
+		(ref != null ? (let ns = owner.findUsedServiceNamespace(ref.namespaceURI) : getTypeNamespace(ns, findElement(ns, ref.localPart))) : owner);
+
+cached ServiceNamespace getElementNamespace(ServiceNamespace owner, Element this) :
+	ref != null ? owner.findUsedServiceNamespace(ref.namespaceURI) :
+		(isElementFormDefaultQualified(owner) ? owner : (let ns = getTypeNamespace(owner, this) : ns == owner || isBuiltInType(type) ? null : ns));
+
+cached ComplexType getComplexTypeWithinNamespace(ServiceNamespace owner, Element this) :
+	type != null && !type.isBuiltInType() ? findComplexType(owner, type) :
+		(ref != null && ref.namespaceURI == owner.URI ? getComplexTypeWithinNamespace(owner, findElement(owner, ref.localPart)) : null);
+
+cached QName getBuiltInType(ServiceNamespace owner, Element this) :
+	type != null ? (isBuiltInType(type) ? type : (let st = findReferencedSimpleType(owner, type) : st != null ? getBuiltInType(owner, st) : null)) :
+		(ref != null ? (let ns = owner.findUsedServiceNamespace(ref.namespaceURI) : getBuiltInType(ns, findElement(ns, ref.localPart))) :
+			(simpleType != null ? getBuiltInType(owner, simpleType) : null));
+
+QName getBuiltInType(ServiceNamespace owner, Attribute this) :
+	type != null ? (isBuiltInType(type) ? type : getBuiltInType(owner, findReferencedSimpleType(owner, type))) :
+		(ref != null ? (let ns = owner.findUsedServiceNamespace(ref.namespaceURI) : getBuiltInType(ns, findAttribute(ns, ref.localPart))) :
+			(simpleType != null ? getBuiltInType(owner, simpleType) : null));
+
+QName getBuiltInType(ServiceNamespace owner, SimpleType this) :
+	let baseType = getBaseType() : baseType.isBuiltInType() ? baseType : getBuiltInType(owner, findReferencedSimpleType(owner, baseType));
+
+// Extensions zur Interpretation von Restrictions
+List[Object] getFacets(ServiceNamespace this, Element e) : let st = getSimpleType(e) : st != null ? getFacets(st) : null;
+List[Object] getFacets(ServiceNamespace this, Attribute a) : let st = getSimpleType(a) : st != null ? getFacets(st) : null;
+cached List[Object] getFacets(ServiceNamespace owner, SimpleType this) : let baseType = getBaseType() :
+	baseType.isBuiltInType() ? restriction.facets :
+		(let baseTypeFacets = (let ns = owner.findUsedServiceNamespace(baseType.namespaceURI) : ns.getFacets(findSimpleType(ns, baseType))).reject(f|isEnumerationFacet(f)) :
+			baseTypeFacets.isEmpty ? restriction.facets : {}.addAll(restriction.facets).addAll(baseTypeFacets));
+
+boolean isFixedLength(List[Object] facets) : facets != null && (getFacetLength(facets) != null || getMinCharLength(facets) == getMaxCharLength(facets));
+String getMinCharLength(List[Object] this) :
+	getFacetLength() != null ? getFacetLength().value :
+		(getFacetMinLength() != null ? getFacetMinLength().value :
+			(getPatternFacets().size > 0 ? maximum(getPatternFacets().value.newRegExHelper().minLength) :
+				(getEnumerationFacets().size > 0 ? minimum(getEnumerationFacets().value.length) : "0")));
+cached String getMaxCharLength(List[Object] this) :
+	getFacetLength() != null ? getFacetLength().value :
+		(getFacetMaxLength() != null ? getFacetMaxLength().value :
+			(getPatternFacets().size > 0 ? (let maxLength = minimum(getPatternFacets().value.newRegExHelper().maxLength) : maxLength < charDefaultLength() ? maxLength : charDefaultLength()) :
+			 	(getEnumerationFacets().size > 0 ? maximum(getEnumerationFacets().value.length) : charDefaultLength())));
+cached com::artofarc::util::RegExHelper newRegExHelper(String regex) : JAVA com.artofarc.util.RegExHelper.newRegExHelper(java.lang.String);
+private int maximum(List[int] this) : let l = first() : size > 1 ? (let r = maximum(withoutFirst()) : l > r ? l : r) : l;
+private int minimum(List[int] this) : let l = first() : size > 1 ? (let r = minimum(withoutFirst()) : l < r ? l : r) : l;
+private int charDefaultLength() : 32767;
+boolean isTypeWithTimeZone(QName this) : localPart == "dateTime" || localPart == "date" || localPart == "time" || localPart == "gYearMonth" || localPart == "gYear";
+boolean isTypeWithTime(QName this) : localPart == "dateTime" || localPart == "time";
+// Takes a sample. But how else can we tell that <xs:pattern value=".*T[^Z+-]*"/> forbids usage of a time zone?
+cached boolean hasTimezone(QName this, List[Object] facets) : facets == null || (let patterns = facets.getPatternFacets() :
+	switch (localPart) {
+		case "dateTime" : patterns.matchesAll("2001-10-26T19:32:52Z")
+		case "date" : patterns.matchesAll("2001-10-26Z")
+		case "time" : patterns.matchesAll("19:32:52Z")
+		case "gYearMonth" : patterns.matchesAll("2001-10Z")
+		case "gYear" : patterns.matchesAll("2001Z")
+		default : true
+	});
+private boolean matchesAll(List[Pattern] patterns, String s) : patterns.forAll(e|newRegExHelper(e.value).matcher(s).matches());
+boolean isStringType(QName this) : localPart == "string" || localPart == "normalizedString" || localPart == "token";
+boolean isInt32Type(QName this) : isInt32TypeSigned() || localPart == "unsignedShort" || localPart == "unsignedByte";
+boolean isInt32TypeSigned(QName this) : localPart == "int" || localPart == "short" || localPart == "byte";
+boolean isIntegerType(QName this) : isIntegerTypeSigned() || localPart == "unsignedInt" || localPart == "unsignedLong" || localPart == "nonNegativeInteger" || localPart == "positiveInteger";
+boolean isIntegerTypeSigned(QName this) : isIntegerTypeNegative() || localPart == "integer" || localPart == "long";
+boolean isIntegerTypeNegative(QName this) : localPart == "nonPositiveInteger" || localPart == "negativeInteger";
+cached Integer getIntegerTypeTotalDigits(QName this, List[Object] facets) : let td = getFacetTotalDigits(facets) : let ef = getEnumerationFacets(facets) :
+	let m = minimumN(ef.size > 0 ? maximum(ef.getDigits()) : null, minimumN(td != null ? td.value.asInteger() : null,
+		isIntegerTypeNegative() ? getDigits(getFacetMinInclusive(facets)) :
+			(isIntegerTypeSigned() || isInt32TypeSigned() ? maximum(getDigits(getFacetMinInclusive(facets)), getDigits(getFacetMaxInclusive(facets))) :
+				getDigits(getFacetMaxInclusive(facets))))) :
+	switch (localPart) {
+		case "byte" : minimumN(m, 3)
+		case "unsignedByte" : minimumN(m, 3)
+		case "short" : minimumN(m, 5)
+		case "unsignedShort" : minimumN(m, 5)
+		case "int" : minimumN(m, 10)
+		case "unsignedInt" : minimumN(m, 10)
+		case "long" : minimumN(m, 19)
+		case "unsignedLong" : minimumN(m, 20)
+		default : m
+	};
+private Integer getDigits(Facet facet) : facet != null ? (facet.value.startsWith("-") ? facet.value.length - 1 : facet.value.length) : null;
+private Integer maximum(Integer l, Integer r) : l != null && r != null ? (l > r ? l : r) : null;
+// Besondere Semantik ist hier: Jede beliebige Zahl ist kleiner als null
+private Integer minimumN(Integer l, Integer r) : l != null ? (r != null ? (l < r ? l : r) : l) : (r != null ? r : null);
+
+// Shared Extensions
+boolean isArrayElement(Element this) : maxOccurs == "unbounded" || maxOccurs.asInteger() > 1;
+boolean isArray(Element this, Group parentGroup) : isArrayElement() || parentGroup.maxOccurs == "unbounded" || parentGroup.maxOccurs.asInteger() > 1;
+boolean isMandatory(Element this, String parentGroupType) : !nillable && minOccurs > 0 && parentGroupType != "choice";
+
+boolean isUsePrivate(Annotated this) :
+	let use = appinfos().domElements().selectFirst(e|e.getElementName() == "use") : use != null && getElementText(use) == "private";
+cached org::w3c::dom::Element getEntries(Annotated this) : appinfos().domElements().selectFirst(e|e.getElementName() == "entries");

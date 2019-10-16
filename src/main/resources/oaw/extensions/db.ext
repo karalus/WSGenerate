@@ -1,0 +1,241 @@
+import org::w3::_2001::xmlschema;
+import javax::xml::bind;
+import javax::xml::namespace;
+import javax::wsdl;
+
+import com::artofarc::wsimport;
+
+extension oaw::extensions::schema reexport;
+extension oaw::extensions::wsdl;
+
+private Boolean _generateClient() : GLOBALVAR generateClient;
+boolean generateClient() : _generateClient() == true;
+private Boolean _generateServer() : GLOBALVAR generateServer;
+boolean generateServer() : _generateServer() == true;
+String getDBSchema() : GLOBALVAR dbSchema;
+boolean isGenerateSmallXML(ServiceNamespace this) : false;
+
+String lineSeparator() : "\r\n";
+
+//String repeat(String x, int n) : JAVA org.apache.commons.lang.StringUtils.repeat( java.lang.String, int);
+String repeat(String x, int n) : n > 0 ? x + repeat(x, n-1) : "";
+String chomp(String s, String suffix) : s.endsWith(suffix) ? s.subString(0, s.length - suffix.length) : s;
+String chomp(String s, int n) : s.subString(0, s.length - n);
+String padStringLeft(String s, char padChar, int len) : s.length < len ? padStringLeft(padChar + s, padChar, len) : s;
+
+private String convertUri(String ns, String separator, boolean firstUpper) :
+	JAVA com.artofarc.util.UriHelper.convertUri(java.lang.String, java.lang.String, java.lang.Boolean);
+private java::net::URI createURI(String uri) :
+	JAVA com.artofarc.util.UriHelper.createURI(java.lang.String);
+private String getQueryParam(String uri, String key) : createURI(uri).query.split("&").selectFirst(p|p.startsWith(key + "=")).split("=").get(1);
+
+String getAQQueueName(Port this) : getLocation().getQueryParam("QueueName");
+String getAQQueueTable(Port this, boolean multipleConsumers) : getLocation().getQueryParam("QueueTable");
+String getAQDeadLetterQueueName(Port this, boolean multipleConsumers) : "AQ$_" + getAQQueueTable(multipleConsumers) + "_E";
+
+String XSD2PackageName(ServiceNamespace this) : getMappingForNamespace("D");
+	
+private String checkLen(String s, String uri, String name) : s.length > 30 ? "!!!Too long: " + name + " in " + uri + " mapped to " + s : s;
+
+String WSDL2PackageNameCheck(Model model, PortType portType, char infix) :
+	let s = WSDL2PackageName(model, portType, infix) : s.length > 30 ? "!!!Too long: " + portType.QName + " mapped to " + s : s;
+cached String WSDL2PackageName(Model model, PortType portType, char infix) : 
+	model.bindingDefinition.getMappingForPortType(portType.QName.namespaceURI, portType.QName.localPart, infix.toString());
+
+String getOracleName(Model model, String ns, Operation this) : checkLen(_getOracleName(model, ns, this), ns, name);
+private cached String _getOracleName(Model model, String ns, Operation this) : model.bindingDefinition.getMappingForName(ns, name, null);
+cached String getParameterOracleFQN(Model model, QName element) : let ens = model.findServiceNamespace(element.namespaceURI) : let e = ens.findElement(element.localPart) : let ns = getTypeNamespace(ens, e) :
+	getPackagePrefix(ens, ns) + (e.complexType != null ? anonymousTypeName2Oracle(ns, e, "") : XSDType2Oracle(ns, e.getNonLocalComplexType(ns)));
+
+// Oracle Name fuer Element, Attribute, Facet
+boolean isXSD2OracleTooLong(ServiceNamespace ns, String name, Annotated this, String suffix) : _XSD2Oracle(ns, name).length > 30 - suffix.length;
+String XSD2Oracle(ServiceNamespace ns, String name, Annotated this) : checkLen(_XSD2Oracle(ns, name), ns.URI, name);
+String XSD2Oracle(ServiceNamespace ns, String name, Annotated this, String suffix) : checkLen(_XSD2Oracle(ns, name) + suffix, ns.URI, name);
+private cached String _XSD2Oracle(Annotated this, ServiceNamespace ns, String name) : ns.getMappingForName(name, this);
+
+String XSDType2Oracle(ServiceNamespace ns, TopLevelSimpleType this) : XSDType2Oracle(ns, name, this, false);
+String XSDType2Oracle(ServiceNamespace ns, TopLevelSimpleType this, boolean isArray) : XSDType2Oracle(ns, name, this, isArray);
+String XSDType2Oracle(ServiceNamespace ns, TopLevelSimpleType this, String suffix) : XSDType2Oracle(ns, name, this, suffix);
+String XSDType2Oracle(ServiceNamespace owner, QName qname) :
+	let ns = owner.findUsedServiceNamespace(qname.namespaceURI) : XSDType2Oracle(ns, findSimpleType(ns, qname), false);
+String XSDType2Oracle(ServiceNamespace owner, QName qname, boolean isArray) :
+	let ns = owner.findUsedServiceNamespace(qname.namespaceURI) : XSDType2Oracle(ns, findSimpleType(ns, qname), isArray);
+String XSDType2Oracle(ServiceNamespace owner, QName qname, String suffix) :
+	let ns = owner.findUsedServiceNamespace(qname.namespaceURI) : XSDType2Oracle(ns, findSimpleType(ns, qname), suffix);
+
+String XSDType2Oracle(ServiceNamespace ns, TopLevelComplexType this, boolean isArray) : XSDType2Oracle(ns, name, this, isArray);
+String XSDType2Oracle(ServiceNamespace ns, TopLevelComplexType this) : XSDType2Oracle(ns, name, this, false);
+String XSDType2Oracle(ServiceNamespace ns, TopLevelComplexType this, String suffix) : XSDType2Oracle(ns, name, this, suffix);
+
+String XSDType2Oracle(ServiceNamespace ns, String name, SimpleType this) : checkLen(_XSDType2Oracle(ns, name, false), ns.URI, name);
+String XSDType2Oracle(ServiceNamespace ns, String name, SimpleType this, boolean isArray) : checkLen(_XSDType2Oracle(ns, name, isArray), ns.URI, name);
+String XSDType2Oracle(ServiceNamespace ns, String name, SimpleType this, String suffix) : checkLen(_XSDType2Oracle(ns, name, false) + suffix, ns.URI, name);
+
+String XSDType2Oracle(ServiceNamespace ns, String name, ComplexType this) : checkLen(_XSDType2Oracle(ns, name, false), ns.URI, name);
+String XSDType2Oracle(ServiceNamespace ns, String name, ComplexType this, boolean isArray) : checkLen(_XSDType2Oracle(ns, name, isArray), ns.URI, name);
+String XSDType2Oracle(ServiceNamespace ns, String name, ComplexType this, String suffix) : checkLen(_XSDType2Oracle(ns, name, false) + suffix, ns.URI, name);
+
+private cached String _XSDType2Oracle(Annotated this, ServiceNamespace ns, String name, boolean isArray) :
+	let s = ns.getMappingForName(name, this) :
+		s.endsWith("PayloadType") ? s.chomp(11) + (isArray ? "P_CT" : "P_T") :
+			(s.endsWith("Type") ? s.chomp(4) : s) + (isArray ? "_CT" : "_T");
+
+String anonymousTypeName(Element element, String parentTypeName) :
+	let s = parentTypeName.chomp("Type") : (s.length > 0 ? s + element.name.toFirstUpper() : element.name) + "Type";
+String anonymousTypeName2Oracle(ServiceNamespace ns, Element this, String parentTypeName) :
+ 	XSDType2Oracle(ns, anonymousTypeName(parentTypeName), complexType, false);
+String anonymousTypeName2Oracle(ServiceNamespace ns, Element this, String parentTypeName, boolean isArray) :
+	XSDType2Oracle(ns, anonymousTypeName(parentTypeName), complexType, isArray);
+String anonymousTypeName(Attribute attribute, String parentTypeName) :
+	let s = parentTypeName.chomp("Type") : (s.length > 0 ? s + attribute.name.toFirstUpper() : attribute.name) + "Type";
+
+String enumValue2OracleName(ServiceNamespace owner, String oracleTypeName, Facet this) :
+	let n = oracleTypeName.chomp(1) + value.replaceAll("\\.|,", "").replaceAll(" |-", "_") : // reduce "_T" to "_"
+		checkLen(owner.getMappingForName(n, this) + "_c", owner.URI, n);
+
+String getPackagePrefix(ServiceNamespace owner, QName type) : type.namespaceURI != owner.URI ?
+	(let ns = owner.findUsedServiceNamespace(type.namespaceURI) : XSD2PackageName(ns) + '.') : "";
+String getPackagePrefix(ServiceNamespace owner, ServiceNamespace typeNS) : owner != typeNS ? XSD2PackageName(typeNS) + '.' : "";
+
+String getOracleName(Element this, ServiceNamespace owner) :
+	ref == null ? _XSD2Oracle(owner, name) :
+		(let ns = owner.findUsedServiceNamespace(ref.namespaceURI) : _XSD2Oracle(findElement(ns, ref.localPart), ns, ref.localPart));
+
+// Sonderfall für das Mapping von TopLevelElement-Namen. Es wird das Mapping des zugehörigen Typs verwendet, falls es kein eigenes Mapping gibt
+// damit spart man sich das Mapping der Element-Namen für die neuen FUNCTIONs aus der XMLStringConversion
+cached String XSD2OracleSpecial(ServiceNamespace owner, TopLevelElement this) : isXSD2OracleTooLong(owner, name, this, "_4x") ?
+	(complexType != null ? anonymousTypeName2Oracle(owner, this, "").chomp(2) :
+		(let ns = getTypeNamespace(owner, this) : let ct = ns.findComplexType(type) :
+			ct.name.chomp("Type") == name ? XSDType2Oracle(ns, ct).chomp(2) : "!!!Element with ambiguous type needs name mapping: " + name)) :
+				XSD2Oracle(owner, name, this);
+
+// Type mapping
+String formatDocumentation(String doc, String prefix) : doc.split("\n").collect(e|e.trim()).reject(e|e.length == 0).collect(e|prefix + e + lineSeparator()).concat();
+private String concat(List[String] list) : list.size > 1 ? list.first() + concat(list.withoutFirst()) : list.first();
+
+String convertXSDBasicTypeOracle(QName this) : convertXSDBasicTypeOracle(this, null);
+String convertXSDBasicTypeOracle(QName this, List[Object] facets) :
+	isStringType() ? (isFixedLength(facets) ? "CHAR(" + getMaxCharLength(facets) + ")" : "VARCHAR2(" + getMaxCharLength(facets) + " CHAR)") :
+		(localPart == "int" && getIntegerTypeTotalDigits(facets) == 10 ? "BINARY_INTEGER" : // more precise than NUMBER(10)
+			(isInt32Type() || isIntegerType() ? (let td = getIntegerTypeTotalDigits(facets) : td != null ? "NUMBER(" + td + ")" : "NUMBER") :
+				(localPart == "decimal" ? (hasNumberFormat(facets) ? "NUMBER(" + getNumberFormat(facets) + ")" : "NUMBER") :
+					(localPart == "dateTime" || localPart == "time" ? (hasTimezone(facets) ? "TIMESTAMP WITH TIME ZONE" : "TIMESTAMP") :
+						(localPart == "date" || localPart == "gYearMonth" ? (hasTimezone(facets) ? "TIMESTAMP WITH TIME ZONE" : "DATE") :
+							(localPart == "gYear" ? (hasTimezone(facets) ? "TIMESTAMP WITH TIME ZONE" : "NUMBER(4)") :
+								(localPart == "boolean" ? "BOOLEAN" :
+									(localPart == "float" ? "BINARY_FLOAT" :
+										(localPart == "double" ? "BINARY_DOUBLE" :
+											(localPart == "base64Binary" ? "BLOB" :
+												(localPart == "duration" ? "INTERVAL DAY TO SECOND" :
+													(localPart == "anyType" ? "XMLTYPE" :
+														"Illegal XSD type: " + localPart))))))))))));
+
+private boolean hasNumberFormat(List[Object] facets) : facets != null && (getFacetTotalDigits(facets) != null || getFacetFractionDigits(facets) != null);
+private String getNumberFormat(List[Object] this) :
+	getFacetTotalDigits() != null ?	getFacetTotalDigits().value + (getFacetFractionDigits() != null ? "," + getFacetFractionDigits().value : "") :
+		(getFacetFractionDigits() != null ? numberDefaultPrecision().toString() + "," + getFacetFractionDigits().value : numberDefaultPrecision());
+
+String convertOracle2XSDBasicType(QName this, List[Object] facets, String param) :
+	isStringType() ? param :
+		(isInt32Type() || isIntegerType() ? "to_char(" + param + ')' :
+			(localPart == "decimal" ? "to_char(" + param + ", 'TM9', 'nls_numeric_characters = ''.,''')" :
+				(localPart == "dateTime" ? (hasTimezone(facets) ? "to_char(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF3TZH:TZM')" : "to_char(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF3')") :
+					(localPart == "date" ? (hasTimezone(facets) ? "to_char(" + param + ", 'YYYY-MM-DDTZH:TZM')" : "to_char(" + param + ", 'YYYY-MM-DD')") :
+						(localPart == "time" ? (hasTimezone(facets) ? "to_char(" + param + ", 'HH24:MI:SSTZH:TZM')" : "to_char(" + param + ", 'HH24:MI:SS')") :
+							(localPart == "gYearMonth" ? (hasTimezone(facets) ? "to_char(" + param + ", 'YYYY-MMTZH:TZM')" : "to_char(" + param + ", 'YYYY-MM')") :
+								(localPart == "gYear" ? (hasTimezone(facets) ? "to_char(" + param + ", 'YYYYTZH:TZM')" : "to_char(" + param + ')') :
+									(localPart == "boolean" ? "CASE " + param + " WHEN TRUE THEN 'true' WHEN false THEN 'false' ELSE 'NULL' END" :
+										(localPart == "float" ? "SOA_API_DEFAULT.FLOAT_TO_CHAR(" + param + ')' :
+											(localPart == "double" ? "SOA_API_DEFAULT.DOUBLE_TO_CHAR(" + param + ')' :
+												(localPart == "base64Binary" ? "NULL" :
+													(localPart == "duration" ? "SOA_API_DEFAULT.DURATION_TO_CHAR(" + param + ')' :
+														(localPart == "anyType" ? null :
+															"Illegal XSD type: " + localPart)))))))))))));
+
+boolean isLOB(String expr) : expr == "NULL";
+boolean isXMLType(String expr) : expr == null;
+
+String convertXSDBasicType2Oracle(QName this, List[Object] facets, String param, String rawParam) :
+	isStringType() ? param :
+		(isInt32Type() || isIntegerType() ? "to_number(" + param + ')' :
+			(localPart == "decimal" ? "to_number(" + param + ", '" + repeat("9", facets.getDigitsForDecimal()) + "." + repeat("9", facets.getFractionDigitsForDecimal()) + "')" :
+				(localPart == "dateTime" ? (hasTimezone(facets) ? "TO_TIMESTAMP_TZ(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF3TZH:TZM')" : "TO_TIMESTAMP(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF3')") :
+					(localPart == "date" ? (hasTimezone(facets) ? "TO_TIMESTAMP_TZ(" + param + ", 'YYYY-MM-DDTZH:TZM')" : "TO_DATE(" + param + ", 'YYYY-MM-DD')") :
+						(localPart == "time" ? (hasTimezone(facets) ? "TO_TIMESTAMP_TZ(" + param + ", 'HH24:MI:SS.FF3TZH:TZM')" : "TO_TIMESTAMP(" + param + ", 'HH24:MI:SS.FF3')") :
+							(localPart == "gYearMonth" ? (hasTimezone(facets) ? "TO_TIMESTAMP_TZ(" + param + ", 'YYYY-MMTZH:TZM')" : "TO_DATE(" + param + ", 'YYYY-MM')") :
+								(localPart == "gYear" ? (hasTimezone(facets) ? "TO_TIMESTAMP_TZ(" + param + ", 'YYYYTZH:TZM')" : "to_number(" + param + ')') :
+									(localPart == "boolean" ? "CASE " + param + " WHEN 'true' THEN TRUE WHEN 'false' THEN FALSE WHEN '1' THEN TRUE WHEN '0' THEN FALSE ELSE NULL END" :
+										(localPart == "float" ? "SOA_API_DEFAULT.CHAR_TO_FLOAT(" + param + ')' :
+											(localPart == "double" ? "SOA_API_DEFAULT.CHAR_TO_DOUBLE(" + param + ')' :
+												(localPart == "base64Binary" ? "SOA_API_DEFAULT.getBlobFromNode(" + rawParam + ')' :
+													(localPart == "duration" ? "SOA_API_DEFAULT.CHAR_TO_DURATION(" + param + ')' :
+														(localPart == "anyType" ? "SOA_API_DEFAULT.getXMLType(" + rawParam + ')' :
+															"Illegal XSD type: " + localPart)))))))))))));
+
+private int getDigitsForDecimal(List[Object] this) :
+	(getFacetTotalDigits() != null ? getFacetTotalDigits().value.asInteger() : numberDefaultPrecision()) - getFractionDigitsForDecimal();
+private int getFractionDigitsForDecimal(List[Object] this) : getFacetFractionDigits().value.asInteger();
+private int numberDefaultPrecision() : 38;
+
+String getOracleTypeForRefElement(ServiceNamespace ns, Element this, boolean isArray, Group parentGroup) :
+	complexType != null || simpleType != null ? XSD2PackageName(ns) + '.' + anonymousTypeName2Oracle(ns, this, "", isArray || isArray(parentGroup)) :
+		(type != null ? (isBuiltInType(type) ? convertXSDBasicTypeOracle(type) :
+			(let ns2 = ns.findUsedServiceNamespace(type.namespaceURI) : findSimpleType(ns2, type) != null ? XSD2PackageName(ns2) + '.' + XSDType2Oracle(ns2, type, isArray) :
+				(let ct = findComplexType(ns2, type) : ct != null ? XSD2PackageName(ns2) + '.' + XSDType2Oracle(ns2, ct, isArray || isArray(parentGroup)) :	"UNKNOWN_TYPE"))) : "NO_TYPE");
+
+String getOracleTypeForRefAttribute(ServiceNamespace ns, Attribute this) :
+	simpleType != null ? XSD2PackageName(ns) + '.' + name + "Type" :
+		(type != null ? (isBuiltInType(type) ? convertXSDBasicTypeOracle(type) :
+			(let ns2 = ns.findUsedServiceNamespace(type.namespaceURI) : XSD2PackageName(ns2) + '.' + XSDType2Oracle(ns2, type, false))) : "NO_TYPE");
+
+// Logic needed because RECORD TYPE cannot be checked with IS NULL (http://stackoverflow.com/questions/7207894/check-a-record-is-not-null-in-plsql)
+String getIsNotNullExpression(ComplexType this, ServiceNamespace owner, String parentParam) :
+	let exp = getIsNotNullExpression(owner, parentParam, true) : exp != null ? exp : getIsNotNullExpression(owner, parentParam, false);
+
+// byPK == true is only retrieving an expression when it's clearly determinable by mandatory elements, otherwise null is returned
+// if null is returned there might be an (more inefficient) expression (byPK == false) to find out
+private String getIsNotNullExpression(ComplexType this, ServiceNamespace owner, String parentParam, boolean byPK) :
+	complexContent != null ?
+		(complexContent.getExtension() != null ?
+			(let exp = getIsNotNullExpression(findReferencedComplexType(owner, complexContent.getExtension().base), owner, parentParam, byPK) : byPK ?
+				(exp != null ? exp : getIsNotNullExpression(complexContent.getExtension(), owner, parentParam, byPK)) :
+				makeOrExpression(exp, getIsNotNullExpression(complexContent.getExtension(), owner, parentParam, byPK))) :
+			(complexContent.restriction != null ? getIsNotNullExpression(complexContent.restriction, owner, parentParam, byPK) : null)) :
+		(group != null ? getIsNotNullExpression(group, owner, parentParam, null, null, "group", byPK) :
+			(all != null ? getIsNotNullExpression(all, owner, parentParam, null, null, "all", byPK) :
+				(choice != null ? getIsNotNullExpression(choice, owner, parentParam, null, null, "choice", byPK) :
+					(sequence != null ? getIsNotNullExpression(sequence, owner, parentParam, null, null, "sequence", byPK) : null))));
+
+private String makeOrExpression(String exp1, String exp2) : exp1 != null ? (exp2 != null ? exp1 + " OR " + exp2 : exp1) : (exp2 != null ? exp2 : null);
+
+private String getIsNotNullExpression(ExtensionType this, ServiceNamespace owner, String parentParam, boolean byPK) :
+	group != null ? getIsNotNullExpression(group, owner, parentParam, null, null, "group", byPK) :
+		(all != null ? getIsNotNullExpression(all, owner, parentParam, null, null, "all", byPK) :
+			(choice != null ? getIsNotNullExpression(choice, owner, parentParam, null, null, "choice", byPK) :
+				(sequence != null ? getIsNotNullExpression(sequence, owner, parentParam, null, null, "sequence", byPK) : null)));
+
+private String getIsNotNullExpression(ComplexRestrictionType this, ServiceNamespace owner, String parentParam, boolean byPK) :
+	group != null ? getIsNotNullExpression(group, owner, parentParam, null, null, "group", byPK) :
+		(all != null ? getIsNotNullExpression(all, owner, parentParam, null, null, "all", byPK) :
+			(choice != null ? getIsNotNullExpression(choice, owner, parentParam, null, null, "choice", byPK) :
+				(sequence != null ? getIsNotNullExpression(sequence, owner, parentParam, null, null, "sequence", byPK) : null)));
+
+private String getIsNotNullExpression(GroupRef this, ServiceNamespace owner, String parentParam, String parentGroupType, Group parentGroup, String particleType, boolean byPK) :
+	getIsNotNullExpression(findReferencedGroup(owner, ref), owner, parentParam, parentGroupType, parentGroup, particleType, byPK);
+
+private String getIsNotNullExpression(Group this, ServiceNamespace owner, String parentParam, String parentGroupType, Group parentGroup, String particleType, boolean byPK) :
+	byPK && (minOccurs == 0 || parentGroupType == "choice") ? null :
+		(let expressions = particle.typeSelect(JAXBElement).collect(p|getIsNotNullExpression(p.getValue(), owner, parentParam, particleType, this, p.name.localPart, byPK)) :
+			!byPK || particleType == "choice" ? expressions.makeOrExpression() : expressions.selectFirst(e|e != null));
+
+private String makeOrExpression(List[String] expressions) : expressions.isEmpty ? null :
+	expressions.first() + (let remainder = expressions.withoutFirst() : remainder.isEmpty ? "" : " OR " + makeOrExpression(remainder));
+
+private String getIsNotNullExpression(Object this, ServiceNamespace owner, String parentParam, String parentGroupType, Group parentGroup, String particleType, boolean byPK) : null;
+
+private String getIsNotNullExpression(Element this, ServiceNamespace owner, String parentParam, String parentGroupType, Group parentGroup, String particleType, boolean byPK) :
+	!byPK || (minOccurs > 0 && !nillable) || isArray(parentGroup) ? getIsNotNullExpression(owner, parentParam, parentGroup) : null;
+
+String getIsNotNullExpression(Element this, ServiceNamespace owner, String parentParam, Group parentGroup) :
+	hasSimpleType(owner, this) || isArray(parentGroup) ? parentParam + '.' + getOracleName(owner) + " IS NOT NULL" :
+		XSD2PackageName(getTypeNamespace(owner, this)) + ".isNotNull(" + parentParam + '.' + getOracleName(owner) + ')';

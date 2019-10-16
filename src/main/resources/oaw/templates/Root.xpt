@@ -1,0 +1,27 @@
+«IMPORT com::artofarc::wsimport»
+
+«IMPORT org::w3::_2001::xmlschema»
+
+«IMPORT javax::wsdl»
+«IMPORT javax::xml::bind»
+«IMPORT javax::xml::namespace»
+
+«EXTENSION oaw::extensions::wsdl»
+«EXTENSION oaw::extensions::simplify»
+
+«DEFINE _Root FOR Model»
+«LET transform() AS xmlModel-»
+«FOREACH xmlModel.definitions AS schemaDef-»
+«EXPAND Schema2PKS::Root FOR schemaDef»
+«ENDFOREACH-»
+«ENDLET-»
+«ENDDEFINE»
+
+«DEFINE _Root1 FOR Model»
+«FOREACH serviceNamespaces AS serviceNamespace»
+«EXPAND Schema2DefPkg::Root FOR serviceNamespace»
+«FOREACH serviceNamespace.wsdls AS wsdl-»
+«EXPAND Porttype2APIPkg::Root(wsdl)»
+«ENDFOREACH-»
+«ENDFOREACH-»
+«ENDDEFINE»

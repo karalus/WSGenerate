@@ -1,0 +1,557 @@
+«IMPORT com::artofarc::wsimport»
+
+«IMPORT org::w3::_2001::xmlschema»
+«IMPORT javax::xml::bind»
+«IMPORT javax::xml::namespace»
+
+
+«EXTENSION oaw::extensions::db»
+
+«DEFINE Root FOR ServiceNamespace»
+«FILE "plsql/" + XSD2PackageName() + ".PKS"-»
+PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+PROMPT Creating PACKAGE «XSD2PackageName()» in «getDBSchema()»
+PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+PROMPT
+
+
+CREATE OR REPLACE PACKAGE «getDBSchema()».«XSD2PackageName()» IS
+  /**
+  * <pre>
+  *
+  *  <br/>
+  *  XSD-Referenz:        «URI»
+  *  technische Schicht:  apidef(d)                -   Applikation-Interface-Definition
+  *  <br/>
+  *
+  *  <b>Beschreibung:</b>
+  * «URI» consists of «getXSDModels().size» file(s):
+«FOREACH documentBaseURIs AS documentBaseURI-»
+  * documentBaseURI: «documentBaseURI»
+«ENDFOREACH-»
+  *
+  *
+  *  </pre>
+  *  @headcom
+  *  <pre>
+  *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+  *
+  */
+
+  c_URI CONSTANT VARCHAR(1024) := '«URI»';
+  
+«EXPAND XSDSchema(simpleTypes().toList())-»
+«FOREACH topLevelElements().select(e|e.simpleType != null) AS topLevelElementWithAnonymousSimpleType-»
+-- SimpleType for top-level element with name: «topLevelElementWithAnonymousSimpleType.name»
+«EXPAND XSDSchema(anonymousTypeName(topLevelElementWithAnonymousSimpleType, ""), topLevelElementWithAnonymousSimpleType.simpleType)»
+«ENDFOREACH-»
+  ------------------------------------------------------------------------------
+  -- ComplexTypes -> RECORD TYPE
+  ------------------------------------------------------------------------------
+«LET {}.toSet() AS done-»
+«FOREACH namedGroups() AS namedGroup-»
+«EXPAND XSDSchemaComplexTypes(done, namedGroup.name, null, namedGroup)-»
+«ENDFOREACH-»
+«EXPAND XSDSchemaComplexTypes(done, complexTypes())-»
+«FOREACH topLevelElements() AS topLevelElement-»
+«EXPAND XSDSchemaComplexTypes(done, "", null, topLevelElement)-»
+«ENDFOREACH-»
+«ENDLET-»
+  ------------------------------------------------------------------------------
+  -- TopLevelElements
+  ------------------------------------------------------------------------------
+«FOREACH topLevelElements() AS tle-»
+«EXPAND XMLStringConversion(tle)-»
+«ENDFOREACH-»
+END «XSD2PackageName()»;
+/
+PROMPT ++++++++++++++++++++++++
+show errors
+PROMPT ++++++++++++++++++++++++
+«ENDFILE»
+«ENDDEFINE»
+
+«DEFINE XSDSchema(List[TopLevelSimpleType] simpleTypes) FOR ServiceNamespace-»
+  ------------------------------------------------------------------------------
+  -- SimpleTypes -> SUBTYPE
+  -- Basic types
+  ------------------------------------------------------------------------------
+
+«LET simpleTypes.select(e|e.restriction.base.isBuiltInType()) AS basicTypes-»
+«FOREACH basicTypes AS basicType-»
+-- SUBTYPE TYPE FOR: «basicType.name»
+«EXPAND XSDSchema(basicType.name, basicType)»
+«ENDFOREACH-»
+«LET simpleTypes.removeAll(basicTypes).select(e|e.getBaseType().namespaceURI != URI).reject(e|isSimpleTypeList(e)) AS foreignTypes-»
+  ------------------------------------------------------------------------------
+  -- SimpleTypes -> SUBTYPE
+  -- Types die andere Packages referenzieren
+  ------------------------------------------------------------------------------
+
+«FOREACH foreignTypes AS refType-»
+-- SUBTYPE TYPE FOR: «refType.name»
+«LET XSDType2Oracle(refType) AS oracleName-»
+«FOREACH getDocumentationContent(refType) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+SUBTYPE «oracleName» IS «getPackagePrefix(refType.restriction.base)»«XSDType2Oracle(refType.restriction.base)»;
+
+TYPE «XSDType2Oracle(refType, true)» IS TABLE OF «oracleName»;
+«FOREACH getFacets(refType).getEnumerationFacets() AS enumeration-»
+«FOREACH getDocumentationContent(enumeration) AS doc»«doc.toString().formatDocumentation("  -- ")»«ENDFOREACH-»
+  «enumValue2OracleName(oracleName, enumeration)» CONSTANT «oracleName» := '«enumeration.value»';
+
+«ENDFOREACH-»
+«ENDLET-»
+«ENDFOREACH-»
+  ------------------------------------------------------------------------------
+  -- SimpleTypes -> SUBTYPE
+  -- Abgeleitete Types
+  ------------------------------------------------------------------------------
+
+«EXPAND XSDSchema(basicTypes.addAll(foreignTypes), simpleTypes.removeAll(foreignTypes).reject(e|isSimpleTypeList(e)))-»
+«ENDLET-»
+«ENDLET-»
+«LET simpleTypes.select(e|isSimpleTypeList(e)) AS listTypes-»
+«IF listTypes.size > 0-»
+  ------------------------------------------------------------------------------
+  -- SimpleTypes -> TABLE
+  -- Types mit list
+  ------------------------------------------------------------------------------
+
+«FOREACH listTypes AS listType-»
+-- TABLE TYPE FOR: «listType.name»
+«FOREACH getDocumentationContent(listType) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«IF getBaseTypeForListType(listType) != null-»
+TYPE «XSDType2Oracle(listType)» IS TABLE OF «XSDType2Oracle(getBaseTypeForListType(listType))»;
+«ELSE-»
+TYPE «XSDType2Oracle(listType)» IS TABLE OF «convertXSDBasicTypeOracle(getBuiltInType(listType))-»;
+«ENDIF-»
+
+TYPE «XSDType2Oracle(listType, true)» IS TABLE OF «XSDType2Oracle(listType)»;
+
+FUNCTION «XSDType2Oracle(listType, "4l")»(p_str IN VARCHAR2) RETURN «XSDType2Oracle(listType)»;
+
+FUNCTION «XSDType2Oracle(listType, "2l")»(p_list IN «XSDType2Oracle(listType)») RETURN VARCHAR2;
+
+«ENDFOREACH-»
+
+«ENDIF-»
+«ENDLET-»
+«ENDDEFINE»
+
+«DEFINE XSDSchema(Collection[TopLevelSimpleType] done, Collection[TopLevelSimpleType] toDo) FOR ServiceNamespace-»
+«IF !toDo.isEmpty-»
+«LET toDo.select(e|done.contains(findReferencedSimpleType(e.restriction.base))) AS refTypes-»
+«FOREACH refTypes AS refType-»
+-- SUBTYPE TYPE FOR: «refType.name»
+«LET XSDType2Oracle(refType) AS oracleName-»
+«FOREACH getDocumentationContent(refType) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+SUBTYPE «oracleName» IS «XSDType2Oracle(refType.restriction.base)»;
+
+TYPE «XSDType2Oracle(refType, true)» IS TABLE OF «oracleName»;
+«FOREACH getFacets(refType).getEnumerationFacets() AS enumeration-»
+«FOREACH getDocumentationContent(enumeration) AS doc»«doc.toString().formatDocumentation("  -- ")»«ENDFOREACH-»
+  «enumValue2OracleName(oracleName, enumeration)» CONSTANT «oracleName» := '«enumeration.value»';
+
+«ENDFOREACH-»
+
+«ENDLET-»
+«ENDFOREACH-»
+«EXPAND XSDSchema(done.addAll(refTypes), toDo.removeAll(refTypes))»
+«ENDLET-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE XSDSchema(String typeName, SimpleType type) FOR ServiceNamespace-»
+«LET XSDType2Oracle(typeName, type) AS oracleName-»
+«FOREACH type.getDocumentationContent() AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«FOREACH getFacets(type).getPatternFacets() AS pattern-»
+--   Pattern: «pattern.value»
+«ENDFOREACH-»
+SUBTYPE «oracleName» IS «convertXSDBasicTypeOracle(type.restriction.base, getFacets(type))-»;
+
+TYPE «XSDType2Oracle(typeName, type, true)» IS TABLE OF «oracleName»;
+«FOREACH getFacets(type).getEnumerationFacets() AS enumeration-»
+«FOREACH getDocumentationContent(enumeration) AS doc»«doc.toString().formatDocumentation("  -- ")»«ENDFOREACH-»
+  «enumValue2OracleName(oracleName, enumeration)» CONSTANT «oracleName» := '«enumeration.value»';
+
+«ENDFOREACH-»
+«ENDLET-»
+«ENDDEFINE»
+
+«REM»Navigate in ComplexType«ENDREM»
+«DEFINE XSDSchemaComplexTypes(Set[ComplexType] done, Collection[TopLevelComplexType] toDo) FOR ServiceNamespace-»
+«FOREACH toDo AS ct-»
+«EXPAND XSDSchemaComplexTypes(done, ct.name, ct)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(Set[ComplexType] done, String typeName, ComplexType ct) FOR ServiceNamespace-»
+«IF !done.contains(ct)-»
+«IF ct.name != null»«LET done.add(ct) AS newDone»«ENDLET»«ENDIF-»
+«IF ct.complexContent != null-»
+«IF ct.complexContent.extension != null-»
+«IF ct.complexContent.extension.base.namespaceURI == URI-»
+«LET findComplexType(ct.complexContent.extension.base) AS bct-»
+«EXPAND XSDSchemaComplexTypes(done, bct.name, bct)-»
+«ENDLET-»
+«ENDIF-»
+«EXPAND XSDSchemaComplexTypes(done, typeName, ct.complexContent.extension)-»
+«ELSEIF ct.complexContent.restriction != null-»
+«EXPAND XSDSchemaComplexTypes(done, typeName, ct.complexContent.restriction)-»
+«ENDIF-»
+«ELSE-»
+«IF ct.group != null-»
+«EXPAND XSDSchemaComplexTypes(done, typeName, null, ct.group)-»
+«ELSEIF ct.all != null-»
+«EXPAND XSDSchemaComplexTypes(done, typeName, null, ct.all)-»
+«ELSEIF ct.choice != null-»
+«EXPAND XSDSchemaComplexTypes(done, typeName, null, ct.choice)-»
+«ELSEIF ct.sequence != null-»
+«EXPAND XSDSchemaComplexTypes(done, typeName, null, ct.sequence)-»
+«ENDIF-»
+«ENDIF-»
+«FOREACH ct.attributeOrAttributeGroup AS a-»
+«EXPAND XSDSchemaComplexTypes(typeName, a)-»
+«ENDFOREACH-»
+«IF !ct.abstract-»
+«EXPAND XSDSchema(typeName, ct)-»
+«ENDIF-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(Set[ComplexType] done, String typeName, ExtensionType et) FOR ServiceNamespace-»
+«IF et.group != null-»
+«EXPAND XSDSchemaComplexTypes(done, typeName, null, et.group)-»
+«ELSEIF et.all != null-»
+«EXPAND XSDSchemaComplexTypes(done, typeName, null, et.all)-»
+«ELSEIF et.choice != null-»
+«EXPAND XSDSchemaComplexTypes(done, typeName, null, et.choice)-»
+«ELSEIF et.sequence != null-»
+«EXPAND XSDSchemaComplexTypes(done, typeName, null, et.sequence)-»
+«ENDIF-»
+«FOREACH et.attributeOrAttributeGroup AS a-»
+«EXPAND XSDSchemaComplexTypes(typeName, a)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(Set[ComplexType] done, String typeName, ComplexRestrictionType crt) FOR ServiceNamespace-»
+«IF crt.group != null-»
+«EXPAND XSDSchemaComplexTypes(done, typeName, null, crt.group)-»
+«ELSEIF crt.all != null-»
+«EXPAND XSDSchemaComplexTypes(done, typeName, null, crt.all)-»
+«ELSEIF crt.choice != null-»
+«EXPAND XSDSchemaComplexTypes(done, typeName, null, crt.choice)-»
+«ELSEIF crt.sequence != null-»
+«EXPAND XSDSchemaComplexTypes(done, typeName, null, crt.sequence)-»
+«ENDIF-»
+«FOREACH crt.attributeOrAttributeGroup AS a-»
+«EXPAND XSDSchemaComplexTypes(typeName, a)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(Set[ComplexType] done, String typeName, Group parentGroup, GroupRef gr) FOR ServiceNamespace-»
+«REM»Nothing to do cause all named groups within owner ns are already expanded«ENDREM»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(Set[ComplexType] done, String typeName, Group parentGroup, Group g) FOR ServiceNamespace-»
+«FOREACH g.particle.typeSelect(JAXBElement).getValue() AS p-»
+«EXPAND XSDSchemaComplexTypes(done, typeName, g, p)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(Set[ComplexType] done, String typeName, Group parentGroup, Object o) FOR ServiceNamespace-»
+«ERROR "Particle type not supported: " + this»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(Set[ComplexType] done, String typeName, Group parentGroup, Element e) FOR ServiceNamespace-»
+«IF e.simpleType != null-»
+-- Anonymous SimpleType for element with name: «e.name» = «anonymousTypeName(e, typeName)»
+«IF isArray(e, parentGroup) || isSimpleTypeList(e.simpleType)-»
+<Not implemented>
+«ENDIF-»
+«FOREACH getFacets(e.simpleType).getEnumerationFacets() AS enumeration-»
+«FOREACH getDocumentationContent(enumeration) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«enumValue2OracleName(e.name + "T", enumeration)» CONSTANT «EXPAND XSDSchema_SimpleType(e.simpleType, false)» := '«enumeration.value»';
+
+«ENDFOREACH-»
+«ELSEIF e.complexType != null-»
+-- Anonymous ComplexType for element with name: «e.name» = «anonymousTypeName(e, typeName)»
+«EXPAND XSDSchemaComplexTypes(done, anonymousTypeName(e, typeName), e.complexType)-»
+«ELSE-»
+«LET getComplexTypeWithinNamespace(e) AS ct-»
+«IF ct != null-»
+«EXPAND XSDSchemaComplexTypes(done, ct.name, ct)-»
+«ENDIF-»
+«ENDLET-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(String typeName, Attribute a) FOR ServiceNamespace-»
+«IF a.simpleType != null && isSimpleTypeList(a.simpleType)-»
+-- Anonymous SimpleType for attribute with name: «a.name» = «anonymousTypeName(a, typeName)»
+<Not implemented>
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(String typeName, AttributeGroupRef agr) FOR ServiceNamespace-»
+«REM»Nothing to do cause all named attribute groups within owner ns are already expanded«ENDREM»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(String typeName, AttributeGroup ag) FOR ServiceNamespace-»
+«FOREACH ag.attributeOrAttributeGroup AS a-»
+«EXPAND XSDSchemaComplexTypes(typeName, a)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(String typeName, Annotated a) FOR ServiceNamespace-»
+«ERROR "Abstract type: " + this»
+«ENDDEFINE»
+
+«REM»«ENDREM»
+
+«DEFINE XSDSchema(String name, ComplexType ct) FOR ServiceNamespace-»
+-- RECORD TYPE FOR: «name»
+«FOREACH getDocumentationContent(ct) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+TYPE «XSDType2Oracle(name, ct)» IS RECORD (
+  -- Nur zur internen Verwendung! Darf nur vom generierten Code benutzt werden.
+  INTERN_isPresent  BOOLEAN«EXPAND XSDSchemaElements(name, this, ct)»
+);
+
+FUNCTION «XSDType2Oracle(name, ct, "2c")»(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct)») RETURN VARCHAR2;
+
+FUNCTION «XSDType2Oracle(name, ct, "4x")»(p_node IN DBMS_XMLDOM.DOMNode) RETURN «XSDType2Oracle(name, ct)»;
+
+PROCEDURE «XSDType2Oracle(name, ct, "2x")» (
+  p_«XSDType2Oracle(name, ct)»	IN	 «XSDType2Oracle(name, ct)»
+, p_domdoc 				IN 	 DBMS_XMLDOM.DOMDocument
+, p_parent_node 		IN	 DBMS_XMLDOM.DOMNode
+«IF isGenerateSmallXML()-»
+, p_nsContext           IN OUT NOCOPY SOA_API_BASIC.nsContext_T
+«ELSE-»
+, p_default_ns          IN   VARCHAR2
+«ENDIF-»
+);
+
+FUNCTION isNotNull(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct)») RETURN BOOLEAN;
+
+PROCEDURE setNotNull(
+  p_«XSDType2Oracle(name, ct)» IN OUT NOCOPY «XSDType2Oracle(name, ct)»
+, p_NotNull IN BOOLEAN
+);
+
+-- Table type definition, falls dieser Typ in einem Element mit maxOccurs="unbounded" verwendet wird
+TYPE «XSDType2Oracle(name, ct, true)» IS TABLE OF «XSDType2Oracle(name, ct)»;
+
+FUNCTION isNotEmpty(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct, true)») RETURN BOOLEAN;
+
+«ENDDEFINE»
+
+«DEFINE XSDSchemaElements(String name, ServiceNamespace currentNS, ComplexType ct) FOR ServiceNamespace-»
+«IF ct.complexContent != null-»
+«IF ct.complexContent.extension != null-»
+«LET findUsedServiceNamespace(ct.complexContent.extension.base.namespaceURI) AS ns-»
+«LET findComplexType(ns, ct.complexContent.extension.base) AS bct-»
+«EXPAND XSDSchemaElements(bct.name, ns, bct)-»
+«ENDLET-»
+«ENDLET-»
+«EXPAND XSDSchemaElements(name, currentNS, ct.complexContent.extension)-»
+«ELSEIF ct.complexContent.restriction != null-»
+«EXPAND XSDSchemaElements(name, currentNS, ct.complexContent.restriction)-»
+«ENDIF-»
+«ELSEIF ct.simpleContent != null-»
+«LET ct.simpleContent.extension.base AS type-»
+«LET findUsedServiceNamespace(type.namespaceURI) AS ns-»
+«IF findComplexType(ns, type) != null-»
+«EXPAND XSDSchemaElements(name, currentNS, findComplexType(ns, type))-»
+«ELSE-»
+,
+
+  value	«IF type.isBuiltInType()-»
+«convertXSDBasicTypeOracle(type)-»
+«ELSE-»
+«getPackagePrefix(ns)»«XSDType2Oracle(ns, type)-»
+«ENDIF-»
+«ENDIF-»
+«FOREACH ct.simpleContent.extension.attributeOrAttributeGroup AS a-»
+«EXPAND XSDSchemaElements(a)-»
+«ENDFOREACH-»
+«ENDLET-»
+«ENDLET-»
+«ELSE-»
+«IF ct.group != null-»
+«EXPAND XSDSchemaElements(name, null, null, "group", currentNS, ct.group)-»
+«ELSEIF ct.all != null-»
+«EXPAND XSDSchemaElements(name, null, null, "all", currentNS, ct.all)-»
+«ELSEIF ct.choice != null-»
+«EXPAND XSDSchemaElements(name, null, null, "choice", currentNS, ct.choice)-»
+«ELSEIF ct.sequence != null-»
+«EXPAND XSDSchemaElements(name, null, null, "sequence", currentNS, ct.sequence)-»
+«ENDIF-»
+«ENDIF-»
+«FOREACH ct.attributeOrAttributeGroup AS a-»
+«EXPAND XSDSchemaElements(a)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaElements(String name, ServiceNamespace currentNS, ExtensionType et) FOR ServiceNamespace-»
+«IF et.group != null-»
+«EXPAND XSDSchemaElements(name, null, null, "group", currentNS, et.group)-»
+«ELSEIF et.all != null-»
+«EXPAND XSDSchemaElements(name, null, null, "all", currentNS, et.all)-»
+«ELSEIF et.choice != null-»
+«EXPAND XSDSchemaElements(name, null, null, "choice", currentNS, et.choice)-»
+«ELSEIF et.sequence != null-»
+«EXPAND XSDSchemaElements(name, null, null, "sequence", currentNS, et.sequence)-»
+«ENDIF-»
+«FOREACH et.attributeOrAttributeGroup AS a-»
+«EXPAND XSDSchemaElements(a)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaElements(String name, ServiceNamespace currentNS, ComplexRestrictionType crt) FOR ServiceNamespace-»
+«IF crt.group != null-»
+«EXPAND XSDSchemaElements(name, null, null, "group", currentNS, crt.group)-»
+«ELSEIF crt.all != null-»
+«EXPAND XSDSchemaElements(name, null, null, "all", currentNS, crt.all)-»
+«ELSEIF crt.choice != null-»
+«EXPAND XSDSchemaElements(name, null, null, "choice", currentNS, crt.choice)-»
+«ELSEIF crt.sequence != null-»
+«EXPAND XSDSchemaElements(name, null, null, "sequence", currentNS, crt.sequence)-»
+«ENDIF-»
+«FOREACH crt.attributeOrAttributeGroup AS a-»
+«EXPAND XSDSchemaElements(a)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaElements(String typeName, String parentGroupType, Group parentGroup, String particleType, ServiceNamespace currentNS, GroupRef gr) FOR ServiceNamespace-»
+,
+
+«LET findUsedServiceNamespace(gr.ref.namespaceURI) AS ns-»
+«LET findGroup(ns, gr.ref.localPart) AS group-»
+«FOREACH getDocumentationContent(group) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+-- Group «gr.ref-»
+«EXPAND XSDSchemaElements(typeName, parentGroupType, parentGroup, particleType, ns, group)-»
+«ENDLET-»
+«ENDLET-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaElements(String typeName, String parentGroupType, Group parentGroup, String particleType, ServiceNamespace currentNS, Group g) FOR ServiceNamespace-»
+«FOREACH g.particle.typeSelect(JAXBElement) AS p-»
+«EXPAND XSDSchemaElements(typeName, particleType, g, p.name.localPart, currentNS, p.getValue())-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaElements(String typeName, String parentGroupType, Group parentGroup, String particleType, ServiceNamespace currentNS, Object o) FOR ServiceNamespace-»
+«ERROR "Particle type not supported: " + particleType»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaElements(String typeName, String parentGroupType, Group parentGroup, String particleType, ServiceNamespace currentNS, Element e) FOR ServiceNamespace-»
+,
+
+«FOREACH getDocumentationContent(e) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«IF isMandatory(e, parentGroupType)-»
+--   NOT NULL
+«ENDIF-»
+«LET getTypeNamespace(currentNS, e) AS ns-»
+«IF e.type != null-»
+  «XSD2Oracle(currentNS, e.name, e)»	«IF isBuiltInType(e.type) && !isArray(e, parentGroup)-»
+«convertXSDBasicTypeOracle(e.type)-»
+«ELSEIF findReferencedSimpleType(currentNS, e.type) != null-»
+«getPackagePrefix(ns)»«XSDType2Oracle(ns, e.type, isArray(e, parentGroup))-»
+«ELSE-»
+«getPackagePrefix(ns)»«XSDType2Oracle(ns, ns.findComplexType(e.type), isArray(e, parentGroup))-»
+«ENDIF-»
+«ELSEIF e.ref != null-»
+«LET currentNS.findUsedServiceNamespace(e.ref.namespaceURI) AS refNs-»
+«LET refNs.findElement(e.ref.localPart) AS refElement-»
+«FOREACH getDocumentationContent(refElement) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+  «XSD2Oracle(refNs, refElement.name, refElement)» «ns.getOracleTypeForRefElement(refElement, isArrayElement(e), parentGroup)-»
+«ENDLET-»
+«ENDLET-»
+«ELSEIF e.complexType != null-»
+  «XSD2Oracle(currentNS, e.name, e)»	«getPackagePrefix(ns)»«anonymousTypeName2Oracle(e, typeName, isArray(e, parentGroup))-»
+«ELSEIF e.simpleType != null-»
+  «XSD2Oracle(currentNS, e.name, e)»	«EXPAND XSDSchema_SimpleType(e.simpleType, isArrayElement(e))-»
+«ELSE-»
+-- No Type found for «e.name-»
+«ENDIF-»
+«ENDLET-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaElements(Attribute a) FOR ServiceNamespace-»
+,
+
+«FOREACH getDocumentationContent(a) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«IF a.use == "required"-»
+--   NOT NULL
+«ENDIF-»
+«IF a.type != null-»
+  «XSD2Oracle(a.name, a)»	«IF isBuiltInType(a.type)-»
+«convertXSDBasicTypeOracle(a.type)-»
+«ELSE-»
+«LET findUsedServiceNamespace(a.type.namespaceURI) AS ns-»
+«getPackagePrefix(ns)»«XSDType2Oracle(ns, a.type)-»
+«ENDLET-»
+«ENDIF-»
+«ELSEIF a.ref != null-»
+«LET findUsedServiceNamespace(a.ref.namespaceURI) AS ns-»
+«LET ns.findAttribute(a.ref.localPart) AS refAttribute-»
+«FOREACH getDocumentationContent(refAttribute) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+  «XSD2Oracle(ns, refAttribute.name, refAttribute)» «ns.getOracleTypeForRefAttribute(refAttribute)-»
+«ENDLET-»
+«ENDLET-»
+«ELSEIF a.simpleType != null-»
+  «XSD2Oracle(a.name, a)»	«EXPAND XSDSchema_SimpleType(a.simpleType, isSimpleTypeList(a.simpleType))-»
+«ELSE-»
+-- No Type found for «a.name-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaElements(AttributeGroupRef agr) FOR ServiceNamespace-»
+,
+
+«LET findUsedServiceNamespace(agr.ref.namespaceURI) AS ns-»
+«LET ns.findAttributeGroup(agr.ref.localPart) AS attributeGroup-»
+«FOREACH getDocumentationContent(attributeGroup) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+-- AttributeGroup «agr.ref-»
+«EXPAND XSDSchemaElements(attributeGroup) FOR ns-»
+«ENDLET-»
+«ENDLET-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaElements(AttributeGroup ag) FOR ServiceNamespace-»
+«FOREACH ag.attributeOrAttributeGroup AS a-»
+«EXPAND XSDSchemaElements(a)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaElements(Annotated a) FOR ServiceNamespace-»
+«ERROR "Abstract type: " + a»
+«ENDDEFINE»
+
+«DEFINE XSDSchema_SimpleType(SimpleType st, boolean isArray) FOR ServiceNamespace-»
+«LET getBaseType(st) AS baseType-»
+«IF !isArray && isBuiltInType(baseType)-»
+«IF isSimpleTypeList(st)-»
+«convertXSDBasicTypeOracle(baseType, getFacets(getBaseTypeForListType(st)))-»
+«ELSE-»
+«convertXSDBasicTypeOracle(baseType, getFacets(st))-»
+«ENDIF-»
+«ELSE-»
+«getPackagePrefix(baseType)»«XSDType2Oracle(baseType, isArray)-»
+«ENDIF-»
+«ENDLET-»
+«ENDDEFINE»
+
+«DEFINE XMLStringConversion(TopLevelElement tle) FOR ServiceNamespace-»
+«LET getTypeNamespace(tle) AS ns-»
+«IF getComplexType(tle) != null-»
+«LET tle.complexType == null ? XSDType2Oracle(ns, ns.findComplexType(tle.type)) : anonymousTypeName2Oracle(tle, "") AS typeName-»
+FUNCTION «XSD2OracleSpecial(tle)»_4x(p_param_in IN CLOB) RETURN «getPackagePrefix(ns)»«typeName»;
+
+FUNCTION «XSD2OracleSpecial(tle)»_2x(p_param_in IN «getPackagePrefix(ns)»«typeName») RETURN CLOB;
+
+«ENDLET-»
+«ENDIF-»
+«ENDLET-»
+«ENDDEFINE»

@@ -1,0 +1,20 @@
+import com::artofarc::wsimport;
+import org::w3::_2001::xmlschema;
+import javax::wsdl;
+
+extension oaw::extensions::db;
+extension oaw::extensions::wsdl;
+
+context Model ERROR "dbSchema must be set (-B dbSchema=<dbSchema>)" : getDBSchema() != null;
+
+context Definition ERROR targetNamespace + ": Operation has no input element " + getSOAPBindings().collect(b|b.getOperations().selectFirst(o|getInputElementQName(b, o.name) == null).name) :
+	getSOAPBindings().forAll(b|b.getOperations().forAll(o|getInputElementQName(b, o.name) != null));
+	
+context ServiceNamespace WARNING "More than one Schema contributed to this targetNamespace: " + URI :
+	getXSDModels().size <= 1;
+
+context ServiceNamespace WARNING "More than one WSDL contributed to this targetNamespace: " + URI :
+	wsdls.size <= 1;
+	
+context ServiceNamespace ERROR "elementFormDefault must be the same throughout all schemas within a targetNamespace: " + URI :
+	let l = getXSDModels() : l.withoutFirst().forAll(s|s.elementFormDefault == l.first().elementFormDefault);

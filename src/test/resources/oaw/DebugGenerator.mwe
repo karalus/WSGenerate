@@ -1,0 +1,20 @@
+<workflow>
+	<component class="com.artofarc.wsimport.WsdlParser" verbose="false">
+		<bindingDefinition class="com.artofarc.wsimport.BindingDefinitionByProperties">
+		 <propertyFile value="C:/dev/git/runtime-ceiserxplor.product/vpms2/input/architecture/de.svi.architecture.icis.DBAdapterIcisVertrag.mapping.properties"/>
+	    </bindingDefinition>
+		<wsdlFileName value="c:/dev/Temp/wsdls/de/svi/service/beratung/gba/soap/Beratung2/BeratungPortType2/BeratungPortType2.wsdl"/>
+		<outputSlot value="model"/>
+  	</component>
+
+    <component class="org.eclipse.xpand2.Generator" skipOnErrors="true" fileEncoding="iso-8859-1">
+	    <metaModel class="org.eclipse.xtend.type.impl.java.JavaMetaModel" id="beansmm">
+	      <typeStrategy class="org.eclipse.xtend.type.impl.java.beans.JavaBeansStrategy"/>
+	    </metaModel>
+
+		<outlet path="c:/dev/Temp" fileEncoding="iso-8859-1"/>
+
+        <expand value="oaw::templates::Root::_Root FOR model"/>
+    </component>
+
+</workflow>

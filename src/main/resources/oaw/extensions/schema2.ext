@@ -1,0 +1,49 @@
+import javax::xml::bind;
+import javax::xml::namespace;
+
+import com::artofarc::wsimport;
+import com::artofarc::schema;
+
+// XML Schema model extensions
+String repeat(String x, int n) : n > 0 ? x + repeat(x, n-1) : "";
+String chomp(String s, String suffix) : s.endsWith(suffix) ? s.subString(0, s.length - suffix.length) : s;
+String chomp(String s, int n) : s.subString(0, s.length - n);
+String padStringLeft(String s, char padChar, int len) : s.length < len ? padStringLeft(padChar + s, padChar, len) : s;
+QName createQName(String namespaceURI, String localPart) : JAVA com.artofarc.wsimport.ModelUtilities.createQName(java.lang.String, java.lang.String);
+cached com::artofarc::util::RegExHelper newRegExHelper(String regex) : JAVA com.artofarc.util.RegExHelper.newRegExHelper(java.lang.String);
+private int maximum(List[int] this) : let l = first() : size > 1 ? (let r = maximum(withoutFirst()) : l > r ? l : r) : l;
+private int minimum(List[int] this) : let l = first() : size > 1 ? (let r = minimum(withoutFirst()) : l < r ? l : r) : l;
+
+boolean isArray(Member this) : array || ((Member) owner.owner).array;
+boolean isArray(Referrer this) : false;
+
+
+boolean isFixedLength(Primitive this) : minLength == maxLength;
+
+boolean isStringType(QName this) : localPart == "string" || localPart == "normalizedString" || localPart == "token";
+boolean isInt32Type(QName this) : isInt32TypeSigned() || localPart == "unsignedShort" || localPart == "unsignedByte";
+boolean isInt32TypeSigned(QName this) : localPart == "int" || localPart == "short" || localPart == "byte";
+boolean isIntegerType(QName this) : isIntegerTypeSigned() || localPart == "unsignedInt" || localPart == "unsignedLong" || localPart == "nonNegativeInteger" || localPart == "positiveInteger";
+boolean isIntegerTypeSigned(QName this) : isIntegerTypeNegative() || localPart == "integer" || localPart == "long";
+boolean isIntegerTypeNegative(QName this) : localPart == "nonPositiveInteger" || localPart == "negativeInteger";
+
+cached Integer getIntegerTypeTotalDigits(Primitive this) : 
+	let m = minimumN(enumerations.size > 0 ? maximum(enumerations.getDigits()) : null, minimumN(totalDigits,
+		isIntegerTypeNegative() ? getDigits("getFacetMinInclusive(facets)") :
+			(isIntegerTypeSigned() || isInt32TypeSigned() ? maximum(getDigits("getFacetMinInclusive(facets)"), getDigits("getFacetMaxInclusive(facets)")) :
+				getDigits("getFacetMaxInclusive(facets)")))) :
+	switch (refBaseRef.ref.localPart) {
+		case "byte" : minimumN(m, 3)
+		case "unsignedByte" : minimumN(m, 3)
+		case "short" : minimumN(m, 5)
+		case "unsignedShort" : minimumN(m, 5)
+		case "int" : minimumN(m, 10)
+		case "unsignedInt" : minimumN(m, 10)
+		case "long" : minimumN(m, 19)
+		case "unsignedLong" : minimumN(m, 20)
+		default : m
+	};
+private Integer getDigits(String numStr) : numStr.startsWith("-") ? numStr.length - 1 : numStr.length;
+private Integer maximum(Integer l, Integer r) : l != null && r != null ? (l > r ? l : r) : null;
+// Besondere Semantik ist hier: Jede beliebige Zahl ist kleiner als null
+private Integer minimumN(Integer l, Integer r) : l != null ? (r != null ? (l < r ? l : r) : l) : (r != null ? r : null);

@@ -1,0 +1,109 @@
+import org::w3::_2001::xmlschema;
+import javax::xml::bind;
+import javax::xml::namespace;
+
+import com::artofarc::wsimport;
+import com::artofarc::schema;
+
+// M2M
+create SchemaModel transform(Model model) : setBindingDefinition(model.bindingDefinition) -> model.serviceNamespaces.collect(e|addDefinition(e.URI, transform(e)));
+create SchemaDef transform(SchemaModel model, ServiceNamespace sn) : setModel(model) -> setTargetNamespace(sn.URI) -> setDocumentBaseURIs(sn.documentBaseURIs.toList())
+ -> (let s = sn.schemas.selectFirst(true) : setElementFormDefaultQualified(s.elementFormDefault == FormChoice::QUALIFIED) -> setAttributeFormDefaultQualified(s.attributeFormDefault == FormChoice::QUALIFIED))
+ -> sn.schemas.simpleTypeOrComplexTypeOrGroup.collect(e|addGlobal(e))
+;
+
+addGlobal(SchemaDef this, TopLevelSimpleType st) : addPrimitive(st.name, transform(st));
+addGlobal(SchemaDef this, TopLevelComplexType ct) : addComposite(ct.name, transform(ct));
+addGlobal(SchemaDef this, TopLevelElement e) : addDefinition(e.name, transform(e));
+addGlobal(SchemaDef this, TopLevelAttribute a) : addDefinition(a.name, transform(a));
+addGlobal(SchemaDef this, NamedGroup g) : addDeclaration(g.name, transform(g));
+addGlobal(SchemaDef this, NamedAttributeGroup g) : addDeclaration(g.name, transform(g));
+
+fillSchemaObject(SchemaObject this, Annotated a) : setOtherAttributes(a.otherAttributes)
+ -> setAppInfos(a.annotation.appinfoOrDocumentation.typeSelect(Appinfo).content)
+ -> setDocumentations(a.annotation.appinfoOrDocumentation.typeSelect(Documentation).content);
+
+create TypeRef convert(QName name) : setRef(name);
+create TypeRef convert(Type type) : setInnerType(type);
+create TypeRef convert(SchemaObject owner, Element e) : e.type != null ? setRef(e.type) : setInnerType(e.simpleType != null ? transform(owner, e.simpleType) : transform(owner, e.complexType));
+create TypeRef convert(SchemaObject owner, Attribute a) : a.type != null ? setRef(a.type) : setInnerType(transform(owner, a.simpleType));
+
+create Global transform(SchemaDef owner, TopLevelSimpleType st) : setOwner(owner) -> setName(st.name) -> fillSchemaObject(st) -> setTypeRef(convert(transform(st)));
+create Global transform(SchemaDef owner, TopLevelComplexType ct) : setOwner(owner) -> setName(ct.name) -> fillSchemaObject(ct) -> setTypeRef(convert(transform(ct)));
+create Global transform(SchemaDef owner, TopLevelElement e) : setOwner(owner) -> fillSchemaObject(e)
+ -> e.ref != null ? setRef(e.ref) : (setName(e.name) -> setTypeRef(convert(e)));
+create Global transform(SchemaDef owner, TopLevelAttribute a) : setOwner(owner) -> fillSchemaObject(a)
+ -> a.ref != null ? setRef(a.ref) : (setName(a.name) -> setTypeRef(convert(a)));
+create Global transform(SchemaDef owner, NamedGroup g) : setOwner(owner) -> setName(g.name) -> fillSchemaObject(g)
+ -> g.ref != null ? setRef(g.ref) : (setName(g.name) -> setTypeRef(convert(transform(g))));
+create Global transform(SchemaDef owner, NamedAttributeGroup g) : setOwner(owner) -> fillSchemaObject(g)
+ -> g.ref != null ? setRef(g.ref) : (setName(g.name) -> setTypeRef(convert(transform(g))));
+
+create Primitive transform(SchemaObject owner, SimpleType st) : setOwner(owner) -> fillSchemaObject(st) -> setBaseRef(st.restriction.base, true) -> setListType(st.list != null || st.union != null)
+ -> st.restriction.facets.collect(e|addFacet(e));
+addFacet(Primitive this, Pattern p) : addPattern(p.value);
+addFacet(Primitive this, TotalDigits td) : setTotalDigits(td.value.asInteger());
+addFacet(Primitive this, WhiteSpace ws) : null;
+addFacet(Primitive this, JAXBElement e) : let v = e.value.value : switch (e.name.localPart) {
+ case "enumeration" : addEnumeration(transform(e.value))
+ case "minLength" : setMinLength(v.asInteger())
+ case "maxLength" : setMaxLength(v.asInteger())
+ case "length" : (let l = v.asInteger() : setMinLength(l) -> setMaxLength(l))
+ case "fractionDigits" : setFractionDigits(v.asInteger())
+ case "minInclusive" : setMinValue(v.asInteger())
+ case "maxInclusive" : setMaxValue(v.asInteger())
+ case "minExclusive" : setMinValue(v.asInteger()+1)
+ case "maxExclusive" : setMaxValue(v.asInteger()-1)
+ default : null
+};
+create Enum transform(SchemaObject owner, NoFixedFacet e) : setOwner(owner) -> fillSchemaObject(e) -> setValue(e.value);
+
+create Composite transform(SchemaObject owner, ComplexType ct) : setOwner(owner) -> fillSchemaObject(ct)
+ -> ct.simpleContent != null ? addSimpleContent(ct.simpleContent) : (ct.complexContent != null ? addComplexContent(ct.complexContent) : addComplexType(ct))
+;
+addSimpleContent(Composite this, SimpleContent sc) : setSimpleContent(true)
+ -> sc.restriction != null ? addRestriction(sc.restriction) : addExtension(sc.^extension)
+;
+addComplexContent(Composite this, ComplexContent cc) : setMixed(cc.mixed)
+ -> cc.restriction != null ? addRestriction(cc.restriction) : addExtension(cc.^extension)
+;
+addComplexType(Composite this, ComplexType c) : setMixed(c.mixed)
+ -> c.all != null ? addGroup(c.all) : (c.choice != null ? (addGroup(c.choice) -> setChoice(true)) : (c.sequence != null ? addGroup(c.sequence) : (c.group != null ? addMember(transform(c.group, null)) : null)))
+ -> addAttributes(c.attributeOrAttributeGroup) -> c.anyAttribute != null ? addMember(transform(c.anyAttribute)) : null
+;
+addExtension(Composite this, ExtensionType e) : setBaseRef(e.base, false)
+ -> e.all != null ? addGroup(e.all) : (e.choice != null ? (addGroup(e.choice) -> setChoice(true)) : (e.sequence != null ? addGroup(e.sequence) : (e.group != null ? addMember(transform(e.group, null)) : null)))
+ -> addAttributes(e.attributeOrAttributeGroup) -> e.anyAttribute != null ? addMember(transform(e.anyAttribute)) : null
+;
+addRestriction(Composite this, RestrictionType r) : setBaseRef(e.base, true)
+ -> r.all != null ? addGroup(r.all) : (r.choice != null ? (addGroup(r.choice) -> setChoice(true)) : (r.sequence != null ? addGroup(r.sequence) : (r.group != null ? addMember(transform(r.group, null)) : null)))
+ -> addAttributes(r.attributeOrAttributeGroup) -> r.anyAttribute != null ? addMember(transform(r.anyAttribute)) : null
+;
+
+addGroup(Composite this, Group g) : g.particle.collect(e|addParticle(e));
+addParticle(Composite this, JAXBElement e) : addMember(transform(e.value, e.name.localPart));
+addParticle(Composite this, Any a) : addMember(transform(a));
+addAttributes(Composite this, List[Annotated] attrs) : attrs.collect(e|addMember(transform(e)));
+create Composite transform(SchemaObject owner, Group g) : setOwner(owner) -> fillSchemaObject(g) -> addGroup(g);
+create Composite transform(SchemaObject owner, NamedAttributeGroup g) : setOwner(owner) -> fillSchemaObject(g) -> addAttributes(g.attributeOrAttributeGroup);
+
+create Member transform(SchemaObject owner, LocalElement e, String type) : setOwner(owner) -> fillSchemaObject(e)
+ -> e.ref != null ? setRef(e.ref) : (setName(e.name) -> setTypeRef(convert(e)))
+ -> setNillable(e.nillable) -> setOptional(e.minOccurs == 0) -> setArray(e.maxOccurs == "unbounded" || e.maxOccurs.asInteger() > 1);
+create Member transform(SchemaObject owner, GroupRef g, String type) : setOwner(owner) -> fillSchemaObject(g)
+ -> setRef(g.ref)
+ -> setOptional(g.minOccurs == 0) -> setArray(g.maxOccurs == "unbounded" || g.maxOccurs.asInteger() > 1);
+create Member transform(SchemaObject owner, Group g, String type) : setOwner(owner) -> fillSchemaObject(g)
+ -> (let c = transform(g) : setTypeRef(convert(c)) -> c.setChoice(type == "choice"))
+ -> setOptional(g.minOccurs == 0) -> setArray(g.maxOccurs == "unbounded" || g.maxOccurs.asInteger() > 1);
+create AnyMember transform(SchemaObject owner, Any e) : setOwner(owner) -> fillSchemaObject(e)
+ -> setNamespaces(e.namespace) -> setProcessContentsStrict(e.processContents == "strict")
+ -> setOptional(e.minOccurs == 0) -> setArray(e.maxOccurs == "unbounded" || e.maxOccurs.asInteger() > 1);
+create AnyMember transform(SchemaObject owner, Wildcard e) : setOwner(owner) -> fillSchemaObject(e)
+ -> setNamespaces(e.namespace) -> setProcessContentsStrict(e.processContents == "strict") -> setAttribute(true);
+
+create Member transform(SchemaObject owner, Attribute a) : setOwner(owner) -> fillSchemaObject(a)
+ -> a.ref != null ? setRef(ref) : (setName(a.name) -> setTypeRef(convert(a)))
+ -> setOptional(a.use == "optional");
+create Member transform(SchemaObject owner, AttributeGroupRef g) : setOwner(owner) -> fillSchemaObject(g)
+ -> setRef(g.ref);
