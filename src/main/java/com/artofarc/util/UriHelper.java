@@ -34,20 +34,27 @@ public final class UriHelper {
    }
 
 	public final static List<String> uriToParts(String ns) {
-      URI uri = createURI(ns);
-      ArrayList<String> result = new ArrayList<String>();
+		URI uri = createURI(ns);
+		ArrayList<String> result = new ArrayList<String>();
 
-      if (uri.getAuthority() != null) {
-         StringTokenizer tokenizer = new StringTokenizer(uri.getAuthority(), ".");
-         while (tokenizer.hasMoreTokens()) {
-            result.add(0, tokenizer.nextToken());
-         }
-      }
-      StringTokenizer tokenizer = new StringTokenizer(uri.getPath(), "/");
-      while (tokenizer.hasMoreTokens()) {
-         result.add(tokenizer.nextToken());
-      }
-      return result;
+		if (uri.getAuthority() != null) {
+			StringTokenizer tokenizer = new StringTokenizer(uri.getAuthority(), ".");
+			while (tokenizer.hasMoreTokens()) {
+				result.add(0, tokenizer.nextToken());
+			}
+		} else if (uri.getSchemeSpecificPart() != null) {
+			StringTokenizer tokenizer = new StringTokenizer(uri.getSchemeSpecificPart(), ":");
+			while (tokenizer.hasMoreTokens()) {
+				result.add(tokenizer.nextToken());
+			}
+		}
+		if (uri.getPath() != null) {
+			StringTokenizer tokenizer = new StringTokenizer(uri.getPath(), "/");
+			while (tokenizer.hasMoreTokens()) {
+				result.add(tokenizer.nextToken());
+			}
+		}
+		return result;
 	}
 
 	public final static String convertUri(String ns, String separator, Boolean firstUpper) {

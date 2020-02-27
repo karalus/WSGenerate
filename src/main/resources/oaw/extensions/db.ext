@@ -34,24 +34,25 @@ String getAQQueueTable(Port this, boolean multipleConsumers) : getLocation().get
 String getAQDeadLetterQueueName(Port this, boolean multipleConsumers) : "AQ$_" + getAQQueueTable(multipleConsumers) + "_E";
 
 String XSD2PackageName(ServiceNamespace this) : getMappingForNamespace("D");
+String getNsContextParam(ServiceNamespace this, ServiceNamespace elemNs) : isGenerateSmallXML() ? "p_nsContext" : "'" + elemNs.URI + "'";
 	
-private String checkLen(String s, String uri, String name) : s.length > 30 ? "!!!Too long: " + name + " in " + uri + " mapped to " + s : s;
+private String checkLen(String s, String uri, String name) : s.length > 128 ? "!!!Too long: " + name + " in " + uri + " mapped to " + s : s;
 
 String WSDL2PackageNameCheck(Model model, PortType portType, char infix) :
-	let s = WSDL2PackageName(model, portType, infix) : s.length > 30 ? "!!!Too long: " + portType.QName + " mapped to " + s : s;
+	let s = WSDL2PackageName(model, portType, infix) : s.length > 128 ? "!!!Too long: " + portType.QName + " mapped to " + s : s;
 cached String WSDL2PackageName(Model model, PortType portType, char infix) : 
 	model.bindingDefinition.getMappingForPortType(portType.QName.namespaceURI, portType.QName.localPart, infix.toString());
 
 String getOracleName(Model model, String ns, Operation this) : checkLen(_getOracleName(model, ns, this), ns, name);
 private cached String _getOracleName(Model model, String ns, Operation this) : model.bindingDefinition.getMappingForName(ns, name, null);
 cached String getParameterOracleFQN(Model model, QName element) : let ens = model.findServiceNamespace(element.namespaceURI) : let e = ens.findElement(element.localPart) : let ns = getTypeNamespace(ens, e) :
-	getPackagePrefix(ens, ns) + (e.complexType != null ? anonymousTypeName2Oracle(ns, e, "") : XSDType2Oracle(ns, e.getNonLocalComplexType(ns)));
+	getPackagePrefix(ens, ns) + (e.complexType != null ? anonymousTypeName2Oracle(ns, e, "") : XSDType2Oracle(ns, getNonLocalComplexType(ns, e)));
 
 // Oracle Name fuer Element, Attribute, Facet
-boolean isXSD2OracleTooLong(ServiceNamespace ns, String name, Annotated this, String suffix) : _XSD2Oracle(ns, name).length > 30 - suffix.length;
+boolean isXSD2OracleTooLong(ServiceNamespace ns, String name, Annotated this, String suffix) : _XSD2Oracle(ns, name).length > 128 - suffix.length;
 String XSD2Oracle(ServiceNamespace ns, String name, Annotated this) : checkLen(_XSD2Oracle(ns, name), ns.URI, name);
 String XSD2Oracle(ServiceNamespace ns, String name, Annotated this, String suffix) : checkLen(_XSD2Oracle(ns, name) + suffix, ns.URI, name);
-private cached String _XSD2Oracle(Annotated this, ServiceNamespace ns, String name) : ns.getMappingForName(name, this);
+private cached String _XSD2Oracle(Annotated this, ServiceNamespace ns, String name) : ns.getMappingForName(name, null);
 
 String XSDType2Oracle(ServiceNamespace ns, TopLevelSimpleType this) : XSDType2Oracle(ns, name, this, false);
 String XSDType2Oracle(ServiceNamespace ns, TopLevelSimpleType this, boolean isArray) : XSDType2Oracle(ns, name, this, isArray);
@@ -76,7 +77,7 @@ String XSDType2Oracle(ServiceNamespace ns, String name, ComplexType this, boolea
 String XSDType2Oracle(ServiceNamespace ns, String name, ComplexType this, String suffix) : checkLen(_XSDType2Oracle(ns, name, false) + suffix, ns.URI, name);
 
 private cached String _XSDType2Oracle(Annotated this, ServiceNamespace ns, String name, boolean isArray) :
-	let s = ns.getMappingForName(name, this) :
+	let s = ns.getMappingForName(name, null) :
 		s.endsWith("PayloadType") ? s.chomp(11) + (isArray ? "P_CT" : "P_T") :
 			(s.endsWith("Type") ? s.chomp(4) : s) + (isArray ? "_CT" : "_T");
 
@@ -91,13 +92,13 @@ String anonymousTypeName(Attribute attribute, String parentTypeName) :
 
 String enumValue2OracleName(ServiceNamespace owner, String oracleTypeName, Facet this) :
 	let n = oracleTypeName.chomp(1) + value.replaceAll("\\.|,", "").replaceAll(" |-", "_") : // reduce "_T" to "_"
-		checkLen(owner.getMappingForName(n, this) + "_c", owner.URI, n);
+		checkLen(owner.getMappingForName(n, null) + "_c", owner.URI, n);
 
 String getPackagePrefix(ServiceNamespace owner, QName type) : type.namespaceURI != owner.URI ?
 	(let ns = owner.findUsedServiceNamespace(type.namespaceURI) : XSD2PackageName(ns) + '.') : "";
 String getPackagePrefix(ServiceNamespace owner, ServiceNamespace typeNS) : owner != typeNS ? XSD2PackageName(typeNS) + '.' : "";
 
-String getOracleName(Element this, ServiceNamespace owner) :
+String getOracleName(ServiceNamespace owner, Element this) :
 	ref == null ? _XSD2Oracle(owner, name) :
 		(let ns = owner.findUsedServiceNamespace(ref.namespaceURI) : _XSD2Oracle(findElement(ns, ref.localPart), ns, ref.localPart));
 
@@ -189,7 +190,7 @@ String getOracleTypeForRefAttribute(ServiceNamespace ns, Attribute this) :
 			(let ns2 = ns.findUsedServiceNamespace(type.namespaceURI) : XSD2PackageName(ns2) + '.' + XSDType2Oracle(ns2, type, false))) : "NO_TYPE");
 
 // Logic needed because RECORD TYPE cannot be checked with IS NULL (http://stackoverflow.com/questions/7207894/check-a-record-is-not-null-in-plsql)
-String getIsNotNullExpression(ComplexType this, ServiceNamespace owner, String parentParam) :
+String getIsNotNullExpression(ServiceNamespace owner, ComplexType this, String parentParam) :
 	let exp = getIsNotNullExpression(owner, parentParam, true) : exp != null ? exp : getIsNotNullExpression(owner, parentParam, false);
 
 // byPK == true is only retrieving an expression when it's clearly determinable by mandatory elements, otherwise null is returned
@@ -234,8 +235,8 @@ private String makeOrExpression(List[String] expressions) : expressions.isEmpty 
 private String getIsNotNullExpression(Object this, ServiceNamespace owner, String parentParam, String parentGroupType, Group parentGroup, String particleType, boolean byPK) : null;
 
 private String getIsNotNullExpression(Element this, ServiceNamespace owner, String parentParam, String parentGroupType, Group parentGroup, String particleType, boolean byPK) :
-	!byPK || (minOccurs > 0 && !nillable) || isArray(parentGroup) ? getIsNotNullExpression(owner, parentParam, parentGroup) : null;
+	!byPK || (minOccurs > 0 && !nillable) || isArray(parentGroup) ? getIsNotNullExpression(owner, this, parentParam, parentGroup) : null;
 
-String getIsNotNullExpression(Element this, ServiceNamespace owner, String parentParam, Group parentGroup) :
-	hasSimpleType(owner, this) || isArray(parentGroup) ? parentParam + '.' + getOracleName(owner) + " IS NOT NULL" :
-		XSD2PackageName(getTypeNamespace(owner, this)) + ".isNotNull(" + parentParam + '.' + getOracleName(owner) + ')';
+String getIsNotNullExpression(ServiceNamespace owner, Element this, String parentParam, Group parentGroup) :
+	hasSimpleType(owner, this) || isArray(parentGroup) ? parentParam + '.' + getOracleName(owner, this) + " IS NOT NULL" :
+		XSD2PackageName(getTypeNamespace(owner, this)) + ".isNotNull(" + parentParam + '.' + getOracleName(owner, this) + ')';

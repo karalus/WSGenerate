@@ -59,7 +59,7 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 
    @Override
    public boolean generateClient(PortType portType) {
-      return true;
+      return Boolean.parseBoolean(_propertiesExpansion.getPropertyFromSection(portType.getQName().getLocalPart(), "generateClient", "true"));
    }
 
    @Override

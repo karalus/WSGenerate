@@ -132,9 +132,11 @@ public class PropertiesExpansion extends Properties {
    public String getPropertyFromSection(final String section,final String key) {
       // fallback if no section is wanted
       if (section.equals("")) return getProperty(key);
-      Properties p = (Properties) get(replace(section));
-      if (p == null) return null;
-      return replace(p.getProperty(replace(key)));
+      Object p = get(replace(section));
+      if (p instanceof Properties)  {
+          return replace(((Properties) p).getProperty(replace(key)));
+      }
+	  return null;
    }
    /**
    *  @param  section the property section.

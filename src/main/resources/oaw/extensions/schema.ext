@@ -18,6 +18,7 @@ Object getValue(JAXBElement this) : metaType.getProperty("value").get(this);
 // "extension" is a keyword, we need to get the property this way
 ExtensionType getExtension(ComplexContent this) : metaType.getProperty("extension").get(this);
 List[Object] getDocumentationContent(Annotated this) : annotation.appinfoOrDocumentation.typeSelect(Documentation).content;
+List[Object] getDocumentationContent(Schema this) : includeOrImportOrRedefine.typeSelect(Annotation).appinfoOrDocumentation.typeSelect(Documentation).content;
 List[Appinfo] appinfos(Annotated this) : annotation.appinfoOrDocumentation.typeSelect(Appinfo);
 List[org::w3c::dom::Element] domElements(Appinfo appinfo) : appinfo.content.typeSelect(org::w3c::dom::Element);
 
@@ -110,10 +111,10 @@ TopLevelSimpleType getBaseTypeForListType(ServiceNamespace owner, SimpleType thi
 			(list.itemType != null ? (isBuiltInType(list.itemType) ? null : findReferencedSimpleType(owner, list.itemType)) :
 				null)); //(list.simpleType != null ? list.simpleType : null)));
 
-ComplexType getComplexType(ServiceNamespace owner, Element this) : complexType != null ? complexType : getNonLocalComplexType(owner);
-cached TopLevelComplexType getNonLocalComplexType(Element this, ServiceNamespace owner) :
+ComplexType getComplexType(ServiceNamespace owner, Element this) : complexType != null ? complexType : getNonLocalComplexType(owner, this);
+cached TopLevelComplexType getNonLocalComplexType(ServiceNamespace owner, Element this) :
 	type != null && !type.isBuiltInType() ? findReferencedComplexType(owner, type) :
-		(ref != null ? (let ns = owner.findUsedServiceNamespace(ref.namespaceURI) : getNonLocalComplexType(findElement(ns, ref.localPart), ns)) : null);
+		(ref != null ? (let ns = owner.findUsedServiceNamespace(ref.namespaceURI) : getNonLocalComplexType(ns, findElement(ns, ref.localPart))) : null);
 
 cached ServiceNamespace getTypeNamespace(ServiceNamespace owner, Element this) :
 	type != null ? owner.findUsedServiceNamespace(type.namespaceURI) :

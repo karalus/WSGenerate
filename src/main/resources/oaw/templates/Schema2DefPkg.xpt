@@ -9,12 +9,6 @@
 
 «DEFINE Root FOR ServiceNamespace»
 «FILE "plsql/" + XSD2PackageName() + ".PKS"-»
-PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-PROMPT Creating PACKAGE «XSD2PackageName()» in «getDBSchema()»
-PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-PROMPT
-
-
 CREATE OR REPLACE PACKAGE «getDBSchema()».«XSD2PackageName()» IS
   /**
   * <pre>
@@ -30,6 +24,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«XSD2PackageName()» IS
   * documentBaseURI: «documentBaseURI»
 «ENDFOREACH-»
   *
+«FOREACH schemas.getDocumentationContent() AS doc»«doc.toString().formatDocumentation("  * ")»«ENDFOREACH-»
   *
   *  </pre>
   *  @headcom
@@ -65,9 +60,6 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«XSD2PackageName()» IS
 «ENDFOREACH-»
 END «XSD2PackageName()»;
 /
-PROMPT ++++++++++++++++++++++++
-show errors
-PROMPT ++++++++++++++++++++++++
 «ENDFILE»
 «ENDDEFINE»
 

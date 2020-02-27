@@ -32,6 +32,7 @@ private String getLocationSOAP11(Port this) : extensibilityElements.typeSelect(S
 cached String getLocation(Port this) : let a = getLocationSOAP11() : a != null ? a : getLocationSOAP12();
 
 List[BindingOperation] getOperations(Binding this) : bindingOperations;
+String getSoapActionURI(BindingOperation this) : extensibilityElements.typeSelect(SOAPOperation).first().soapActionURI;
 
 QName getInputElementQName(Binding this, String operation) :
 	portType.getOperation(operation, null, null).input.message.getFirstPart(getInputBodyParts(operation)).elementName;

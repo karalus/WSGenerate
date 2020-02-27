@@ -26,7 +26,7 @@ import com.artofarc.wsimport.BindingDefinition;
 
 public final class SchemaModel {
 
-   private BindingDefinition bindingDefinition;
+	private BindingDefinition bindingDefinition;
 	private final Map<String, SchemaDef> definitions = new HashMap<>(); 
 	
 	public BindingDefinition getBindingDefinition() {

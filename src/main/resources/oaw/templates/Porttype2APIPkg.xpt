@@ -19,12 +19,6 @@
 
 «DEFINE Provider(Definition definition, PortType portType) FOR Model»
 «FILE "plsql/" + WSDL2PackageName(portType, 'A') + ".PKS"-»
-PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-PROMPT Creating PACKAGE «WSDL2PackageName(portType, 'A')» in «getDBSchema()»
-PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-PROMPT
-
-
 CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, 'A')» IS
   /**
   * <pre>
@@ -32,7 +26,6 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, 'A')»
   *  <br/>
   *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
   *  documentBaseURI:     «definition.documentBaseURI»
-  *  technische Schicht:  api(a)                   -   Applikation-Interface
   *  <br/>
   *
   *  <b>Beschreibung:</b>
@@ -74,20 +67,11 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, 'A')»
 
 END «WSDL2PackageName(portType, 'A')»;
 /
-PROMPT ++++++++++++++++++++++++
-show errors
-PROMPT ++++++++++++++++++++++++
 «ENDFILE»
 «REM»========================================================================«ENDREM»
 «FOREACH definition.getSOAPBindings(portType) AS binding»
 «IF isHttpTransport(binding)»
 «FILE "plsql/" + WSDL2PackageName(portType, 'X') + ".PKS"-»
-PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-PROMPT Creating PACKAGE «WSDL2PackageName(portType, 'X')» in «getDBSchema()»
-PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-PROMPT
-
-
 CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, 'X')» IS
   /**
   * <pre>
@@ -95,7 +79,6 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, 'X')» IS
   *  <br/>
   *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
   *  documentBaseURI:     «definition.documentBaseURI»
-  *  technische Schicht:  api(a)                   -   Applikation-Interface
   *  <br/>
   *
   *  <b>Beschreibung:</b>
@@ -126,20 +109,11 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, 'X')» IS
 
 END «WSDL2PackageName(portType, 'X')»;
 /
-PROMPT ++++++++++++++++++++++++
-show errors
-PROMPT ++++++++++++++++++++++++
 «ENDFILE»
 «ENDIF»
 «REM»========================================================================«ENDREM»
 «IF isJmsTransport(binding)»
 «FILE "plsql/" + WSDL2PackageName(portType, 'L') + ".PKS"-»
-PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-PROMPT Creating PACKAGE «WSDL2PackageName(portType, 'L')» in «getDBSchema()»
-PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-PROMPT
-
-
 CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, 'L')» IS
   /**
   * <pre>
@@ -178,9 +152,6 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, 'L')» IS
 
 END «WSDL2PackageName(portType, 'L')»;
 /
-PROMPT ++++++++++++++++++++++++
-show errors
-PROMPT ++++++++++++++++++++++++
 «ENDFILE»
 
 «LET getPort(definition, binding) AS port»
@@ -224,12 +195,6 @@ END;
 
 «DEFINE Consumer(Definition definition, PortType portType) FOR Model»
 «FILE "plsql/" + WSDL2PackageName(portType, 'E') + ".PKS"-»
-PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-PROMPT Creating PACKAGE «WSDL2PackageName(portType, 'E')» in «getDBSchema()»
-PROMPT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-PROMPT
-
-
 CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, 'E')» IS
   /**
   * <pre>
@@ -237,7 +202,6 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, 'E')»
   *  <br/>
   *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
   *  documentBaseURI:     «definition.documentBaseURI»
-  *  technische Schicht:  api(a)                   -   Applikation-Interface
   *  <br/>
   *
   *  <b>Beschreibung:</b>
@@ -284,8 +248,5 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, 'E')»
 «ENDFOREACH»
 END «WSDL2PackageName(portType, 'E')»;
 /
-PROMPT ++++++++++++++++++++++++
-show errors
-PROMPT ++++++++++++++++++++++++
 «ENDFILE»
 «ENDDEFINE»

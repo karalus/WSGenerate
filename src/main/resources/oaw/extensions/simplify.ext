@@ -18,6 +18,7 @@ addGlobal(SchemaDef this, TopLevelElement e) : addDefinition(e.name, transform(e
 addGlobal(SchemaDef this, TopLevelAttribute a) : addDefinition(a.name, transform(a));
 addGlobal(SchemaDef this, NamedGroup g) : addDeclaration(g.name, transform(g));
 addGlobal(SchemaDef this, NamedAttributeGroup g) : addDeclaration(g.name, transform(g));
+addGlobal(SchemaDef this, OpenAttrs a) : null;
 
 fillSchemaObject(SchemaObject this, Annotated a) : setOtherAttributes(a.otherAttributes)
  -> setAppInfos(a.annotation.appinfoOrDocumentation.typeSelect(Appinfo).content)
@@ -25,7 +26,7 @@ fillSchemaObject(SchemaObject this, Annotated a) : setOtherAttributes(a.otherAtt
 
 create TypeRef convert(QName name) : setRef(name);
 create TypeRef convert(Type type) : setInnerType(type);
-create TypeRef convert(SchemaObject owner, Element e) : e.type != null ? setRef(e.type) : setInnerType(e.simpleType != null ? transform(owner, e.simpleType) : transform(owner, e.complexType));
+create TypeRef convert(SchemaObject owner, Element e) : e.type != null ? setRef(e.type) : setInnerType((Type) e.simpleType != null ? transform(owner, e.simpleType) : transform(owner, e.complexType));
 create TypeRef convert(SchemaObject owner, Attribute a) : a.type != null ? setRef(a.type) : setInnerType(transform(owner, a.simpleType));
 
 create Global transform(SchemaDef owner, TopLevelSimpleType st) : setOwner(owner) -> setName(st.name) -> fillSchemaObject(st) -> setTypeRef(convert(transform(st)));
@@ -44,8 +45,11 @@ create Primitive transform(SchemaObject owner, SimpleType st) : setOwner(owner) 
 addFacet(Primitive this, Pattern p) : addPattern(p.value);
 addFacet(Primitive this, TotalDigits td) : setTotalDigits(td.value.asInteger());
 addFacet(Primitive this, WhiteSpace ws) : null;
-addFacet(Primitive this, JAXBElement e) : let v = e.value.value : switch (e.name.localPart) {
- case "enumeration" : addEnumeration(transform(e.value))
+addFacet(Primitive this, Object o) : null; // only for eclipse editor
+// Eclipse displays error when using value property because "T JAXBElement.getValue()" is not recognized by syntax highlighting
+private Facet getValueAsFacet(JAXBElement this) : metaType.getProperty("value").get(this);
+addFacet(Primitive this, JAXBElement e) : let v = e.getValueAsFacet().value : switch (e.name.localPart) {
+ case "enumeration" : addEnumeration(transform((NoFixedFacet) e.getValueAsFacet()))
  case "minLength" : setMinLength(v.asInteger())
  case "maxLength" : setMaxLength(v.asInteger())
  case "length" : (let l = v.asInteger() : setMinLength(l) -> setMaxLength(l))
@@ -75,14 +79,17 @@ addExtension(Composite this, ExtensionType e) : setBaseRef(e.base, false)
  -> e.all != null ? addGroup(e.all) : (e.choice != null ? (addGroup(e.choice) -> setChoice(true)) : (e.sequence != null ? addGroup(e.sequence) : (e.group != null ? addMember(transform(e.group, null)) : null)))
  -> addAttributes(e.attributeOrAttributeGroup) -> e.anyAttribute != null ? addMember(transform(e.anyAttribute)) : null
 ;
-addRestriction(Composite this, RestrictionType r) : setBaseRef(e.base, true)
+addRestriction(Composite this, RestrictionType r) : setBaseRef(r.base, true)
  -> r.all != null ? addGroup(r.all) : (r.choice != null ? (addGroup(r.choice) -> setChoice(true)) : (r.sequence != null ? addGroup(r.sequence) : (r.group != null ? addMember(transform(r.group, null)) : null)))
  -> addAttributes(r.attributeOrAttributeGroup) -> r.anyAttribute != null ? addMember(transform(r.anyAttribute)) : null
 ;
 
 addGroup(Composite this, Group g) : g.particle.collect(e|addParticle(e));
-addParticle(Composite this, JAXBElement e) : addMember(transform(e.value, e.name.localPart));
+// Eclipse displays error when using value property because "T JAXBElement.getValue()" is not recognized by syntax highlighting
+private Annotated getValueAsAnnotated(JAXBElement this) : metaType.getProperty("value").get(this);
+addParticle(Composite this, JAXBElement e) : addMember(transform(e.getValueAsAnnotated(), e.name.localPart));
 addParticle(Composite this, Any a) : addMember(transform(a));
+addParticle(Composite this, Object o) : null; // only for eclipse editor
 addAttributes(Composite this, List[Annotated] attrs) : attrs.collect(e|addMember(transform(e)));
 create Composite transform(SchemaObject owner, Group g) : setOwner(owner) -> fillSchemaObject(g) -> addGroup(g);
 create Composite transform(SchemaObject owner, NamedAttributeGroup g) : setOwner(owner) -> fillSchemaObject(g) -> addAttributes(g.attributeOrAttributeGroup);
@@ -96,6 +103,8 @@ create Member transform(SchemaObject owner, GroupRef g, String type) : setOwner(
 create Member transform(SchemaObject owner, Group g, String type) : setOwner(owner) -> fillSchemaObject(g)
  -> (let c = transform(g) : setTypeRef(convert(c)) -> c.setChoice(type == "choice"))
  -> setOptional(g.minOccurs == 0) -> setArray(g.maxOccurs == "unbounded" || g.maxOccurs.asInteger() > 1);
+Member transform(SchemaObject owner, Annotated a, String type) : null; // only for eclipse editor
+
 create AnyMember transform(SchemaObject owner, Any e) : setOwner(owner) -> fillSchemaObject(e)
  -> setNamespaces(e.namespace) -> setProcessContentsStrict(e.processContents == "strict")
  -> setOptional(e.minOccurs == 0) -> setArray(e.maxOccurs == "unbounded" || e.maxOccurs.asInteger() > 1);
@@ -107,3 +116,4 @@ create Member transform(SchemaObject owner, Attribute a) : setOwner(owner) -> fi
  -> setOptional(a.use == "optional");
 create Member transform(SchemaObject owner, AttributeGroupRef g) : setOwner(owner) -> fillSchemaObject(g)
  -> setRef(g.ref);
+Member transform(SchemaObject owner, Annotated a) : null; // only for eclipse editor

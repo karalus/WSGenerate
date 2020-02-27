@@ -1,0 +1,430 @@
+«IMPORT com::artofarc::wsimport»
+
+«IMPORT javax::wsdl»
+
+«EXTENSION oaw::extensions::db»
+«EXTENSION oaw::extensions::wsdl»
+
+«DEFINE Root(Definition definition) FOR Model»
+«FOREACH definition.getSOAPBindings().portType.toSet() AS portType»
+«IF bindingDefinition.generateServer(portType)»
+«EXPAND Provider(definition, portType)»
+«ENDIF»
+«IF bindingDefinition.generateClient(portType)»
+«EXPAND Consumer(definition, portType)»
+«ENDIF»
+«ENDFOREACH»
+«ENDDEFINE»
+
+«DEFINE Provider(Definition definition, PortType portType) FOR Model»
+«FILE "plsql/" + WSDL2PackageName(portType, 'A') + ".PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'A')» IS
+  /**
+  * <pre>
+  *
+  *  <br/>
+  *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
+  *  documentBaseURI:     «definition.documentBaseURI»
+  *  <br/>
+  *
+  *  <b>Beschreibung:</b>
+  *
+«definition.getDocumentation().formatDocumentation("  * ")-»
+  *
+  *  </pre>
+  *  @headcom
+  *
+  *  Änderungs-Historie:   (neue Einträge immer oben anfügen)
+  *  ========================================================
+  *  Revision  Wann      Wer              Was (Bearbeitungsrequest und ASB / Störfall vermerken)
+  *  --------  --------  ---------------  ----------------------------------------
+  *  R1.0      heute     CEISeR           Generierung des Packages
+  */
+
+  -- Package-Name
+  c_package_name CONSTANT SOA_API_DEFAULT.oraclename_t := '«WSDL2PackageName(portType, 'A')»';
+
+  ------------------------------------------------------------------------------
+  -- öffentliche Typen und Variablen
+  ------------------------------------------------------------------------------
+
+  ------------------------------------------------------------------------------
+  -- globale Cursors
+  ------------------------------------------------------------------------------
+
+  ------------------------------------------------------------------------------
+  -- globale Exceptions
+  ------------------------------------------------------------------------------
+
+  ------------------------------------------------------------------------------
+  -- spezifische Prozeduren/Funktionen
+  ------------------------------------------------------------------------------
+
+«FOREACH definition.getSOAPBindings(portType) AS binding-»
+«FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
+«EXPAND OperationContentA(portType, binding, bindingOperation)»
+«ENDFOREACH»
+«ENDFOREACH»
+
+END «WSDL2PackageName(portType, 'A')»;
+/
+«ENDFILE»
+«REM»========================================================================«ENDREM»
+«LET definition.getSOAPBindings(portType).reject(e|e.isJmsTransport()) AS bindings»
+«IF bindings.size > 0»
+«FILE "plsql/" + WSDL2PackageName(portType, 'X') + ".PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'X')» IS
+  /**
+  * <pre>
+  *
+  *  <br/>
+  *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
+  *  documentBaseURI:     «definition.documentBaseURI»
+  *  <br/>
+  *
+  *  <b>Beschreibung:</b>
+  *
+«definition.getDocumentation().formatDocumentation("  * ")-»
+  *
+  *
+  *  </pre>
+  *  @headcom
+  *  <pre>
+  *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+  *
+  */
+
+  -- Package-Name
+  c_package_name CONSTANT SOA_API_DEFAULT.oraclename_t := '«WSDL2PackageName(portType, 'X')»';
+
+«FOREACH definition.getSOAPBindings(portType) AS binding-»
+«FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
+«EXPAND OperationContentX(portType, binding, bindingOperation)»
+«ENDFOREACH»
+«ENDFOREACH»
+
+END «WSDL2PackageName(portType, 'X')»;
+/
+«ENDFILE»
+«ENDIF»
+«ENDLET»
+«REM»========================================================================«ENDREM»
+«ENDDEFINE»
+
+«DEFINE Consumer(Definition definition, PortType portType) FOR Model»
+«FILE "plsql/" + WSDL2PackageName(portType, 'E') + ".PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'E')» IS
+  /**
+  * <pre>
+  *
+  *  <br/>
+  *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
+  *  documentBaseURI:     «definition.documentBaseURI»
+  *  <br/>
+  *
+  *  <b>Beschreibung:</b>
+  *
+«definition.getDocumentation().formatDocumentation("  * ")-»
+  *
+  *  </pre>
+  *  @headcom
+  *  <pre>
+  *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+  *
+  */
+
+  -- Package-Name
+  c_package_name CONSTANT SOA_API_DEFAULT.oraclename_t := '«WSDL2PackageName(portType, 'E')»';
+  c_SOAP_NS      CONSTANT VARCHAR2(99) := 'http://schemas.xmlsoap.org/soap/envelope/';
+
+«FOREACH definition.getSOAPBindings(portType) AS binding-»
+«FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
+«EXPAND OperationContentE(portType, binding, bindingOperation)»
+«ENDFOREACH»
+«ENDFOREACH»
+
+END «WSDL2PackageName(portType, 'E')»;
+/
+«ENDFILE»
+«ENDDEFINE»
+
+«DEFINE OperationContentA(PortType portType, Binding binding, BindingOperation bindingOperation) FOR Model-»
+«LET portType.getOperation(bindingOperation.name, null, null) AS operation-»
+  /**
+  * WSDL Operation: «operation.name»
+  *
+«operation.getDocumentation().formatDocumentation("  * ")-»
+  *
+  * @param   p_param_in             IN  eingehende Message des Service.
+  * @param   p_param_out            OUT ausgehende Message des Service.
+  * @param   p_error_out            OUT ausgehende Fault Message des Service.
+  *
+  */
+  PROCEDURE «operation.name» (
+      p_param_in               IN         «getParameterOracleFQN(getInputElementQName(binding, operation.name))»
+«IF !binding.isJmsTransport()-»
+    , p_param_out              OUT NOCOPY «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»
+«IF getFaultElementQName(binding, operation.name) != null-»
+    , p_error_out              OUT NOCOPY «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»
+«ENDIF-»
+«ENDIF-»
+  ) IS
+    -- Komplexe Type-Variablen für Parameter der BL-Schicht (return, in, out und in/out) !!!! dies ist individuell anzupassen !!!! ---
+
+    -- API-Handle-Parameter
+    v_api_handle                 SOA_API_CUSTOM.api_handle_T;
+    c_routine           CONSTANT SOA_API_DEFAULT.oraclename_T := '«operation.name»';
+
+  BEGIN
+
+    SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_INFO, c_package_name, c_routine, 'Start');
+
+    ---------------------------------------------------------------------------
+    -- Initialisierungsmassnahmen für API durchführen, z.B. Berechtigungsprüfung etc.
+    ---------------------------------------------------------------------------
+    v_api_handle := SOA_API_CUSTOM.API_Init(
+        p_package        =>     c_package_name
+      , p_routine        =>    	c_routine
+      , p_objekt_ident   =>     NULL  -- !!!! dies ist individuell anzupassen !!!! ---
+      , p_mep            =>     SOA_API_DEFAULT.MEP_REQUEST_REPLY»
+     );
+
+«IF operation.name == 'checkAlive'-»
+    ---------------------------------------------------------------------------
+    -- !!!! Nichts zu tun für checkAlive - gen. Code ist ausreichend       !!!!
+    ---------------------------------------------------------------------------
+«ELSE-»
+    ---------------------------------------------------------------------------
+    -- !!!! BEGIN individueller Teil API-Routine / Operation               !!!!
+    ---------------------------------------------------------------------------
+
+    ---------------------------------------------------------------------------
+    -- Initialisierung OUT-Parameter - zu Beginn, dass dieser auch im Fehlerfall existiert
+    ---------------------------------------------------------------------------
+
+    ---------------------------------------------------------------------------
+    -- Konvertieren / Transformieren API-Parameter in BL-Parameter
+    ---------------------------------------------------------------------------
+
+    ---------------------------------------------------------------------------
+    -- Session-User bei Änderungsoperationen setzen
+    ---------------------------------------------------------------------------
+
+    ---------------------------------------------------------------------------
+    -- Aufruf der Business-Logik
+    ---------------------------------------------------------------------------
+
+    ---------------------------------------------------------------------------
+    -- Konvertieren / Transformieren BL-Parameter in API-Parameter
+    ---------------------------------------------------------------------------
+
+    ---------------------------------------------------------------------------
+    -- !!!! ENDE individueller Teil API-Routine / Operation               !!!!
+    ---------------------------------------------------------------------------
+«ENDIF-»
+
+    ---------------------------------------------------------------------------
+    -- API erfolgreich beenden - OUT-Message-Header und Fehler Struktur entsprechend füllen.
+    ---------------------------------------------------------------------------
+    SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_INFO, c_package_name, c_routine, 'Ende');
+    SOA_API_CUSTOM.API_ende_ok (v_api_handle, p_error_out);
+
+    ------------------------------------------------------------------------------
+    -- Exception - API mit Fehler beenden - OUT-Message-Header und Fehler Struktur entsprechend füllen.
+    ------------------------------------------------------------------------------
+  EXCEPTION
+    WHEN OTHERS THEN
+      SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_ERROR, c_package_name, c_routine, 'Fehler: ' || SQLERRM);
+      p_param_out := NULL;
+      SOA_API_CUSTOM.API_ende_mit_fehler (v_api_handle, SQLCODE, SQLERRM, p_error_out);
+      -- serverStackTrace der Fault-Struktur wird mit Error-Backtrace gefüllt, damit erhält man auch
+      -- die ursprüngliche Codestelle, an der der Fehler auftrat
+      p_error_out.payload.errorDetail.serverStackTrace := dbms_utility.format_error_backtrace();
+
+  END «operation.name»;
+«ENDLET-»
+«ENDDEFINE»
+
+«DEFINE OperationContentX(PortType portType, Binding binding, BindingOperation bindingOperation) FOR Model-»
+«LET portType.getOperation(bindingOperation.name, null, null) AS operation-»
+  /**
+  * XML Wrapper für «operation.name»
+  */
+  PROCEDURE «operation.name» (
+      p_param_in               IN         CLOB
+    , p_param_out              OUT NOCOPY CLOB
+    , p_fault_out              OUT        NUMBER
+  ) IS
+
+    c_routine           CONSTANT SOA_API_DEFAULT.oraclename_t       := '«operation.name»';
+
+    param_in               		 «getParameterOracleFQN(getInputElementQName(binding, operation.name))»;
+    param_out                    «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»;
+«IF getFaultElementQName(binding, operation.name) != null-»
+    error_out              		 «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»;
+«ENDIF-»
+
+  BEGIN
+
+    SOA_API_CUSTOM.initLogger(c_package_name, c_routine);
+    SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_INFO, c_package_name, c_routine, 'Start');
+
+    IF SOA_API_CUSTOM.getLevel(c_package_name) <= SOA_API_CUSTOM.Level_DEBUG THEN
+      Soa_Api_Default.log_soap_message(SOA_API_CUSTOM.Level_DEBUG, c_package_name, c_routine, p_param_in);
+    END IF;
+    
+    param_in := «getParameterOracleFQN(getInputElementQName(binding, operation.name))»_4x(p_param_in);
+
+    IF SOA_API_CUSTOM.getLevel(c_package_name) <= SOA_API_CUSTOM.Level_DEBUG THEN
+      SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_DEBUG, c_package_name, c_routine, «getParameterOracleFQN(getInputElementQName(binding, operation.name))»2c(param_in));
+    END IF;
+
+    «WSDL2PackageName(portType, 'A')».«operation.name»(param_in, param_out«IF getFaultElementQName(binding, operation.name) != null», error_out«ENDIF»);
+
+«IF getFaultElementQName(binding, operation.name) != null-»
+    IF error_out.payload.errorDetail.errorCode IS NULL THEN
+«ENDIF-»
+      IF SOA_API_CUSTOM.getLevel(c_package_name) <= SOA_API_CUSTOM.Level_DEBUG THEN
+        SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_DEBUG, c_package_name, c_routine, «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»2c(param_out));
+      END IF;
+
+      p_param_out := «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»_2x(param_out);
+      p_fault_out := 0;
+«IF getFaultElementQName(binding, operation.name) != null-»
+    ELSE
+      IF SOA_API_CUSTOM.getLevel(c_package_name) <= SOA_API_CUSTOM.Level_DEBUG THEN
+        SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_DEBUG, c_package_name, c_routine, «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»2c(error_out));
+      END IF;
+
+      p_param_out := «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»_2x(error_out);
+      p_fault_out := 1;
+    END IF;
+«ENDIF-»
+
+    IF SOA_API_CUSTOM.getLevel(c_package_name) <= SOA_API_CUSTOM.Level_DEBUG THEN
+      Soa_Api_Default.log_soap_message(SOA_API_CUSTOM.Level_DEBUG, c_package_name, c_routine, p_param_out);
+    END IF;
+
+    SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_INFO, c_package_name, c_routine, 'Ende');
+    SOA_API_CUSTOM.finalizeLogger(c_package_name, c_routine);
+  END «operation.name»;
+«ENDLET-»
+«ENDDEFINE»
+
+«DEFINE OperationContentE(PortType portType, Binding binding, BindingOperation bindingOperation) FOR Model-»
+«LET portType.getOperation(bindingOperation.name, null, null) AS operation-»
+  /**
+  * WSDL Operation: «operation.name»
+  *
+«operation.getDocumentation().formatDocumentation("  * ")-»
+  *
+  * @param   p_param_in             IN  eingehende Message des Service.
+«IF !binding.isJmsTransport()-»
+  * @param   p_param_out            OUT ausgehende Message des Service.
+«IF getFaultElementQName(binding, operation.name) != null-»
+  * @param   p_error_out            OUT ausgehende Fault Message des Service.
+«ENDIF-»
+«ENDIF-»
+  *
+  */
+  PROCEDURE «operation.name» (
+      p_param_in               IN OUT NOCOPY «getParameterOracleFQN(getInputElementQName(binding, operation.name))»
+«IF !binding.isJmsTransport()-»
+    , p_param_out              OUT    NOCOPY «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»
+«IF getFaultElementQName(binding, operation.name) != null-»
+    , p_error_out              OUT    NOCOPY «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»
+«ENDIF-»
+«ENDIF-»
+  ) IS
+
+    c_routine           CONSTANT SOA_API_DEFAULT.oraclename_T := '«operation.name»';
+
+    param_in				     CLOB;
+    param_out     			     CLOB;
+
+    outdomdoc 					 DBMS_XMLDOM.DOMDocument;
+    outdocnode   		         DBMS_XMLDOM.DOMNode;
+    outnode   					 DBMS_XMLDOM.DOMNode;
+    outelmt 			         DBMS_XMLDOM.DOMElement;
+
+    myparser 					 DBMS_XMLPARSER.parser;
+
+    indomdoc 					 DBMS_XMLDOM.DOMDocument;
+    inelmt 			             DBMS_XMLDOM.DOMElement;
+    innode 				         DBMS_XMLDOM.DOMNode;
+
+    timeout                      INTEGER;
+	fault_mapped                 BOOLEAN := FALSE;
+
+  BEGIN
+
+    SOA_API_CUSTOM.initLogger(c_package_name, c_routine);
+    SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_INFO, c_package_name, c_routine, 'Start');
+
+    IF SOA_API_CUSTOM.getLevel(c_package_name) <= SOA_API_CUSTOM.Level_DEBUG THEN
+      SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_DEBUG, c_package_name, c_routine, «getParameterOracleFQN(getInputElementQName(binding, operation.name))»2c(p_param_in));
+    END IF;
+    outdomdoc := DBMS_XMLDOM.newDOMDocument;
+    outdocnode := DBMS_XMLDOM.makeNode(outdomdoc);
+
+    outelmt := DBMS_XMLDOM.createElement(outdomdoc, 'soapenv:Envelope', c_SOAP_NS);
+    DBMS_XMLDOM.setAttribute(outelmt, 'xmlns:soapenv', c_SOAP_NS);
+    outnode := DBMS_XMLDOM.appendChild(outdocnode, DBMS_XMLDOM.makeNode(outelmt));
+
+    outelmt := DBMS_XMLDOM.createElement(outdomdoc, 'soapenv:Body', c_SOAP_NS);
+    outnode := DBMS_XMLDOM.appendChild(outnode, DBMS_XMLDOM.makeNode(outelmt));
+
+    outelmt := DBMS_XMLDOM.createElement(outdomdoc, '«getInputElementQName(binding, operation.name).localPart»', '«getInputElementQName(binding, operation.name).namespaceURI»');
+    DBMS_XMLDOM.setAttribute(outelmt, 'xmlns', '«getInputElementQName(binding, operation.name).namespaceURI»');
+    outnode := DBMS_XMLDOM.appendChild(outnode, DBMS_XMLDOM.makeNode(outelmt));
+    «getParameterOracleFQN(getInputElementQName(binding, operation.name))»2x(p_param_in, outdomdoc, outnode, '«getInputElementQName(binding, operation.name).namespaceURI»');
+
+    DBMS_LOB.createTemporary(param_in, TRUE, dbms_lob.call);
+    DBMS_XMLDOM.writeToClob(outdocnode, param_in);
+    DBMS_XMLDOM.freeDocument(outdomdoc);
+
+    param_out := SOA_API_DEFAULT.call_soap_http(c_senderFQN, '"«bindingOperation.getSoapActionURI()»"', timeout, param_in);
+    DBMS_LOB.freeTemporary(param_in);
+
+    myParser := DBMS_XMLPARSER.newParser;
+    DBMS_XMLPARSER.parseClob(myParser, param_out);
+    DBMS_LOB.freeTemporary(param_out);
+    indomdoc := DBMS_XMLPARSER.getDocument(myParser);
+    DBMS_XMLPARSER.freeParser(myParser);
+    inelmt := DBMS_XMLDOM.getDocumentElement(indomdoc);
+    innode := DBMS_XMLDOM.makeNode(inelmt);
+    -- Last Child ist immer Body, auch wenn ein Header da ist
+    innode := DBMS_XMLDOM.getLastChild(innode);
+    innode := DBMS_XMLDOM.getFirstChild(innode);
+    inelmt := DBMS_XMLDOM.makeElement(innode);
+    IF DBMS_XMLDOM.getNamespace(inelmt) = c_SOAP_NS AND DBMS_XMLDOM.getLocalName(inelmt) = 'Fault' THEN
+      innode := DBMS_XMLDOM.getLastChild(innode);
+      inelmt := DBMS_XMLDOM.makeElement(innode);
+      IF DBMS_XMLDOM.getLocalName(inelmt) = 'detail' THEN
+        innode := DBMS_XMLDOM.getFirstChild(innode);
+«IF getFaultElementQName(binding, operation.name) != null-»
+        inelmt := DBMS_XMLDOM.makeElement(innode);
+        IF DBMS_XMLDOM.getNamespace(inelmt) = '«getFaultElementQName(binding, operation.name).namespaceURI»' AND DBMS_XMLDOM.getLocalName(inelmt) = '«getFaultElementQName(binding, operation.name).localPart»' THEN
+          p_error_out := «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»4x(innode);
+          fault_mapped := TRUE;
+        END IF;
+      END IF;
+«ELSE-»
+      END IF;
+      DBMS_XMLDOM.writeToBuffer(innode, param_out);
+      DBMS_XMLDOM.freeDocument(indomdoc);
+      RAISE_APPLICATION_ERROR(-20001, 'Fault ' || param_out);
+«ENDIF-»
+    ELSE
+      p_param_out := «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»4x(innode);
+      IF SOA_API_CUSTOM.getLevel(c_package_name) <= SOA_API_CUSTOM.Level_DEBUG THEN
+        SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_DEBUG, c_package_name, c_routine, «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»2c(p_param_out));
+      END IF;
+    END IF;
+    DBMS_XMLDOM.freeDocument(indomdoc);
+
+    SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_INFO, c_package_name, c_routine, 'Ende');
+
+  END «operation.name»;
+«ENDLET-»
+«ENDDEFINE»

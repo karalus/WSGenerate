@@ -1,0 +1,839 @@
+«IMPORT com::artofarc::wsimport»
+
+«IMPORT org::w3::_2001::xmlschema»
+«IMPORT javax::xml::bind»
+«IMPORT javax::xml::namespace»
+
+
+«EXTENSION oaw::extensions::db»
+
+
+«DEFINE Root FOR ServiceNamespace»
+«FILE "plsql/" + getDBSchema() + "/" + XSD2PackageName() + ".PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«XSD2PackageName()» IS
+  /**
+  * <pre>
+  *
+  *  <br/>
+  *  XSD-Referenz:        «URI»
+  *  technische Schicht:  apidef(d)                -   Applikation-Interface-Definition
+  *  <br/>
+  *
+  *  <b>Beschreibung:</b>
+  * «URI» consists of «getXSDModels().size» file(s):
+«FOREACH documentBaseURIs AS documentBaseURI-»
+  * documentBaseURI: «documentBaseURI»
+«ENDFOREACH-»
+  *
+«FOREACH schemas.getDocumentationContent() AS doc»«doc.toString().formatDocumentation("  * ")»«ENDFOREACH-»
+  *
+  *  </pre>
+  *  @headcom
+  *  <pre>
+  *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+  *
+  */
+
+  /*
+  * to_char(2c), xml_to_record(4x) und record_to_xml(2x) Routinen für die einzelnen Typen
+  */
+«FOREACH simpleTypes().select(e|isSimpleTypeList(e)) AS listType-»
+«LET getBaseTypeForListType(listType) AS baseType-»
+«LET baseType != null && !isSimpleTypeList(baseType) ? getFacets(baseType) : null AS facets-»
+  FUNCTION «XSDType2Oracle(listType, "4l")»(p_str IN VARCHAR2) RETURN «XSDType2Oracle(listType)» AS
+    v_result «XSDType2Oracle(listType)» := «XSDType2Oracle(listType)»();
+    v_part   «getPackagePrefix(listType.getBaseType())»«XSDType2Oracle(listType.getBaseType())»;
+    i        BINARY_INTEGER := 1;
+  BEGIN
+    LOOP
+      v_part := «convertXSDBasicType2Oracle(getBuiltInType(listType), facets, "REGEXP_SUBSTR(p_str, '\\S+', 1, i)", null)»;
+      EXIT WHEN v_part IS NULL;
+      v_result.extend();
+      v_result(i) := v_part;
+      i := i + 1;
+    END LOOP;
+    return v_result;
+  END;
+
+  FUNCTION «XSDType2Oracle(listType, "2l")»(p_list IN «XSDType2Oracle(listType)») RETURN VARCHAR2 AS
+    v_result VARCHAR2(32767);
+  BEGIN
+    IF p_list IS NOT NULL AND p_list.count > 0 THEN
+      v_result := «convertOracle2XSDBasicType(getBuiltInType(listType), facets, "p_list(1)")»;
+      FOR i IN 2..p_list.count LOOP
+        v_result := v_result || ' ' || «convertOracle2XSDBasicType(getBuiltInType(listType), facets, "p_list(i)")»;
+      END LOOP;
+    END IF;
+    return v_result;
+  END;
+
+«ENDLET-»
+«ENDLET-»
+«ENDFOREACH-»
+«FOREACH namedGroupsWithAnonymousComplexType() AS namedGroupWithAnonymousComplexType-»
+«FOREACH namedGroupWithAnonymousComplexType.elements().select(e|e.complexType != null) AS element-»
+«EXPAND XSDSchema(element.complexType, anonymousTypeName(element, namedGroupWithAnonymousComplexType.name))-»
+«ENDFOREACH-»
+«ENDFOREACH-»
+«FOREACH complexTypesNotAbstract() AS ct-»
+«EXPAND XSDSchemaComplexTypes(ct, ct.name)-»
+«ENDFOREACH-»
+«FOREACH topLevelElementsWithAnonymousComplexType() AS topLevelElementWithAnonymousComplexType-»
+«EXPAND XSDSchemaComplexTypes(topLevelElementWithAnonymousComplexType.complexType, anonymousTypeName(topLevelElementWithAnonymousComplexType, ""))-»
+«ENDFOREACH-»
+«FOREACH topLevelElements() AS tle-»
+«EXPAND XMLStringConversion(tle)-»
+«ENDFOREACH-»
+END «XSD2PackageName()»;
+/
+PROMPT ++++++++++++++++++++++++
+show errors
+PROMPT ++++++++++++++++++++++++
+«ENDFILE»
+«ENDDEFINE»
+
+«REM»Navigate in ComplexType«ENDREM»
+«DEFINE XSDSchemaComplexTypes(ComplexType ct, String typeName) FOR ServiceNamespace -»
+«IF ct.complexContent != null-»
+«IF ct.complexContent.extension != null-»
+«EXPAND XSDSchemaComplexTypes(ct.complexContent.extension, typeName)-»
+«ELSEIF ct.complexContent.restriction != null-»
+«EXPAND XSDSchemaComplexTypes(ct.complexContent.restriction, typeName)-»
+«ENDIF-»
+«ELSE-»
+«IF ct.group != null-»
+«EXPAND XSDSchemaComplexTypes(ct.group, typeName)-»
+«ELSEIF ct.all != null-»
+«EXPAND XSDSchemaComplexTypes(ct.all, typeName)-»
+«ELSEIF ct.choice != null-»
+«EXPAND XSDSchemaComplexTypes(ct.choice, typeName)-»
+«ELSEIF ct.sequence != null-»
+«EXPAND XSDSchemaComplexTypes(ct.sequence, typeName)-»
+«ENDIF-»
+«ENDIF-»
+«EXPAND XSDSchema(ct, typeName)-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(ExtensionType et, String typeName) FOR ServiceNamespace-»
+«IF et.group != null-»
+«EXPAND XSDSchemaComplexTypes(et.group, typeName)-»
+«ELSEIF et.all != null-»
+«EXPAND XSDSchemaComplexTypes(et.all, typeName)-»
+«ELSEIF et.choice != null-»
+«EXPAND XSDSchemaComplexTypes(et.choice, typeName)-»
+«ELSEIF et.sequence != null-»
+«EXPAND XSDSchemaComplexTypes(et.sequence, typeName)-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(ComplexRestrictionType crt, String typeName) FOR ServiceNamespace-»
+«IF crt.group != null-»
+«EXPAND XSDSchemaComplexTypes(crt.group, typeName)-»
+«ELSEIF crt.all != null-»
+«EXPAND XSDSchemaComplexTypes(crt.all, typeName)-»
+«ELSEIF crt.choice != null-»
+«EXPAND XSDSchemaComplexTypes(crt.choice, typeName)-»
+«ELSEIF crt.sequence != null-»
+«EXPAND XSDSchemaComplexTypes(crt.sequence, typeName)-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(GroupRef gr, String typeName) FOR ServiceNamespace-»
+«EXPAND XSDSchemaComplexTypes(findReferencedGroup(gr.ref), typeName)-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(Group g, String typeName) FOR ServiceNamespace-»
+«FOREACH g.particle.typeSelect(JAXBElement).getValue() AS obj-»
+«EXPAND XSDSchemaComplexTypes(obj, typeName)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(Element e, String typeName) FOR ServiceNamespace-»
+«IF e.complexType != null-»
+«EXPAND XSDSchemaComplexTypes(e.complexType, anonymousTypeName(e, typeName))-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE XSDSchemaComplexTypes(Object obj, String typeName) FOR ServiceNamespace-»
+«ERROR "Particle type not supported: " + this»
+«ENDDEFINE»
+
+«REM»«ENDREM»
+
+«DEFINE XSDSchema(ComplexType ct, String name) FOR ServiceNamespace-»
+  FUNCTION «XSDType2Oracle(name, ct, "2c")» (
+    p_«XSDType2Oracle(name, ct)»	IN	«XSDType2Oracle(name, ct)»
+  ) RETURN VARCHAR2
+  IS
+    v_return            SOA_API_DEFAULT.maxplsqltext_t;
+  BEGIN
+
+    v_return := substr(
+         '«XSD2PackageName()».«XSDType2Oracle(name, ct)»('
+«EXPAND ToString(ct, "p_" + XSDType2Oracle(name, ct), name)-»
+      || chr(10) || ')'
+      , 1, SOA_API_DEFAULT.c_fl_maxplsqltext);
+
+    RETURN v_return;
+
+  END «XSDType2Oracle(name, ct, "2c")»;
+
+  FUNCTION «XSDType2Oracle(name, ct, "4x")» (
+      p_node	              IN DBMS_XMLDOM.DOMNode
+  ) RETURN «XSDType2Oracle(name, ct)»
+  IS
+    v_return                     «XSDType2Oracle(name, ct)»;
+    children                     DBMS_XMLDOM.DOMNodeList;
+    len							 NUMBER;
+    node    					 DBMS_XMLDOM.DOMNode;
+    elmt 	  					 DBMS_XMLDOM.DOMElement;
+    text                       	 DBMS_XMLDOM.DOMNode;
+    localName                    VARCHAR2(255);
+    namespace                    VARCHAR2(999);
+  BEGIN
+
+«EXPAND XML2Oracle_Init(ct, "v_return", name)-»
+
+    children := DBMS_XMLDOM.getChildNodes(p_node);
+    len := DBMS_XMLDOM.getLength(children);
+    FOR i IN 0..len-1 LOOP
+      node := DBMS_XMLDOM.item(children, i);
+
+      IF DBMS_XMLDOM.getNodeType(node) = DBMS_XMLDOM.ELEMENT_NODE THEN
+        elmt := DBMS_XMLDOM.makeElement(node);
+        localName := DBMS_XMLDOM.getLocalName(elmt);
+        namespace := DBMS_XMLDOM.getNamespace(elmt);
+        CASE
+«EXPAND XML2Oracle(ct, "v_return", name)-»
+         WHEN FALSE THEN NULL;
+         ELSE
+          SOA_API_CUSTOM.fehler_unerwartetes_element('{' || namespace || '}' || localName);
+        END CASE;
+      END IF;
+    END LOOP;
+
+    v_return.INTERN_isPresent := TRUE;
+
+    RETURN v_return;
+
+  END «XSDType2Oracle(name, ct, "4x")»;
+
+  PROCEDURE «XSDType2Oracle(name, ct, "2x")» (
+    p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct)»
+  , p_domdoc 				  IN DBMS_XMLDOM.DOMDocument
+  , p_parent_node 		      IN DBMS_XMLDOM.DOMNode
+  , p_default_ns              IN VARCHAR2
+  ) IS
+
+    elmt 	  					 DBMS_XMLDOM.DOMElement;
+    node    					 DBMS_XMLDOM.DOMNode;
+    text                       	 DBMS_XMLDOM.DOMText;
+
+  BEGIN
+
+«EXPAND Oracle2XML(ct, "p_" + XSDType2Oracle(name, ct), name)»
+    RETURN;
+  END «XSDType2Oracle(name, ct, "2x")»;
+
+  FUNCTION isNotNull(
+    p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct)»
+  ) RETURN BOOLEAN
+  IS
+  BEGIN
+«LET getIsNotNullExpression(ct, "p_" + XSDType2Oracle(name, ct)) AS exp-»
+«IF exp != null-»
+    RETURN CASE p_«XSDType2Oracle(name, ct)».INTERN_isPresent WHEN FALSE THEN FALSE WHEN TRUE THEN TRUE ELSE «exp» END;
+«ELSE-»
+    -- unentscheidbar, da leer
+    RETURN CASE p_«XSDType2Oracle(name, ct)».INTERN_isPresent WHEN FALSE THEN FALSE ELSE TRUE END;
+«ENDIF-»
+«ENDLET-»
+  END isNotNull;
+
+  PROCEDURE setNotNull(
+    p_«XSDType2Oracle(name, ct)» IN OUT NOCOPY «XSDType2Oracle(name, ct)»
+  , p_NotNull IN BOOLEAN
+  )
+  IS
+  BEGIN
+    p_«XSDType2Oracle(name, ct)».INTERN_isPresent := p_NotNull;
+  END setNotNull;
+
+  FUNCTION isNotEmpty(
+    p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct, true)»
+  ) RETURN BOOLEAN
+  IS
+  BEGIN
+    RETURN p_«XSDType2Oracle(name, ct)» IS NOT NULL AND p_«XSDType2Oracle(name, ct)».count > 0;
+  END isNotEmpty;
+
+«ENDDEFINE»
+
+«REM»«ENDREM»
+«DEFINE ToString(ComplexType ct, String parentParam, String name) FOR ServiceNamespace-»
+«IF ct.complexContent != null-»
+«IF ct.complexContent.extension != null-»
+«LET findUsedServiceNamespace(ct.complexContent.extension.base.namespaceURI) AS ns-»
+«LET findComplexType(ns, ct.complexContent.extension.base) AS tlct-»
+«EXPAND ToString(tlct, parentParam, tlct.name) FOR ns-»
+«ENDLET-»
+«ENDLET-»
+«EXPAND ToString(ct.complexContent.extension, parentParam, name)-»
+«ELSEIF ct.complexContent.restriction != null-»
+«EXPAND ToString(ct.complexContent.restriction, parentParam, name)-»
+«ENDIF-»
+«ELSE-»
+«IF ct.group != null-»
+«EXPAND ToString(ct.group, parentParam, name, null, null, "group")-»
+«ELSEIF ct.all != null-»
+«EXPAND ToString(ct.all, parentParam, name, null, null, "all")-»
+«ELSEIF ct.choice != null-»
+«EXPAND ToString(ct.choice, parentParam, name, null, null, "choice")-»
+«ELSEIF ct.sequence != null-»
+«EXPAND ToString(ct.sequence, parentParam, name, null, null, "sequence")-»
+«ENDIF-»
+«ENDIF-»
+«FOREACH ct.attributeOrAttributeGroup AS a-»
+«EXPAND ToString(a, parentParam)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE ToString(ExtensionType et, String parentParam, String name) FOR ServiceNamespace-»
+«IF et.group != null-»
+«EXPAND ToString(et.group, parentParam, name, null, null, "group")-»
+«ELSEIF et.all != null-»
+«EXPAND ToString(et.all, parentParam, name, null, null, "all")-»
+«ELSEIF et.choice != null-»
+«EXPAND ToString(et.choice, parentParam, name, null, null, "choice")-»
+«ELSEIF et.sequence != null-»
+«EXPAND ToString(et.sequence, parentParam, name, null, null, "sequence")-»
+«ENDIF-»
+«FOREACH et.attributeOrAttributeGroup AS a-»
+«EXPAND ToString(a, parentParam)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE ToString(ComplexRestrictionType crt, String parentParam, String name) FOR ServiceNamespace-»
+«IF crt.group != null-»
+«EXPAND ToString(crt.group, parentParam, name, null, null, "group")-»
+«ELSEIF crt.all != null-»
+«EXPAND ToString(crt.all, parentParam, name, null, null, "all")-»
+«ELSEIF crt.choice != null-»
+«EXPAND ToString(crt.choice, parentParam, name, null, null, "choice")-»
+«ELSEIF crt.sequence != null-»
+«EXPAND ToString(crt.sequence, parentParam, name, null, null, "sequence")-»
+«ENDIF-»
+«FOREACH crt.attributeOrAttributeGroup AS a-»
+«EXPAND ToString(a, parentParam)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE ToString(GroupRef gr, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«EXPAND ToString(findReferencedGroup(gr.ref), parentParam, typeName, parentGroupType, parentGroup, particleType)-»
+«ENDDEFINE»
+
+«DEFINE ToString(Group g, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«FOREACH g.particle.typeSelect(JAXBElement) AS p-»
+«EXPAND ToString(p.getValue(), parentParam, typeName, particleType, g, p.name.localPart)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE ToString(Object obj, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«ERROR "Particle type not supported: " + particleType»
+«ENDDEFINE»
+
+«DEFINE ToString(Element e, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«LET getTypeNamespace(e) AS ns-»
+«LET parentParam + '.' + getOracleName(e) AS elementAccess-»
+«IF isArray(e, parentGroup)-»
+      || chr(10) || rpad(', Anzahl «XSD2Oracle(e.ref != null ? ns : this, e.ref != null ? e.ref.localPart : e.name, e)»',31) || '= ' || CASE WHEN «elementAccess» IS NULL THEN '0' ELSE «elementAccess».count END
+«ELSE-»
+«IF hasSimpleType(e)-»
+«IF isSimpleTypeList(e)-»
+      || chr(10) || rpad(', «getOracleName(e)»',31) || '= ' || «XSD2PackageName(ns)».«XSDType2Oracle(ns, (TopLevelSimpleType) getSimpleType(e), "2l")»(«elementAccess»)
+«ELSE-»
+«LET convertOracle2XSDBasicType(getBuiltInType(e), getFacets(e), elementAccess) AS expr-»
+      || chr(10) || rpad(', «getOracleName(e)»',31) || '= ' || «IF isLOB(expr)»'<lob: ' || dbms_lob.getlength(«elementAccess») || '>'«ELSEIF isXMLType(expr)»'<embedded XML>'«ELSE»«expr»«ENDIF»
+«ENDLET-»
+«ENDIF-»
+«ELSE-»
+«LET getNonLocalComplexType(e) AS ct-»
+«IF e.complexType != null-»
+      || chr(10) || rpad(', «XSD2Oracle(e.name, e)»',31) || '= ' || CASE WHEN «getIsNotNullExpression(e, parentParam, parentGroup)» THEN «XSD2PackageName(ns)».«anonymousTypeName2Oracle(e, typeName)»2c(«elementAccess») ELSE 'NULL' END
+«ELSEIF e.ref != null-»
+«LET findReferencedElement(e.ref) AS refElement-»
+«IF refElement.complexType != null-»
+      || chr(10) || rpad(', «XSD2Oracle(ns, e.ref.localPart, refElement)»',31) || '= ' || CASE WHEN «getIsNotNullExpression(e, parentParam, parentGroup)» THEN «XSD2PackageName(ns)».«anonymousTypeName2Oracle(ns, refElement, "")»2c(«elementAccess») ELSE 'NULL' END
+«ELSEIF ct != null-»
+      || chr(10) || rpad(', «XSD2Oracle(ns, e.ref.localPart, refElement)»',31) || '= ' || CASE WHEN «getIsNotNullExpression(e, parentParam, parentGroup)» THEN «XSD2PackageName(ns)».«XSDType2Oracle(ns, ct, "2c")»(«elementAccess») ELSE 'NULL' END
+«ELSE-»
+-- No Type found for «e.ref»
+«ENDIF-»
+«ENDLET-»
+«ELSEIF e.type != null-»
+      || chr(10) || rpad(', «XSD2Oracle(e.name, e)»',31) || '= ' || CASE WHEN «getIsNotNullExpression(e, parentParam, parentGroup)» THEN «XSD2PackageName(ns)».«XSDType2Oracle(ns, ct, "2c")»(«elementAccess») ELSE 'NULL' END
+«ELSE-»
+-- No Type found for «e.name»
+«ENDIF-»
+«ENDLET-»
+«ENDIF-»
+«ENDIF-»
+«ENDLET-»
+«ENDLET-»
+«ENDDEFINE»
+
+«DEFINE ToString(Attribute a, String parentParam) FOR ServiceNamespace-»
+«IF isSimpleTypeList(a)-»
+«IF getSimpleType(a).name != null-»
+      || chr(10) || rpad(', «XSD2Oracle(a.name, a)»',31) || '= ' || «XSDType2Oracle((TopLevelSimpleType) getSimpleType(a), "2l")»(«parentParam + '.' + XSD2Oracle(a.name, a)»)
+«ELSE-»
+-- Nicht implementiert: anonymer SimpleListType in Attribut «a.name»
+«ENDIF-»
+«ELSE-»
+      || chr(10) || rpad(', «XSD2Oracle(a.name, a)»',31) || '= ' || «convertOracle2XSDBasicType(getBuiltInType(a), getFacets(a), parentParam + '.' + XSD2Oracle(a.name, a))»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE ToString(AttributeGroupRef agr, String parentParam) FOR ServiceNamespace-»
+«LET findUsedServiceNamespace(agr.ref.namespaceURI) AS ns-»
+«EXPAND ToString(findAttributeGroup(ns, agr.ref.localPart), parentParam) FOR ns-»
+«ENDLET-»
+«ENDDEFINE»
+
+«DEFINE ToString(AttributeGroup ag, String parentParam) FOR ServiceNamespace-»
+«FOREACH ag.attributeOrAttributeGroup AS a-»
+«EXPAND ToString(a, parentParam)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE ToString(Annotated a, String parentParam) FOR ServiceNamespace-»
+«ERROR "Abstract type: " + this»
+«ENDDEFINE»
+
+«REM»«ENDREM»
+«DEFINE XML2Oracle_Init(ComplexType ct, String parentParam, String name) FOR ServiceNamespace -»
+«IF ct.complexContent != null-»
+«IF ct.complexContent.extension != null-»
+«LET findUsedServiceNamespace(ct.complexContent.extension.base.namespaceURI) AS ns-»
+«LET findComplexType(ns, ct.complexContent.extension.base) AS tlct-»
+«EXPAND XML2Oracle_Init(tlct, parentParam, tlct.name) FOR ns-»
+«ENDLET-»
+«ENDLET-»
+«EXPAND XML2Oracle_Init(ct.complexContent.extension, parentParam, name)-»
+«ELSEIF ct.complexContent.restriction != null-»
+«EXPAND XML2Oracle_Init(ct.complexContent.restriction, parentParam, name)-»
+«ENDIF-»
+«ELSE-»
+«IF ct.group != null-»
+«EXPAND XML2Oracle_Init(ct.group, parentParam, name, null, null, "group")-»
+«ELSEIF ct.all != null-»
+«EXPAND XML2Oracle_Init(ct.all, parentParam, name, null, null, "all")-»
+«ELSEIF ct.choice != null-»
+«EXPAND XML2Oracle_Init(ct.choice, parentParam, name, null, null, "choice")-»
+«ELSEIF ct.sequence != null-»
+«EXPAND XML2Oracle_Init(ct.sequence, parentParam, name, null, null, "sequence")-»
+«ENDIF-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE XML2Oracle_Init(ExtensionType et, String parentParam, String name) FOR ServiceNamespace-»
+«IF et.group != null-»
+«EXPAND XML2Oracle_Init(et.group, parentParam, name, null, null, "group")-»
+«ELSEIF et.all != null-»
+«EXPAND XML2Oracle_Init(et.all, parentParam, name, null, null, "all")-»
+«ELSEIF et.choice != null-»
+«EXPAND XML2Oracle_Init(et.choice, parentParam, name, null, null, "choice")-»
+«ELSEIF et.sequence != null-»
+«EXPAND XML2Oracle_Init(et.sequence, parentParam, name, null, null, "sequence")-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE XML2Oracle_Init(ComplexRestrictionType crt, String parentParam, String name) FOR ServiceNamespace-»
+«IF crt.group != null-»
+«EXPAND XML2Oracle_Init(crt.group, parentParam, name, null, null, "group")-»
+«ELSEIF crt.all != null-»
+«EXPAND XML2Oracle_Init(crt.all, parentParam, name, null, null, "all")-»
+«ELSEIF crt.choice != null-»
+«EXPAND XML2Oracle_Init(crt.choice, parentParam, name, null, null, "choice")-»
+«ELSEIF crt.sequence != null-»
+«EXPAND XML2Oracle_Init(crt.sequence, parentParam, name, null, null, "sequence")-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE XML2Oracle_Init(GroupRef gr, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«EXPAND XML2Oracle_Init(findReferencedGroup(gr.ref), parentParam, typeName, parentGroupType, parentGroup, particleType)-»
+«ENDDEFINE»
+
+«DEFINE XML2Oracle_Init(Group g, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«FOREACH g.particle.typeSelect(JAXBElement) AS p-»
+«EXPAND XML2Oracle_Init(p.getValue(), parentParam, typeName, particleType, g, p.name.localPart)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE XML2Oracle_Init(Object obj, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«ERROR "Particle type not supported: " + particleType»
+«ENDDEFINE»
+
+«DEFINE XML2Oracle_Init(Element e, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«IF isArray(e, parentGroup)-»
+«LET getTypeNamespace(e) AS ns-»
+«LET parentParam + '.' + getOracleName(e) AS elementAccess-»
+	-- Init Array Element
+«IF e.type != null-»
+«IF findSimpleType(ns, e.type) != null-»
+    «elementAccess» := «XSD2PackageName()».«XSDType2Oracle(ns, e.type, true)»();
+«ELSE-»
+    «elementAccess» := «XSD2PackageName()».«XSDType2Oracle(ns, findComplexType(ns, e.type), true)»();
+«ENDIF-»
+«ELSEIF e.ref != null-»
+«LET findReferencedElement(e.ref) AS refElement-»
+    «elementAccess» := «getOracleTypeForRefElement(ns, refElement, true, parentGroup)»();
+«ENDLET-»
+«ELSEIF e.complexType != null-»
+    «elementAccess» := «XSD2PackageName()».«anonymousTypeName2Oracle(e, typeName, true)»();
+«ELSEIF e.simpleType != null-»
+  	«elementAccess» := «getPackagePrefix(e.simpleType.restriction.base)»«XSDType2Oracle(e.simpleType.restriction.base, true)»();
+«ELSE-»
+-- No Type found for «e.name»
+«ENDIF-»
+«ENDLET-»
+«ENDLET-»
+«ENDIF-»
+«ENDDEFINE»
+
+«REM»Logik um aus der XML Struktur die PL/SQL RECORD TYPEs zu befüllen«ENDREM»
+«DEFINE XML2Oracle(ComplexType ct, String parentParam, String name) FOR ServiceNamespace -»
+«IF ct.complexContent != null-»
+«IF ct.complexContent.extension != null-»
+«LET findUsedServiceNamespace(ct.complexContent.extension.base.namespaceURI) AS ns-»
+«LET findComplexType(ns, ct.complexContent.extension.base) AS tlct-»
+«EXPAND XML2Oracle(tlct, parentParam, tlct.name) FOR ns-»
+«ENDLET-»
+«ENDLET-»
+«EXPAND XML2Oracle(ct.complexContent.extension, parentParam, name)-»
+«ELSEIF ct.complexContent.restriction != null-»
+«EXPAND XML2Oracle(ct.complexContent.restriction, parentParam, name)-»
+«ENDIF-»
+«ELSE-»
+«IF ct.group != null-»
+«EXPAND XML2Oracle(ct.group, parentParam, name, null, null, "group")-»
+«ELSEIF ct.all != null-»
+«EXPAND XML2Oracle(ct.all, parentParam, name, null, null, "all")-»
+«ELSEIF ct.choice != null-»
+«EXPAND XML2Oracle(ct.choice, parentParam, name, null, null, "choice")-»
+«ELSEIF ct.sequence != null-»
+«EXPAND XML2Oracle(ct.sequence, parentParam, name, null, null, "sequence")-»
+«ENDIF-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE XML2Oracle(ExtensionType et, String parentParam, String name) FOR ServiceNamespace-»
+«IF et.group != null-»
+«EXPAND XML2Oracle(et.group, parentParam, name, null, null, "group")-»
+«ELSEIF et.all != null-»
+«EXPAND XML2Oracle(et.all, parentParam, name, null, null, "all")-»
+«ELSEIF et.choice != null-»
+«EXPAND XML2Oracle(et.choice, parentParam, name, null, null, "choice")-»
+«ELSEIF et.sequence != null-»
+«EXPAND XML2Oracle(et.sequence, parentParam, name, null, null, "sequence")-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE XML2Oracle(ComplexRestrictionType crt, String parentParam, String name) FOR ServiceNamespace-»
+«IF crt.group != null-»
+«EXPAND XML2Oracle(crt.group, parentParam, name, null, null, "group")-»
+«ELSEIF crt.all != null-»
+«EXPAND XML2Oracle(crt.all, parentParam, name, null, null, "all")-»
+«ELSEIF crt.choice != null-»
+«EXPAND XML2Oracle(crt.choice, parentParam, name, null, null, "choice")-»
+«ELSEIF crt.sequence != null-»
+«EXPAND XML2Oracle(crt.sequence, parentParam, name, null, null, "sequence")-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE XML2Oracle(GroupRef gr, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«EXPAND XML2Oracle(findReferencedGroup(gr.ref), parentParam, typeName, parentGroupType, parentGroup, particleType)-»
+«ENDDEFINE»
+
+«DEFINE XML2Oracle(Group g, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«FOREACH g.particle.typeSelect(JAXBElement) AS p-»
+«EXPAND XML2Oracle(p.getValue(), parentParam, typeName, particleType, g, p.name.localPart)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE XML2Oracle(Object obj, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«ERROR "Particle type not supported: " + particleType»
+«ENDDEFINE»
+
+«DEFINE XML2Oracle(Element e, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«LET getTypeNamespace(e) AS ns-»
+«LET parentParam + '.' + getOracleName(e) AS elementAccess-»
+         WHEN localName = '«e.ref != null ? e.ref.localPart : e.name»' AND namespace «IF getElementNamespace(e) != null»= '«getElementNamespace(e).URI»'«ELSE»IS NULL«ENDIF» THEN
+«IF isArray(e, parentGroup)-»
+          «elementAccess».extend;
+«ENDIF-»
+«IF e.nillable-»
+          IF NVL(DBMS_XMLDOM.getAttribute(elmt, 'nil', 'http://www.w3.org/2001/XMLSchema-instance'), 'false') NOT IN ('true', '1') THEN
+«ENDIF-»
+«IF hasSimpleType(e)-»
+          text := DBMS_XMLDOM.getFirstChild(node);
+«IF isSimpleTypeList(e)-»
+          «elementAccess»«IF isArrayElement(e)»(«elementAccess».last)«ENDIF» := «XSD2PackageName()».«XSDType2Oracle(ns, (TopLevelSimpleType) getSimpleType(e), "4l")»(DBMS_XMLDOM.getNodeValue(text));
+«ELSE-»
+          «elementAccess»«IF isArrayElement(e)»(«elementAccess».last)«ENDIF» := «convertXSDBasicType2Oracle(getBuiltInType(e), getFacets(e), "DBMS_XMLDOM.getNodeValue(text)", "text")»;
+«ENDIF-»
+«ELSE-»
+«LET getNonLocalComplexType(e) AS ct-»
+«IF e.complexType != null-»
+          «elementAccess»«IF isArray(e, parentGroup)»(«elementAccess».last)«ENDIF» := «XSD2PackageName()».«anonymousTypeName2Oracle(e, typeName)»4x(node);
+«ELSEIF e.ref != null-»
+«LET findReferencedElement(e.ref) AS refElement-»
+«IF refElement.complexType != null-»
+          «elementAccess»«IF isArray(e, parentGroup)»(«elementAccess».last)«ENDIF» := «XSD2PackageName()».«anonymousTypeName2Oracle(ns, refElement, "")»4x(node);
+«ELSEIF ct != null-»
+          «elementAccess»«IF isArray(e, parentGroup)»(«elementAccess».last)«ENDIF» := «XSD2PackageName()».«XSDType2Oracle(ns, ct)»4x(node);
+«ELSE-»
+-- No Type found for «e.ref»
+«ENDIF-»
+«ENDLET-»
+«ELSEIF e.type != null-»
+          «elementAccess»«IF isArray(e, parentGroup)»(«elementAccess».last)«ENDIF» := «XSD2PackageName()».«XSDType2Oracle(ns, ct)»4x(node);
+«ELSE-»
+-- No Type found for «e.name»
+«ENDIF-»
+«ENDLET-»
+«ENDIF-»
+«IF e.nillable-»
+          END IF;
+«ENDIF-»
+«ENDLET-»
+«ENDLET-»
+«ENDDEFINE»
+
+«REM»Logik um PL/SQL RECORD TYPEs nach XML zu transformieren«ENDREM»
+«DEFINE Oracle2XML(ComplexType ct, String parentParam, String name) FOR ServiceNamespace-»
+«IF ct.complexContent != null-»
+«IF ct.complexContent.extension != null-»
+«LET findUsedServiceNamespace(ct.complexContent.extension.base.namespaceURI) AS ns-»
+«LET findComplexType(ns, ct.complexContent.extension.base) AS tlct-»
+«EXPAND Oracle2XML(tlct, parentParam, tlct.name) FOR ns-»
+«ENDLET-»
+«ENDLET-»
+«EXPAND Oracle2XML(ct.complexContent.extension, parentParam, name)-»
+«ELSEIF ct.complexContent.restriction != null-»
+«EXPAND Oracle2XML(ct.complexContent.restriction, parentParam, name)-»
+«ENDIF-»
+«ELSE-»
+«IF ct.group != null-»
+«EXPAND Oracle2XML(ct.group, parentParam, name, null, null, "group")-»
+«ELSEIF ct.all != null-»
+«EXPAND Oracle2XML(ct.all, parentParam, name, null, null, "all")-»
+«ELSEIF ct.choice != null-»
+«EXPAND Oracle2XML(ct.choice, parentParam, name, null, null, "choice")-»
+«ELSEIF ct.sequence != null-»
+«EXPAND Oracle2XML(ct.sequence, parentParam, name, null, null, "sequence")-»
+«ENDIF-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE Oracle2XML(ExtensionType et, String parentParam, String name) FOR ServiceNamespace-»
+«IF et.group != null-»
+«EXPAND Oracle2XML(et.group, parentParam, name, null, null, "group")-»
+«ELSEIF et.all != null-»
+«EXPAND Oracle2XML(et.all, parentParam, name, null, null, "all")-»
+«ELSEIF et.choice != null-»
+«EXPAND Oracle2XML(et.choice, parentParam, name, null, null, "choice")-»
+«ELSEIF et.sequence != null-»
+«EXPAND Oracle2XML(et.sequence, parentParam, name, null, null, "sequence")-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE Oracle2XML(ComplexRestrictionType crt, String parentParam, String name) FOR ServiceNamespace-»
+«IF crt.group != null-»
+«EXPAND Oracle2XML(crt.group, parentParam, name, null, null, "group")-»
+«ELSEIF crt.all != null-»
+«EXPAND Oracle2XML(crt.all, parentParam, name, null, null, "all")-»
+«ELSEIF crt.choice != null-»
+«EXPAND Oracle2XML(crt.choice, parentParam, name, null, null, "choice")-»
+«ELSEIF crt.sequence != null-»
+«EXPAND Oracle2XML(crt.sequence, parentParam, name, null, null, "sequence")-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE Oracle2XML(GroupRef gr, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«EXPAND Oracle2XML(findReferencedGroup(gr.ref), parentParam, typeName, parentGroupType, parentGroup, particleType)-»
+«ENDDEFINE»
+
+«DEFINE Oracle2XML(Group g, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«IF particleType == "choice"-»
+  CASE
+«FOREACH g.particle.typeSelect(JAXBElement) AS p-»
+«EXPAND Oracle2XML(p.getValue(), parentParam, typeName, particleType, g, p.name.localPart)-»
+«ENDFOREACH-»
+    ELSE
+«IF g.minOccurs > 0 && parentGroupType != "choice"-»
+      SOA_API_CUSTOM.fehler_pflichtelement_fehlt('«parentParam»');
+«ELSE-»
+      NULL;
+«ENDIF-»
+  END CASE;
+«ELSE-»
+«FOREACH g.particle.typeSelect(JAXBElement) AS p-»
+«EXPAND Oracle2XML(p.getValue(), parentParam, typeName, particleType, g, p.name.localPart)-»
+«ENDFOREACH-»
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE Oracle2XML(Object obj, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«ERROR "Particle type not supported: " + particleType»
+«ENDDEFINE»
+
+«DEFINE Oracle2XML(Element e, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«LET getTypeNamespace(e) AS ns-»
+«LET getElementNamespace(e) AS elemNs-»
+«LET parentParam + '.' + getOracleName(e) AS elementAccess-»
+    «IF parentGroupType != "choice"»IF«ELSE»WHEN«ENDIF» «getIsNotNullExpression(e, parentParam, parentGroup)» THEN
+«IF isArray(e, parentGroup)-»
+     FOR i IN 1..«elementAccess».count LOOP
+«ENDIF-»
+      elmt := DBMS_XMLDOM.createElement(p_domdoc, '«e.ref != null ? e.ref.localPart : e.name»'«IF elemNs != null», '«elemNs.URI»'«ENDIF»);
+      IF p_default_ns «IF elemNs != null»<> '«elemNs.URI»'«ELSE»IS NOT NULL«ENDIF» THEN
+        DBMS_XMLDOM.setAttribute(elmt, 'xmlns', '«elemNs.URI»');
+      END IF;
+      node := DBMS_XMLDOM.appendChild(p_parent_node, DBMS_XMLDOM.makeNode(elmt));
+«IF hasSimpleType(e)-»
+«IF e.nillable && isArray(e, parentGroup)-»
+      IF «elementAccess»(i) IS NULL THEN
+       DBMS_XMLDOM.setAttribute(elmt, 'xsi:nil', 'true');
+       DBMS_XMLDOM.setAttribute(elmt, 'xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
+      ELSE
+«ENDIF-»
+«IF isSimpleTypeList(e)-»
+      text := DBMS_XMLDOM.createTextNode(p_domdoc, «XSD2PackageName()».«XSDType2Oracle(ns, (TopLevelSimpleType) getSimpleType(e), "2l")»(«elementAccess»));
+      node := DBMS_XMLDOM.appendChild(node, DBMS_XMLDOM.makeNode(text));
+«ELSE-»
+«LET convertOracle2XSDBasicType(getBuiltInType(e), getFacets(e), isArrayElement(e) ? elementAccess + "(i)" : elementAccess) AS expr-»
+«IF isXMLType(expr)-»
+      SOA_API_DEFAULT.appendXMLType(«isArrayElement(e) ? elementAccess + "(i)" : elementAccess», p_domdoc, node);
+«ELSE-»
+      text := DBMS_XMLDOM.createTextNode(p_domdoc, «expr»);
+      node := DBMS_XMLDOM.appendChild(node, DBMS_XMLDOM.makeNode(text));
+«IF isLOB(expr)-»
+      SOA_API_DEFAULT.fillTextNode(node, «isArrayElement(e) ? elementAccess + "(i)" : elementAccess»);
+«ENDIF-»
+«ENDIF-»
+«ENDLET-»
+«ENDIF-»
+«ELSE-»
+«IF e.nillable && isArray(e, parentGroup)-»
+      IF «XSD2PackageName()».isNotNull(«elementAccess»(i)) THEN
+       DBMS_XMLDOM.setAttribute(elmt, 'xsi:nil', 'true');
+       DBMS_XMLDOM.setAttribute(elmt, 'xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
+      ELSE
+«ENDIF-»
+«LET getNonLocalComplexType(e) AS ct-»
+«IF e.complexType != null-»
+      «XSD2PackageName()».«anonymousTypeName2Oracle(e, typeName)»2x(«elementAccess»«IF isArray(e, parentGroup)»(i)«ENDIF», p_domdoc, node, «getNsContextParam(elemNs)»);
+«ELSEIF e.ref != null-»
+«LET findReferencedElement(e.ref) AS refElement-»
+«IF refElement.complexType != null-»
+      «XSD2PackageName(ns)».«anonymousTypeName2Oracle(ns, refElement, "")»2x(«elementAccess»«IF isArray(e, parentGroup)»(i)«ENDIF», p_domdoc, node, «getNsContextParam(elemNs)»);
+«ELSEIF ct != null-»
+      «XSD2PackageName(ns)».«XSDType2Oracle(ns, ct, "2x")»(«elementAccess»«IF isArray(e, parentGroup)»(i)«ENDIF», p_domdoc, node, «getNsContextParam(elemNs)»);
+«ELSE-»
+-- No Type found for «e.ref»
+«ENDIF-»
+«ENDLET-»
+«ELSEIF e.type != null-»
+      «XSD2PackageName()».«XSDType2Oracle(ns, ct, "2x")»(«elementAccess»«IF isArray(e, parentGroup)»(i)«ENDIF», p_domdoc, node, «getNsContextParam(elemNs)»);
+«ELSE-»
+-- No Type found for «e.name»
+«ENDIF-»
+«ENDLET-»
+«ENDIF-»
+«IF e.nillable && isArray(e, parentGroup)-»
+      END IF;
+«ENDIF-»
+«IF isArray(e, parentGroup)-»
+     END LOOP;
+«ENDIF-»
+«IF parentGroupType != "choice"-»
+«IF e.minOccurs > 0-»
+    ELSE
+«IF e.nillable && !isArray(e, parentGroup)-»
+      elmt := DBMS_XMLDOM.createElement(p_domdoc, '«e.ref != null ? e.ref.localPart : e.name»'«IF elemNs != null», '«elemNs.URI»'«ENDIF»);
+      IF p_default_ns «IF elemNs != null»<> '«elemNs.URI»'«ELSE»IS NOT NULL«ENDIF» THEN
+        DBMS_XMLDOM.setAttribute(elmt, 'xmlns', '«elemNs.URI»');
+      END IF;
+      node := DBMS_XMLDOM.appendChild(p_parent_node, DBMS_XMLDOM.makeNode(elmt));
+      DBMS_XMLDOM.setAttribute(elmt, 'xsi:nil', 'true');
+      DBMS_XMLDOM.setAttribute(elmt, 'xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
+«ELSE-»
+      SOA_API_CUSTOM.fehler_pflichtelement_fehlt('«elementAccess»');
+«ENDIF-»
+«ENDIF-»
+    END IF;
+«ENDIF-»
+«ENDLET-»
+«ENDLET-»
+«ENDLET-»
+«ENDDEFINE»
+
+«DEFINE XMLStringConversion(TopLevelElement tle) FOR ServiceNamespace-»
+«LET getTypeNamespace(tle) AS ns-»
+«IF getComplexType(tle) != null-»
+«LET tle.complexType == null ? XSDType2Oracle(ns, ns.findComplexType(tle.type)) : anonymousTypeName2Oracle(tle, "") AS typeName-»
+  FUNCTION «XSD2OracleSpecial(tle)»_4x(p_param_in IN CLOB) RETURN «getPackagePrefix(ns)»«typeName» AS
+    myparser    DBMS_XMLPARSER.parser;
+    indomdoc    DBMS_XMLDOM.DOMDocument;
+    inroot_elmt DBMS_XMLDOM.DOMElement;
+    localName   VARCHAR2(255);
+    namespace   VARCHAR2(999);
+
+    param_in    «getPackagePrefix(ns)»«typeName»;
+  BEGIN
+    myParser := DBMS_XMLPARSER.newParser;
+    DBMS_XMLPARSER.parseClob(myParser, p_param_in);
+    indomdoc := DBMS_XMLPARSER.getDocument(myParser);
+    DBMS_XMLPARSER.freeParser(myParser);
+    inroot_elmt := DBMS_XMLDOM.getDocumentElement(indomdoc);
+    localName := DBMS_XMLDOM.getLocalName(inroot_elmt);
+    namespace := DBMS_XMLDOM.getNamespace(inroot_elmt);
+
+    IF namespace <> c_URI OR localName <> '«tle.name»' THEN
+      DBMS_XMLDOM.freeDocument(indomdoc);
+      SOA_API_CUSTOM.fehler_unerwartetes_element('{' || namespace || '}' || localName);
+    END IF;
+
+    param_in := «getPackagePrefix(ns)»«typeName»4x(DBMS_XMLDOM.makeNode(inroot_elmt));
+    DBMS_XMLDOM.freeDocument(indomdoc);
+
+    RETURN param_in;
+  END;
+
+  FUNCTION «XSD2OracleSpecial(tle)»_2x(p_param_in IN «getPackagePrefix(ns)»«typeName») RETURN CLOB AS
+    outdomdoc    DBMS_XMLDOM.DOMDocument;
+    outnode      DBMS_XMLDOM.DOMNode;
+    outroot_elmt DBMS_XMLDOM.DOMElement;
+    outroot_node DBMS_XMLDOM.DOMNode;
+
+    v_clob       CLOB;
+  BEGIN
+    outdomdoc := DBMS_XMLDOM.newDOMDocument;
+    outnode   := DBMS_XMLDOM.makeNode(outdomdoc);
+
+    outroot_elmt := DBMS_XMLDOM.createElement(outdomdoc, '«tle.name»', c_URI);
+    DBMS_XMLDOM.setAttribute(outroot_elmt, 'xmlns', c_URI);
+    outroot_node := DBMS_XMLDOM.appendChild(outnode, DBMS_XMLDOM.makeNode(outroot_elmt));
+    «getPackagePrefix(ns)»«typeName»2x(p_param_in, outdomdoc, outroot_node, c_URI);
+
+    DBMS_LOB.createTemporary(v_clob, TRUE, dbms_lob.call);
+    DBMS_XMLDOM.writeToClob(outnode, v_clob);
+    DBMS_XMLDOM.freeDocument(outdomdoc);
+
+    RETURN v_clob;
+  END;
+«ENDLET-»
+«ENDIF-»
+«ENDLET-»
+«ENDDEFINE»

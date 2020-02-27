@@ -24,7 +24,7 @@ public class WSGenerateTest {
    @Test
    public void testCurrencyConvertor() throws Exception {
       // @see http://www.webservicex.com/CurrencyConvertor.asmx?wsdl
-      File genFolder = folder.newFolder("CurrencyConvertor");
+      File genFolder = new File("C:\\dev\\git\\WSGenerate\\output");// folder.newFolder("CurrencyConvertor");
       Issues issues = invokeWSGenerate("src/test/resources/CurrencyConvertor.wsdl -c wsdl2 -B dbSchema='ICIS_SERVICES' -d", genFolder);
       assertFalse("Errors while processing", issues.hasErrors());
       File file = new File(genFolder, "plsql/NETWebserviceXWww.PKS");
@@ -32,6 +32,20 @@ public class WSGenerateTest {
       file = new File(genFolder, "plsql/ECurrencyConvertorSoap.PKS");
       assertTrue("ECurrencyConvertorSoap.PKS not generated", file.exists());
       dumpFile(file);
+   }
+   
+   @Test
+   public void testErledigungVoruebergehendeVerwahrung() throws Exception {
+      File genFolder = new File("output");
+      Issues issues = invokeWSGenerate("input/de.itzbund.cbt.zoll.VVUW.service.ErledigungVoruebergehendeVerwahrung1.wsdl -c wsdl2 -B dbSchema='SUMA' -b input/mapping.properties -d", genFolder);
+      assertFalse("Errors while processing", issues.hasErrors());
+   }
+   
+   @Test
+   public void testEAS2() throws Exception {
+      File genFolder = new File("output");
+      Issues issues = invokeWSGenerate("input/ifc2/de.itzbund.cbt.zoll.ESUW.service.NESRiskAnalysis1.wsdl -B dbSchema='sys_tlnr' -b input/mapping.properties -d", genFolder);
+      assertFalse("Errors while processing", issues.hasErrors());
    }
    
    private static void dumpFile(File file) throws IOException {

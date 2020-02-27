@@ -28,7 +28,7 @@ boolean isIntegerTypeSigned(QName this) : isIntegerTypeNegative() || localPart =
 boolean isIntegerTypeNegative(QName this) : localPart == "nonPositiveInteger" || localPart == "negativeInteger";
 
 cached Integer getIntegerTypeTotalDigits(Primitive this) : 
-	let m = minimumN(enumerations.size > 0 ? maximum(enumerations.getDigits()) : null, minimumN(totalDigits,
+	let m = minimumN(enumerations.size > 0 ? maximum(enumerations.value.getDigits()) : null, minimumN(totalDigits,
 		isIntegerTypeNegative() ? getDigits("getFacetMinInclusive(facets)") :
 			(isIntegerTypeSigned() || isInt32TypeSigned() ? maximum(getDigits("getFacetMinInclusive(facets)"), getDigits("getFacetMaxInclusive(facets)")) :
 				getDigits("getFacetMaxInclusive(facets)")))) :
