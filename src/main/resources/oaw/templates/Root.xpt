@@ -6,8 +6,10 @@
 «EXTENSION oaw::extensions::wsdl»
 
 «DEFINE _Root FOR Model»
+«EXPAND SOAPBase::Root»
 «FOREACH serviceNamespaces AS serviceNamespace»
 «EXPAND Schema2DefPkg::Root FOR serviceNamespace»
+«EXPAND Schema2DefPkgImpl::Root FOR serviceNamespace»
 «FOREACH serviceNamespace.wsdls AS wsdl-»
 «EXPAND Porttype2APIPkg::Root(wsdl)»
 «EXPAND Porttype2APIPkgImpl::Root(wsdl)»

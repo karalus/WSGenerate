@@ -18,7 +18,7 @@
 «ENDDEFINE»
 
 «DEFINE Provider(Definition definition, PortType portType) FOR Model»
-«FILE "plsql/" + WSDL2PackageName(portType, 'A') + ".PKS"-»
+«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, 'A') + ".PKS"-»
 CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, 'A')» IS
   /**
   * <pre>
@@ -36,7 +36,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, 'A')»
   *  @headcom
   *  <pre>
   *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
-  *
+  *	 WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
   */
 
 «FOREACH definition.getSOAPBindings(portType) AS binding-»
@@ -71,7 +71,7 @@ END «WSDL2PackageName(portType, 'A')»;
 «REM»========================================================================«ENDREM»
 «FOREACH definition.getSOAPBindings(portType) AS binding»
 «IF isHttpTransport(binding)»
-«FILE "plsql/" + WSDL2PackageName(portType, 'X') + ".PKS"-»
+«FILE "plsql/" + getDBSchema() + "/" +  WSDL2PackageName(portType, 'X') + ".PKS"-»
 CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, 'X')» IS
   /**
   * <pre>
@@ -113,7 +113,7 @@ END «WSDL2PackageName(portType, 'X')»;
 «ENDIF»
 «REM»========================================================================«ENDREM»
 «IF isJmsTransport(binding)»
-«FILE "plsql/" + WSDL2PackageName(portType, 'L') + ".PKS"-»
+«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, 'L') + ".PKS"-»
 CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, 'L')» IS
   /**
   * <pre>
@@ -155,7 +155,7 @@ END «WSDL2PackageName(portType, 'L')»;
 «ENDFILE»
 
 «LET getPort(definition, binding) AS port»
-«FILE "plsql/" + WSDL2PackageName(portType, 'L') + ".SQL"-»
+«FILE "plsql/"+ getDBSchema() + "/" + WSDL2PackageName(portType, 'L') + ".SQL"-»
 DECLARE
   v_test integer;
 
@@ -194,7 +194,7 @@ END;
 «ENDDEFINE»
 
 «DEFINE Consumer(Definition definition, PortType portType) FOR Model»
-«FILE "plsql/" + WSDL2PackageName(portType, 'E') + ".PKS"-»
+«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, 'E') + ".PKS"-»
 CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, 'E')» IS
   /**
   * <pre>

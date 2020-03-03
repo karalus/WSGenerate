@@ -8,7 +8,7 @@
 «EXTENSION oaw::extensions::db»
 
 «DEFINE Root FOR ServiceNamespace»
-«FILE "plsql/" + XSD2PackageName() + ".PKS"-»
+«FILE "plsql/" + getDBSchema() + "/" + XSD2PackageName() + ".PKS"-»
 CREATE OR REPLACE PACKAGE «getDBSchema()».«XSD2PackageName()» IS
   /**
   * <pre>
@@ -317,11 +317,7 @@ PROCEDURE «XSDType2Oracle(name, ct, "2x")» (
   p_«XSDType2Oracle(name, ct)»	IN	 «XSDType2Oracle(name, ct)»
 , p_domdoc 				IN 	 DBMS_XMLDOM.DOMDocument
 , p_parent_node 		IN	 DBMS_XMLDOM.DOMNode
-«IF isGenerateSmallXML()-»
-, p_nsContext           IN OUT NOCOPY SOA_API_BASIC.nsContext_T
-«ELSE-»
 , p_default_ns          IN   VARCHAR2
-«ENDIF-»
 );
 
 FUNCTION isNotNull(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct)») RETURN BOOLEAN;

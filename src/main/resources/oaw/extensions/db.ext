@@ -14,6 +14,8 @@ private Boolean _generateServer() : GLOBALVAR generateServer;
 boolean generateServer() : _generateServer() == true;
 String getDBSchema() : GLOBALVAR dbSchema;
 boolean isGenerateSmallXML(ServiceNamespace this) : false;
+String getGeneratorVersion() : GLOBALVAR WSGenerateVersion;
+String getGeneratorBuildTime() : GLOBALVAR WSGenerateBuildTime;
 
 String lineSeparator() : "\r\n";
 
@@ -146,10 +148,10 @@ String convertOracle2XSDBasicType(QName this, List[Object] facets, String param)
 							(localPart == "gYearMonth" ? (hasTimezone(facets) ? "to_char(" + param + ", 'YYYY-MMTZH:TZM')" : "to_char(" + param + ", 'YYYY-MM')") :
 								(localPart == "gYear" ? (hasTimezone(facets) ? "to_char(" + param + ", 'YYYYTZH:TZM')" : "to_char(" + param + ')') :
 									(localPart == "boolean" ? "CASE " + param + " WHEN TRUE THEN 'true' WHEN false THEN 'false' ELSE 'NULL' END" :
-										(localPart == "float" ? "SOA_API_DEFAULT.FLOAT_TO_CHAR(" + param + ')' :
-											(localPart == "double" ? "SOA_API_DEFAULT.DOUBLE_TO_CHAR(" + param + ')' :
+										(localPart == "float" ? "SOAP_BASE.FLOAT_TO_CHAR(" + param + ')' :
+											(localPart == "double" ? "SOAP_BASE.DOUBLE_TO_CHAR(" + param + ')' :
 												(localPart == "base64Binary" ? "NULL" :
-													(localPart == "duration" ? "SOA_API_DEFAULT.DURATION_TO_CHAR(" + param + ')' :
+													(localPart == "duration" ? "SOAP_BASE.DURATION_TO_CHAR(" + param + ')' :
 														(localPart == "anyType" ? null :
 															"Illegal XSD type: " + localPart)))))))))))));
 
@@ -166,11 +168,11 @@ String convertXSDBasicType2Oracle(QName this, List[Object] facets, String param,
 							(localPart == "gYearMonth" ? (hasTimezone(facets) ? "TO_TIMESTAMP_TZ(" + param + ", 'YYYY-MMTZH:TZM')" : "TO_DATE(" + param + ", 'YYYY-MM')") :
 								(localPart == "gYear" ? (hasTimezone(facets) ? "TO_TIMESTAMP_TZ(" + param + ", 'YYYYTZH:TZM')" : "to_number(" + param + ')') :
 									(localPart == "boolean" ? "CASE " + param + " WHEN 'true' THEN TRUE WHEN 'false' THEN FALSE WHEN '1' THEN TRUE WHEN '0' THEN FALSE ELSE NULL END" :
-										(localPart == "float" ? "SOA_API_DEFAULT.CHAR_TO_FLOAT(" + param + ')' :
-											(localPart == "double" ? "SOA_API_DEFAULT.CHAR_TO_DOUBLE(" + param + ')' :
-												(localPart == "base64Binary" ? "SOA_API_DEFAULT.getBlobFromNode(" + rawParam + ')' :
-													(localPart == "duration" ? "SOA_API_DEFAULT.CHAR_TO_DURATION(" + param + ')' :
-														(localPart == "anyType" ? "SOA_API_DEFAULT.getXMLType(" + rawParam + ')' :
+										(localPart == "float" ? "SOAP_BASE.CHAR_TO_FLOAT(" + param + ')' :
+											(localPart == "double" ? "SOAP_BASE.CHAR_TO_DOUBLE(" + param + ')' :
+												(localPart == "base64Binary" ? "SOAP_BASE.getBlobFromNode(" + rawParam + ')' :
+													(localPart == "duration" ? "SOAP_BASE.CHAR_TO_DURATION(" + param + ')' :
+														(localPart == "anyType" ? "SOAP_BASE.getXMLType(" + rawParam + ')' :
 															"Illegal XSD type: " + localPart)))))))))))));
 
 private int getDigitsForDecimal(List[Object] this) :

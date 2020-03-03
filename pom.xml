@@ -8,6 +8,10 @@
 	<version>1.0-SNAPSHOT</version>
 	<name>WSGenerate</name>
 	<url>http://maven.apache.org</url>
+	<properties>
+		<project.build.sourceEncoding>ISO-8859-1</project.build.sourceEncoding>
+		<maven.build.timestamp.format>yyyy-MM-dd HH:mmz</maven.build.timestamp.format>
+	</properties>
 	<dependencies>
 		<dependency>
 			<groupId>wsdl4j</groupId>
@@ -138,17 +142,18 @@
 				<configuration>
 					<archive>
 						<manifest>
+			                <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
 							<addClasspath>true</addClasspath>
 							<useUniqueVersions>false</useUniqueVersions>
 							<classpathPrefix>lib/</classpathPrefix>
 							<mainClass>com.artofarc.WSGenerate</mainClass>
 						</manifest>
+			            <manifestEntries>
+			                <Build-Time>${maven.build.timestamp}</Build-Time>
+			            </manifestEntries>
 					</archive>
 				</configuration>
 			</plugin>
 		</plugins>
 	</build>
-	<properties>
-		<project.build.sourceEncoding>ISO-8859-1</project.build.sourceEncoding>
-	</properties>
 </project>

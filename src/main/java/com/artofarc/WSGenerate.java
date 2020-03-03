@@ -16,6 +16,8 @@
  */
 package com.artofarc;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -121,6 +123,9 @@ public class WSGenerate {
       WorkflowContext ctx = new WorkflowContextDefaultImpl();
       ctx.set("model", model);
       Properties globalProperties = line.getOptionProperties("B");
+      Properties metadata = getMetadata();
+      globalProperties.setProperty("WSGenerateVersion", metadata.getProperty("Implementation-Version", "0.0"));
+      globalProperties.setProperty("WSGenerateBuildTime", '"' + metadata.getProperty("Build-Time", "1970-01-01 00:00UTC") + '"');
       if (line.hasOption("c")) {
          String[] optionValues = line.getOptionValues("c");
          Issues issues = check(ctx, globalProperties, optionValues);
@@ -143,6 +148,16 @@ public class WSGenerate {
       return invoke(ctx, generator, globalProperties);
    }
 
+	private static Properties getMetadata() throws IOException {
+		Properties properties = new Properties();
+		InputStream inputStream = WSGenerate.class.getClassLoader().getResourceAsStream("/META-INF/MANIFEST.MF");
+		if (inputStream != null) {
+			properties.load(inputStream);
+			inputStream.close();
+		}
+		return properties;
+	}
+ 
    private static Issues check(WorkflowContext ctx, Properties globalProperties, String... checkFiles) {
       CheckComponent check = new CheckComponent();
       check.getResourceManager().setFileEncoding(ENCODING_ISO_8859_1);

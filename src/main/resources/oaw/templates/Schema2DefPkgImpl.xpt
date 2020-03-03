@@ -86,9 +86,6 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«XSD2PackageName()» IS
 «ENDFOREACH-»
 END «XSD2PackageName()»;
 /
-PROMPT ++++++++++++++++++++++++
-show errors
-PROMPT ++++++++++++++++++++++++
 «ENDFILE»
 «ENDDEFINE»
 
@@ -165,14 +162,14 @@ PROMPT ++++++++++++++++++++++++
     p_«XSDType2Oracle(name, ct)»	IN	«XSDType2Oracle(name, ct)»
   ) RETURN VARCHAR2
   IS
-    v_return            SOA_API_DEFAULT.maxplsqltext_t;
+    v_return            SOAP_BASE.maxplsqltext_t;
   BEGIN
 
     v_return := substr(
          '«XSD2PackageName()».«XSDType2Oracle(name, ct)»('
 «EXPAND ToString(ct, "p_" + XSDType2Oracle(name, ct), name)-»
       || chr(10) || ')'
-      , 1, SOA_API_DEFAULT.c_fl_maxplsqltext);
+      , 1, SOAP_BASE.c_fl_maxplsqltext);
 
     RETURN v_return;
 
@@ -207,7 +204,7 @@ PROMPT ++++++++++++++++++++++++
 «EXPAND XML2Oracle(ct, "v_return", name)-»
          WHEN FALSE THEN NULL;
          ELSE
-          SOA_API_CUSTOM.fehler_unerwartetes_element('{' || namespace || '}' || localName);
+          SOAP_BASE.fehler_unerwartetes_element('{' || namespace || '}' || localName);
         END CASE;
       END IF;
     END LOOP;
@@ -578,26 +575,26 @@ PROMPT ++++++++++++++++++++++++
 «IF hasSimpleType(e)-»
           text := DBMS_XMLDOM.getFirstChild(node);
 «IF isSimpleTypeList(e)-»
-          «elementAccess»«IF isArrayElement(e)»(«elementAccess».last)«ENDIF» := «XSD2PackageName()».«XSDType2Oracle(ns, (TopLevelSimpleType) getSimpleType(e), "4l")»(DBMS_XMLDOM.getNodeValue(text));
+          «elementAccess»«IF isArrayElement(e)»(«elementAccess».last)«ENDIF» := «XSD2PackageName(ns)».«XSDType2Oracle(ns, (TopLevelSimpleType) getSimpleType(e), "4l")»(DBMS_XMLDOM.getNodeValue(text));
 «ELSE-»
           «elementAccess»«IF isArrayElement(e)»(«elementAccess».last)«ENDIF» := «convertXSDBasicType2Oracle(getBuiltInType(e), getFacets(e), "DBMS_XMLDOM.getNodeValue(text)", "text")»;
 «ENDIF-»
 «ELSE-»
 «LET getNonLocalComplexType(e) AS ct-»
 «IF e.complexType != null-»
-          «elementAccess»«IF isArray(e, parentGroup)»(«elementAccess».last)«ENDIF» := «XSD2PackageName()».«anonymousTypeName2Oracle(e, typeName)»4x(node);
+          «elementAccess»«IF isArray(e, parentGroup)»(«elementAccess».last)«ENDIF» := «XSD2PackageName(ns)».«anonymousTypeName2Oracle(e, typeName)»4x(node);
 «ELSEIF e.ref != null-»
 «LET findReferencedElement(e.ref) AS refElement-»
 «IF refElement.complexType != null-»
-          «elementAccess»«IF isArray(e, parentGroup)»(«elementAccess».last)«ENDIF» := «XSD2PackageName()».«anonymousTypeName2Oracle(ns, refElement, "")»4x(node);
+          «elementAccess»«IF isArray(e, parentGroup)»(«elementAccess».last)«ENDIF» := «XSD2PackageName(ns)».«anonymousTypeName2Oracle(ns, refElement, "")»4x(node);
 «ELSEIF ct != null-»
-          «elementAccess»«IF isArray(e, parentGroup)»(«elementAccess».last)«ENDIF» := «XSD2PackageName()».«XSDType2Oracle(ns, ct)»4x(node);
+          «elementAccess»«IF isArray(e, parentGroup)»(«elementAccess».last)«ENDIF» := «XSD2PackageName(ns)».«XSDType2Oracle(ns, ct)»4x(node);
 «ELSE-»
 -- No Type found for «e.ref»
 «ENDIF-»
 «ENDLET-»
 «ELSEIF e.type != null-»
-          «elementAccess»«IF isArray(e, parentGroup)»(«elementAccess».last)«ENDIF» := «XSD2PackageName()».«XSDType2Oracle(ns, ct)»4x(node);
+          «elementAccess»«IF isArray(e, parentGroup)»(«elementAccess».last)«ENDIF» := «XSD2PackageName(ns)».«XSDType2Oracle(ns, ct)»4x(node);
 «ELSE-»
 -- No Type found for «e.name»
 «ENDIF-»
@@ -672,7 +669,7 @@ PROMPT ++++++++++++++++++++++++
 «ENDFOREACH-»
     ELSE
 «IF g.minOccurs > 0 && parentGroupType != "choice"-»
-      SOA_API_CUSTOM.fehler_pflichtelement_fehlt('«parentParam»');
+      SOAP_BASE.fehler_pflichtelement_fehlt('«parentParam»');
 «ELSE-»
       NULL;
 «ENDIF-»
@@ -714,12 +711,12 @@ PROMPT ++++++++++++++++++++++++
 «ELSE-»
 «LET convertOracle2XSDBasicType(getBuiltInType(e), getFacets(e), isArrayElement(e) ? elementAccess + "(i)" : elementAccess) AS expr-»
 «IF isXMLType(expr)-»
-      SOA_API_DEFAULT.appendXMLType(«isArrayElement(e) ? elementAccess + "(i)" : elementAccess», p_domdoc, node);
+      SOAP_BASE.appendXMLType(«isArrayElement(e) ? elementAccess + "(i)" : elementAccess», p_domdoc, node);
 «ELSE-»
       text := DBMS_XMLDOM.createTextNode(p_domdoc, «expr»);
       node := DBMS_XMLDOM.appendChild(node, DBMS_XMLDOM.makeNode(text));
 «IF isLOB(expr)-»
-      SOA_API_DEFAULT.fillTextNode(node, «isArrayElement(e) ? elementAccess + "(i)" : elementAccess»);
+      SOAP_BASE.fillTextNode(node, «isArrayElement(e) ? elementAccess + "(i)" : elementAccess»);
 «ENDIF-»
 «ENDIF-»
 «ENDLET-»
@@ -745,7 +742,7 @@ PROMPT ++++++++++++++++++++++++
 «ENDIF-»
 «ENDLET-»
 «ELSEIF e.type != null-»
-      «XSD2PackageName()».«XSDType2Oracle(ns, ct, "2x")»(«elementAccess»«IF isArray(e, parentGroup)»(i)«ENDIF», p_domdoc, node, «getNsContextParam(elemNs)»);
+      «XSD2PackageName(ns)».«XSDType2Oracle(ns, ct, "2x")»(«elementAccess»«IF isArray(e, parentGroup)»(i)«ENDIF», p_domdoc, node, «getNsContextParam(elemNs)»);
 «ELSE-»
 -- No Type found for «e.name»
 «ENDIF-»
@@ -769,7 +766,7 @@ PROMPT ++++++++++++++++++++++++
       DBMS_XMLDOM.setAttribute(elmt, 'xsi:nil', 'true');
       DBMS_XMLDOM.setAttribute(elmt, 'xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
 «ELSE-»
-      SOA_API_CUSTOM.fehler_pflichtelement_fehlt('«elementAccess»');
+      SOAP_BASE.fehler_pflichtelement_fehlt('«elementAccess»');
 «ENDIF-»
 «ENDIF-»
     END IF;
@@ -802,7 +799,7 @@ PROMPT ++++++++++++++++++++++++
 
     IF namespace <> c_URI OR localName <> '«tle.name»' THEN
       DBMS_XMLDOM.freeDocument(indomdoc);
-      SOA_API_CUSTOM.fehler_unerwartetes_element('{' || namespace || '}' || localName);
+      SOAP_BASE.fehler_unerwartetes_element('{' || namespace || '}' || localName);
     END IF;
 
     param_in := «getPackagePrefix(ns)»«typeName»4x(DBMS_XMLDOM.makeNode(inroot_elmt));

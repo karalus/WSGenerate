@@ -1,0 +1,592 @@
+«IMPORT com::artofarc::wsimport»
+
+«EXTENSION oaw::extensions::db»
+
+«DEFINE Root FOR Model»
+«FILE "plsql/" + getDBSchema() + "/SOAP_BASE.PKS"-»
+CREATE OR REPLACE PACKAGE «getDBSchema()».SOAP_BASE IS
+/**
+* <pre>
+*
+*  <b>Beschreibung:</b>
+*  Dieses Package beinhaltet die Routinen, welche vom API-Package-Generator verwendet werden.
+*  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+*
+*  </pre>
+*  @headcom
+*  @CHECK  XXXX-XXXX  -- Checkprogramm für diese Komponente ausschalten
+*
+*  Änderungs-Historie:   (neue Einträge immer oben anfügen)
+*  ========================================================
+*  Revision  Wann      Wer              Was (Request und ASB / Störfall vermerken)
+*  --------  --------  ---------------  ----------------------------------------
+*  R1.0      12.06.14  A.Karalus        Neuerstellung des Packages
+*/
+
+  ------------------------------------------------------------------------------
+  -- öffentliche Typen und Konstanten
+  ------------------------------------------------------------------------------
+
+  SUBTYPE oraclename_T IS VARCHAR2(128);
+
+  SUBTYPE maxplsqltext_T IS VARCHAR2(32767);
+  c_fl_maxplsqltext CONSTANT PLS_INTEGER := 32767;
+
+  c_SOAP_NS CONSTANT VARCHAR2(99) := 'http://schemas.xmlsoap.org/soap/envelope/';
+
+  ------------------------------------------------------------------------------
+  -- TABLE Typen für die Verwendung von XSD Basistypen in <element/> mit maxOccurs="unbounded"
+  -- (Voraussetzung: mapping.properties definiert Mapping 'orgW3Www2001=SOAP_BASE')
+  ------------------------------------------------------------------------------
+
+  TYPE string_CT IS TABLE OF VARCHAR2(32767);
+  TYPE int_CT IS TABLE OF INT;
+  TYPE any_CT IS TABLE OF XMLTYPE;
+
+  ------------------------------------------------------------------------------
+  -- Prozeduren/Funktionen
+  ------------------------------------------------------------------------------
+
+  FUNCTION CHAR_TO_FLOAT(p_exp IN VARCHAR2) RETURN BINARY_FLOAT;
+  FUNCTION FLOAT_TO_CHAR(p_n IN BINARY_FLOAT) RETURN VARCHAR2;
+  FUNCTION CHAR_TO_DOUBLE(p_exp IN VARCHAR2) RETURN BINARY_DOUBLE;
+  FUNCTION DOUBLE_TO_CHAR(p_n IN BINARY_DOUBLE) RETURN VARCHAR2;
+  FUNCTION CHAR_TO_DURATION(p_exp IN VARCHAR2) RETURN INTERVAL DAY TO SECOND;
+  FUNCTION DURATION_TO_CHAR(p_n IN INTERVAL DAY TO SECOND) RETURN VARCHAR2;
+
+  /**
+  * Ruft zum angebenen Service den entsprechenden Webservice auf.
+  *
+  * @param   p_service         <IN>    der definierte CEISeR FQN des Senders
+  * @param   p_action          <IN>    die SOAPAction
+  * @param   p_timeout         <IN>    der timeout in ms
+  * @param   p_request         <IN>    die Daten fuer den SOAP Request im XML Format als CLOB
+  *
+  * @return  der SOAP Response im XML Format als CLOB
+  */
+  FUNCTION call_soap_http(p_url         IN VARCHAR2,
+                          p_action      IN VARCHAR2,
+                          p_timeout     IN INTEGER,
+                          p_request     IN CLOB) RETURN CLOB;
+
+
+  /**
+  * Erzeugt eine message Id.
+  *
+  */
+  FUNCTION createMessageId RETURN VARCHAR2;
+
+
+  /**
+  * Erzeugt eine process instance Id.
+  *
+  */
+  FUNCTION createProcessInstanceId RETURN VARCHAR2;
+
+
+  /**
+  * Gibt den aktuellen Systemtimestamp im Format yyyy-mm-ddThh24:mi:ss.ff3Z zurück
+  *
+  */
+  FUNCTION getCurrentTimestampUTC RETURN VARCHAR2;
+
+
+  /**
+  * Füllt einen Textknoten mit dem Inhalt eines BLOB, der base64-codiert wird.
+  *
+  * @param   p_node             IN  Dom-Node, die mit dem Inhalt des BLOB gefüllt werden soll
+  * @param   p_blob             IN  BLOB, der codiert wird
+  */
+  PROCEDURE fillTextNode(
+    p_node  IN DBMS_XMLDOM.DOMNode
+  , p_blob  IN BLOB);
+
+
+  /**
+  * Liest einen BLOB aus einem base64-codierten Textknoten.
+  *
+  * @param   p_node    IN  DOM-Node, die decodiert werden soll
+  *
+  * @return  BLOB mit dem Inhalt des decodierten Textknotens
+  */
+  FUNCTION getBlobFromNode(p_node IN DBMS_XMLDOM.DOMNode) RETURN BLOB;
+
+
+  /**
+  * Erzeugt aus dem Node einen XMLType.
+  *
+  * @param   p_node    IN  DOM-Node, die umgewandelt werden soll
+  *
+  * @return  XMLType-Repräsentation der Node
+  */
+  FUNCTION getXMLType(p_node IN DBMS_XMLDOM.DOMNode) RETURN XMLType;
+
+
+  /**
+  * Appended ein XMLType an einen Node.
+  *
+  * @param   p_xmltype      IN  XMLType, dessen Inhalt an die Node angehängt werden soll
+  * @param   p_domdoc       IN  DOM-Document, in das der XML-Type eingefügt werden soll
+  * @param   p_parent_node  IN  Knoten, der als Parent für den Inhalt des XMLType dienen soll
+  */
+  PROCEDURE appendXMLType(
+    p_xmltype         IN XMLType
+  , p_domdoc          IN DBMS_XMLDOM.DOMDocument
+  , p_parent_node     IN DBMS_XMLDOM.DOMNode);
+
+
+  /**
+  * Gibt des Response-Code des zuletzt ausgeführten HTTP-Request zurück.
+  *
+  * @return  Response-Code
+  */
+  FUNCTION get_last_http_resp_code
+    RETURN PLS_INTEGER;
+    
+
+  /**
+  *
+  */
+  FUNCTION getUrlForService (
+      p_namespace           IN VARCHAR2
+    , p_porttype            IN VARCHAR2
+    , p_url                 IN OUT NOCOPY VARCHAR2
+  ) return VARCHAR2;
+
+
+  /**
+  * Signalisieren eines Fehlers in der internen XML-Verarbeitung.
+  * Beim Mappen von XML -> PL/SQL ist ein unerwartetes ELement aufgetreten
+  *
+  * @param  p_element   IN    = Name des Elements
+  */
+  PROCEDURE fehler_unerwartetes_element (
+      p_element         IN VARCHAR2
+  );
+
+
+  /**
+  * Signalisieren eines Fehlers in der internen XML-Verarbeitung.
+  * Beim Mappen von PL/SQL -> XML fehlt ein mandatorisches Element
+  *
+  * @param  p_element   IN    = Name des Elements
+  */
+  PROCEDURE fehler_pflichtelement_fehlt (
+      p_element         IN VARCHAR2
+  );
+
+
+END SOAP_BASE;
+/
+«ENDFILE»
+
+
+«FILE "plsql/" + getDBSchema() + "/SOAP_BASE.PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema()».SOAP_BASE IS
+/**
+* <pre>
+*
+*  <b>Beschreibung:</b>
+*  Dieses Package beinhaltet die Routinen, welche vom API-Package-Generator verwendet werden.
+*  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+*
+*  </pre>
+*
+*  Änderungs-Historie:   (neue Einträge immer oben anfügen)
+*  ========================================================
+*  Revision  Wann      Wer              Was (Request und ASB / Störfall vermerken)
+*  --------  --------  ---------------  ----------------------------------------
+*  R1.0      12.06.14  A.Karalus        Neuerstellung des Packages
+*/
+
+  ------------------------------------------------------------------------------
+  -- öffentliche Konstanten
+  ------------------------------------------------------------------------------
+
+  -- Package-Name
+  c_PACKAGE_NAME        CONSTANT oraclename_t := 'SOAP_BASE';
+
+  ------------------------------------------------------------------------------
+  -- öffentliche Typen und Variablen
+  ------------------------------------------------------------------------------
+  g_charset                      oraclename_t := NULL;
+  
+  -- Response-Code des zuletzt ausgeführten HTTP-Requests
+  g_http_response_code           PLS_INTEGER;
+  
+  -- Namespace für die Referenzierung von Binärinhalten als Attachment
+  c_ns_xop_include     CONSTANT VARCHAR2(37) := 'http://www.w3.org/2004/08/xop/include';
+
+  ------------------------------------------------------------------------------
+  -- globale Exceptions
+  ------------------------------------------------------------------------------
+
+  ------------------------------------------------------------------------------
+  -- Private Prozeduren/Funktionen
+  ------------------------------------------------------------------------------
+
+
+  ------------------------------------------------------------------------------
+  -- Standard Prozeduren/Funktionen
+  ------------------------------------------------------------------------------
+
+  FUNCTION CHAR_TO_FLOAT(p_exp IN VARCHAR2) RETURN BINARY_FLOAT IS
+    v_result BINARY_FLOAT;
+  BEGIN
+    BEGIN
+      -- Replace nötig, da wegen deutscher Sprache NLS_NUMERIC_CHARACTERS='',.'''
+      v_result := TO_BINARY_FLOAT(REPLACE(p_exp,'.',','));
+    EXCEPTION
+      WHEN OTHERS THEN
+        v_result := TO_BINARY_FLOAT(p_exp);
+    END;
+    RETURN v_result;
+  END;
+
+  FUNCTION FLOAT_TO_CHAR(p_n IN BINARY_FLOAT) RETURN VARCHAR2 IS
+  BEGIN
+    RETURN to_char(p_n, 'TMe', 'NLS_NUMERIC_CHARACTERS=''.,'''); -- R4.11
+  END;
+
+  FUNCTION CHAR_TO_DOUBLE(p_exp IN VARCHAR2) RETURN BINARY_DOUBLE IS
+    v_result BINARY_DOUBLE;
+  BEGIN
+    BEGIN
+      -- Replace nötig, da wegen deutscher Sprache NLS_NUMERIC_CHARACTERS='',.'''
+      v_result := TO_BINARY_DOUBLE(REPLACE(p_exp,'.',','));
+    EXCEPTION
+      WHEN OTHERS THEN
+        v_result := TO_BINARY_DOUBLE(p_exp);
+    END;
+    RETURN v_result;
+  END;
+
+  FUNCTION DOUBLE_TO_CHAR(p_n IN BINARY_DOUBLE) RETURN VARCHAR2 IS
+  BEGIN
+    RETURN to_char(p_n, 'TMe', 'NLS_NUMERIC_CHARACTERS=''.,'''); -- R4.11
+  END;
+
+  FUNCTION CHAR_TO_DURATION(p_exp IN VARCHAR2) RETURN INTERVAL DAY TO SECOND IS
+    v_duration INTERVAL DAY TO SECOND;
+  BEGIN
+    -- TODO: Implementierung fehlt völlig, ggf. mit RegExp, siehe: http://www.w3.org/TR/2000/WD-xmlschema-2-20000225/#timeDuration
+  	v_duration := '-7 19:24:30';
+    RETURN v_duration;
+  END;
+
+  FUNCTION DURATION_TO_CHAR(p_n IN INTERVAL DAY TO SECOND) RETURN VARCHAR2 IS
+    v_str  VARCHAR2(1);
+    v_n    INTERVAL DAY TO SECOND;
+  BEGIN
+    IF p_n < INTERVAL '0' SECOND THEN
+      v_str := '-';
+      v_n := -1 * p_n;
+    ELSE
+      v_n := p_n;
+    END IF;
+    RETURN v_str || 'P0Y0M' || extract(DAY FROM v_n) || 'DT' || extract(HOUR FROM v_n) || 'H' || extract(MINUTE FROM v_n) || 'M' || to_char(extract(SECOND FROM v_n), 'fm00.000') || 'S';
+  END;
+  
+  /**
+  * Gibt des Response-Code des zuletzt ausgeführten HTTP-Request zurück.
+  *
+  * @return  Response-Code
+  */
+  FUNCTION get_last_http_resp_code
+    RETURN PLS_INTEGER
+  IS
+  BEGIN
+    RETURN g_http_response_code;
+  END get_last_http_resp_code;
+
+  
+  FUNCTION call_soap_http(
+    p_url         IN VARCHAR2,
+    p_action      IN VARCHAR2,
+    p_timeout     IN INTEGER,
+    p_request     IN CLOB)
+  RETURN CLOB AS
+    l_blob         BLOB;
+    l_dest_offset  INTEGER := 1;
+    l_src_offset   INTEGER := 1;
+    l_lang_context INTEGER := 0;
+    l_warning      INTEGER;
+    l_blob_length  INTEGER;
+
+    v_http_request    UTL_HTTP.req;
+    v_http_response   UTL_HTTP.resp;
+    v_response        CLOB;
+
+    v_response_line   VARCHAR2(32767);
+    v_zaehler         INTEGER := 1;
+  BEGIN
+    -- Variable für Response-Code zurücksetzen
+    g_http_response_code := NULL;
+
+    IF g_charset IS NULL THEN
+      SELECT VALUE INTO g_charset FROM NLS_DATABASE_PARAMETERS WHERE PARAMETER = 'NLS_CHARACTERSET';
+      CASE
+        WHEN g_charset = 'WE8ISO8859P1'  THEN g_charset := 'iso-8859-1';
+        WHEN g_charset = 'WE8ISO8859P15' THEN g_charset := 'iso-8859-15';
+        WHEN g_charset = 'WE8MSWIN1252'  THEN g_charset := 'windows-1252';
+        WHEN g_charset IN ('AL32UTF8','UTF8') THEN g_charset := 'utf-8';
+        ELSE RAISE_APPLICATION_ERROR(-20003, 'Database charset not supported: ' || g_charset);
+      END CASE;
+    END IF;
+
+    IF p_url IS NULL OR p_url NOT LIKE 'http%' THEN
+      RAISE_APPLICATION_ERROR(-20002, 'Fehler keine korrekte URL: ' || p_url);
+    END IF;
+
+    dbms_lob.createTemporary(l_blob, TRUE, dbms_lob.call);
+    dbms_lob.convertToBlob(dest_lob     => l_blob,
+                           src_clob     => p_request,
+                           amount       => dbms_lob.lobmaxsize,
+                           dest_offset  => l_dest_offset,
+                           src_offset   => l_src_offset,
+                           blob_csid    => nls_charset_id('AL32UTF8'),
+                           lang_context => l_lang_context,
+                           warning      => l_warning);
+    l_blob_length := dbms_lob.getlength(l_blob);
+
+    v_http_request := UTL_HTTP.begin_request(p_url, 'POST', 'HTTP/1.1');
+
+    IF p_timeout IS NOT NULL THEN
+      UTL_HTTP.set_transfer_timeout(v_http_request, p_timeout / 1000);
+    END IF;
+    UTL_HTTP.set_response_error_check(v_http_request, FALSE);
+    UTL_HTTP.set_header(v_http_request, 'Content-Type', 'text/xml; charset=utf-8');
+    UTL_HTTP.set_header(v_http_request, 'Content-Length', l_blob_length);
+    -- Response im Charset der Datenbank anfordern
+    UTL_HTTP.set_header(v_http_request, 'Accept-Charset', g_charset); -- R4.10
+    UTL_HTTP.set_header(v_http_request, 'SOAPAction', p_action);
+    -- write_raw kann nur 32 K pro Aufruf schreiben, deshalb mehrmaliger
+    -- Aufruf um auch groessere Datenmengen uebergeben zu koennen.
+    WHILE v_zaehler <= l_blob_length
+    LOOP
+      UTL_HTTP.write_raw(v_http_request, DBMS_LOB.SUBSTR(l_blob, 32767, v_zaehler));
+      v_zaehler := v_zaehler + 32767;
+    END LOOP;
+    dbms_lob.freeTemporary(l_blob);
+
+    v_http_response := UTL_HTTP.get_response(v_http_request);
+    
+    -- Response-Code in interner Variable speichern
+    g_http_response_code := v_http_response.status_code;
+
+    -- Pruefen auf ReturnCode
+    IF v_http_response.status_code != UTL_HTTP.HTTP_OK AND v_http_response.status_code != 500 THEN
+      UTL_HTTP.read_text(v_http_response, v_response_line);
+      UTL_HTTP.end_response(v_http_response);
+      RAISE_APPLICATION_ERROR(-20001, 'Fehler ' || v_http_response.status_code || ' ' || v_http_response.reason_phrase || ' beim Http Request');
+    END IF;
+
+    -- Initialisierung des CLOB.
+    DBMS_LOB.createTemporary(v_response, TRUE, dbms_lob.call);
+    -- Das Ergebnis wird in einer Schleife ausgelesen
+    -- Es werden immer 32K grosse Teile der Antwort ausgelesen.
+    -- In der Exception wird, wenn die Antwort ausgelesen wurde, der Response geschlossen
+    BEGIN
+      LOOP
+        UTL_HTTP.read_text(v_http_response, v_response_line);
+        DBMS_LOB.writeappend(v_response, LENGTH(v_response_line), v_response_line);
+      END LOOP;
+    EXCEPTION
+      WHEN UTL_HTTP.end_of_body THEN
+        UTL_HTTP.end_response(v_http_response);
+    END;
+
+    return v_response;
+
+  END call_soap_http;
+
+  /**
+  * Erzeugt eine neue MessageId.
+  * Wird intern benötigt wenn ein E-Package aufgerufen wird.
+  *
+  * @return   = MessageId
+  */
+  FUNCTION createMessageId RETURN VARCHAR2 AS
+    v_sys_guid RAW(32) := SYS_GUID();
+  BEGIN
+    return rpad('M-' || substr(v_sys_guid,1,8) || '-' || substr(v_sys_guid,9,4) || '-' || substr(v_sys_guid,13,4) || '-' || substr(v_sys_guid,17,4) || '-' || substr(v_sys_guid,21),38,'0');
+  END createMessageId;
+
+
+  /**
+  * Erzeugt eine neue ProcessInstanceId.
+  * Wird benötigt wenn ein Geschäftsprozess initiert wird.
+  * Sollte man bereits vom OSB aufgerufen werden, ist die einkommenden ProcessInstanceId weiterzuverwenden (geschachtelter Aufruf).
+  *
+  * @return   = ProcessInstanceId
+  */
+  FUNCTION createProcessInstanceId RETURN VARCHAR2 AS
+    v_sys_guid RAW(32) := SYS_GUID();
+  BEGIN
+    return rpad('P-' || substr(v_sys_guid,1,8) || '-' || substr(v_sys_guid,9,4) || '-' || substr(v_sys_guid,13,4) || '-' || substr(v_sys_guid,17,4) || '-' || substr(v_sys_guid,21),38,'0');
+  END createProcessInstanceId;
+
+
+  /**
+  * Gibt den aktuellen Systemtimestamp im Format yyyy-mm-ddThh24:mi:ss.ff3Z zurück
+  *
+  * @return   = CurrentTimestampUTC
+  */
+  FUNCTION getCurrentTimestampUTC RETURN VARCHAR2 AS
+  BEGIN
+	RETURN TO_CHAR(SYS_EXTRACT_UTC(SYSTIMESTAMP),'yyyy-mm-dd"T"hh24:mi:ss.ff3"Z"');
+  END;
+
+
+  -- https://community.oracle.com/thread/1026102
+  PROCEDURE fillTextNode(
+    p_node  IN DBMS_XMLDOM.DOMNode
+  , p_blob  IN BLOB) IS
+
+    bloblen    CONSTANT INTEGER := dbms_lob.getlength(p_blob);
+
+    ostream    sys.utl_CharacterOutputStream;
+    chunksize  CONSTANT INTEGER := 57;
+    offset     integer := 1;
+    chunk      raw(57);
+    chunk_b64  varchar2(78); -- R4.9
+    dummy      integer;
+  BEGIN
+    ostream := DBMS_XMLDOM.setNodeValueAsCharacterStream(p_node);
+
+    while offset < bloblen
+    loop
+      chunk := DBMS_LOB.SUBSTR(p_blob, chunksize, offset);
+      chunk_b64 := utl_raw.cast_to_varchar2(utl_encode.base64_encode(chunk));
+      -- write chunk to DOM node
+      dummy := ostream.write(chunk_b64, length(chunk_b64));
+      offset := offset + chunksize;
+    end loop;
+
+    ostream.close();
+
+  END fillTextNode;
+
+
+  FUNCTION getBlobFromNode(p_node IN DBMS_XMLDOM.DOMNode) RETURN BLOB AS
+
+    v_istream                     SYS.utl_CharacterInputStream;
+    v_response                    BLOB;
+    v_chunksize                   integer := 16384;
+    v_chunk                       varchar2(16384);
+    v_buffer                      raw(12288);
+  BEGIN
+    v_istream := DBMS_XMLDOM.getNodeValueAsCharacterStream(p_node);
+
+    DBMS_LOB.createTemporary(v_response, TRUE, dbms_lob.call);
+    -- Read stream in chunks
+    LOOP
+       v_istream.read(v_chunk, v_chunksize);
+       if v_chunksize <= 0 then
+          exit;
+       end if;
+       v_buffer := utl_encode.base64_decode(utl_raw.cast_to_raw(v_chunk));
+       DBMS_LOB.writeappend(v_response, 
+                            utl_raw.length (v_buffer), -- R4.9
+                            v_buffer);
+    END LOOP;
+
+    v_istream.close();
+
+    return v_response;
+
+  END getBlobFromNode;
+
+  
+  FUNCTION getXMLType(p_node IN DBMS_XMLDOM.DOMNode) RETURN XMLType AS
+    v_doc                        DBMS_XMLDOM.DOMDocument;
+    v_node                       DBMS_XMLDOM.DOMNode;
+    v_result                     XMLType;
+  BEGIN
+    IF NOT DBMS_XMLDOM.isNull(p_node) THEN
+      v_doc := DBMS_XMLDOM.newDOMDocument;
+      v_node := DBMS_XMLDOM.appendChild(DBMS_XMLDOM.makeNode(v_doc), DBMS_XMLDOM.adoptNode(v_doc, p_node));
+      v_result := DBMS_XMLDOM.getXMLType(v_doc);
+      DBMS_XMLDOM.freeDocument(v_doc);
+    END IF;
+
+    return v_result;
+  END;
+
+
+  PROCEDURE appendXMLType(
+    p_xmltype         IN XMLType
+  , p_domdoc          IN DBMS_XMLDOM.DOMDocument
+  , p_parent_node     IN DBMS_XMLDOM.DOMNode) IS
+
+    v_doc                        DBMS_XMLDOM.DOMDocument;
+    v_node                       DBMS_XMLDOM.DOMNode;
+  BEGIN
+    v_doc := DBMS_XMLDOM.newDOMDocument(p_xmltype);
+    v_node := DBMS_XMLDOM.appendChild(p_parent_node, DBMS_XMLDOM.adoptNode(p_domdoc, DBMS_XMLDOM.makeNode(DBMS_XMLDOM.getDocumentElement(v_doc))));
+    DBMS_XMLDOM.freeDocument(v_doc);
+  END;
+  
+  /**
+  * Signalisieren eines Fehlers in der internen XML-Verarbeitung.
+  * Beim Mappen von XML -> PL/SQL ist ein unerwartetes ELement aufgetreten
+  *
+  * @param  p_element   IN    = Name des Elements
+  */
+  PROCEDURE fehler_unerwartetes_element (
+      p_element         IN VARCHAR2
+  ) IS
+  BEGIN
+    -- TODO: Muss fuer jedes System angepasst werden
+
+    RAISE_APPLICATION_ERROR(-20000, 'Unerwartetes Element <' || p_element || '> in der XML-API-IN-Nachricht.');
+  END;
+
+
+  /**
+  *
+  */
+  FUNCTION getUrlForService (
+      p_namespace           IN VARCHAR2
+    , p_porttype            IN VARCHAR2
+    , p_url                 IN OUT NOCOPY VARCHAR2
+  ) return VARCHAR2 IS
+  BEGIN
+    -- TODO: Muss fuer jedes System implementiert werden, ist umgebungsabhängig!
+	
+    IF p_url IS NULL THEN
+       RAISE_APPLICATION_ERROR(-20010, 'No URL given');
+    END IF;
+    return p_url;
+   END;
+
+
+  /**
+  * Signalisieren eines Fehlers in der internen XML-Verarbeitung.
+  * Beim Mappen von PL/SQL -> XML fehlt ein mandatorisches Element
+  *
+  * @param  p_element   IN    = Name des Elements
+  */
+  PROCEDURE fehler_pflichtelement_fehlt (
+      p_element         IN VARCHAR2
+  ) IS
+  BEGIN
+    -- TODO: Muss fuer jedes System angepasst werden
+
+    RAISE_APPLICATION_ERROR(-20001, 'Pflichtelement <' || p_element || '> fehlt in der API-Out-Struktur.');
+  END;
+
+BEGIN
+  -- Sessionweite Initialisierungen für UTL_HTTP
+  
+  -- Detailierte Exceptions aktivieren
+  UTL_HTTP.set_detailed_excp_support(TRUE);
+      
+  -- Persistent Connections aktivieren
+  utl_http.set_persistent_conn_support (enable => TRUE,max_conns => 10);
+
+END SOAP_BASE;
+/
+«ENDFILE»
+
+«ENDDEFINE»

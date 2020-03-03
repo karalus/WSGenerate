@@ -17,7 +17,7 @@
 «ENDDEFINE»
 
 «DEFINE Provider(Definition definition, PortType portType) FOR Model»
-«FILE "plsql/" + WSDL2PackageName(portType, 'A') + ".PKB"-»
+«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, 'A') + ".PKB"-»
 CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'A')» IS
   /**
   * <pre>
@@ -42,7 +42,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'A')»
   */
 
   -- Package-Name
-  c_package_name CONSTANT SOA_API_DEFAULT.oraclename_t := '«WSDL2PackageName(portType, 'A')»';
+  c_package_name CONSTANT SOAP_BASE.oraclename_t := '«WSDL2PackageName(portType, 'A')»';
 
   ------------------------------------------------------------------------------
   -- öffentliche Typen und Variablen
@@ -72,7 +72,7 @@ END «WSDL2PackageName(portType, 'A')»;
 «REM»========================================================================«ENDREM»
 «LET definition.getSOAPBindings(portType).reject(e|e.isJmsTransport()) AS bindings»
 «IF bindings.size > 0»
-«FILE "plsql/" + WSDL2PackageName(portType, 'X') + ".PKB"-»
+«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, 'X') + ".PKB"-»
 CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'X')» IS
   /**
   * <pre>
@@ -95,7 +95,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'X')»
   */
 
   -- Package-Name
-  c_package_name CONSTANT SOA_API_DEFAULT.oraclename_t := '«WSDL2PackageName(portType, 'X')»';
+  c_package_name CONSTANT SOAP_BASE.oraclename_t := '«WSDL2PackageName(portType, 'X')»';
 
 «FOREACH definition.getSOAPBindings(portType) AS binding-»
 «FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
@@ -112,7 +112,7 @@ END «WSDL2PackageName(portType, 'X')»;
 «ENDDEFINE»
 
 «DEFINE Consumer(Definition definition, PortType portType) FOR Model»
-«FILE "plsql/" + WSDL2PackageName(portType, 'E') + ".PKB"-»
+«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, 'E') + ".PKB"-»
 CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'E')» IS
   /**
   * <pre>
@@ -134,10 +134,12 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'E')»
   */
 
   -- Package-Name
-  c_package_name CONSTANT SOA_API_DEFAULT.oraclename_t := '«WSDL2PackageName(portType, 'E')»';
+  c_package_name CONSTANT SOAP_BASE.oraclename_t := '«WSDL2PackageName(portType, 'E')»';
   c_SOAP_NS      CONSTANT VARCHAR2(99) := 'http://schemas.xmlsoap.org/soap/envelope/';
 
 «FOREACH definition.getSOAPBindings(portType) AS binding-»
+  g_url          VARCHAR2(255) := '«definition.getPort(binding).getLocation()»';
+
 «FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
 «EXPAND OperationContentE(portType, binding, bindingOperation)»
 «ENDFOREACH»
@@ -171,23 +173,13 @@ END «WSDL2PackageName(portType, 'E')»;
   ) IS
     -- Komplexe Type-Variablen für Parameter der BL-Schicht (return, in, out und in/out) !!!! dies ist individuell anzupassen !!!! ---
 
-    -- API-Handle-Parameter
-    v_api_handle                 SOA_API_CUSTOM.api_handle_T;
-    c_routine           CONSTANT SOA_API_DEFAULT.oraclename_T := '«operation.name»';
+    c_routine           CONSTANT SOAP_BASE.oraclename_T := '«operation.name»';
 
   BEGIN
-
-    SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_INFO, c_package_name, c_routine, 'Start');
 
     ---------------------------------------------------------------------------
     -- Initialisierungsmassnahmen für API durchführen, z.B. Berechtigungsprüfung etc.
     ---------------------------------------------------------------------------
-    v_api_handle := SOA_API_CUSTOM.API_Init(
-        p_package        =>     c_package_name
-      , p_routine        =>    	c_routine
-      , p_objekt_ident   =>     NULL  -- !!!! dies ist individuell anzupassen !!!! ---
-      , p_mep            =>     SOA_API_DEFAULT.MEP_REQUEST_REPLY»
-     );
 
 «IF operation.name == 'checkAlive'-»
     ---------------------------------------------------------------------------
@@ -226,20 +218,13 @@ END «WSDL2PackageName(portType, 'E')»;
     ---------------------------------------------------------------------------
     -- API erfolgreich beenden - OUT-Message-Header und Fehler Struktur entsprechend füllen.
     ---------------------------------------------------------------------------
-    SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_INFO, c_package_name, c_routine, 'Ende');
-    SOA_API_CUSTOM.API_ende_ok (v_api_handle, p_error_out);
 
     ------------------------------------------------------------------------------
     -- Exception - API mit Fehler beenden - OUT-Message-Header und Fehler Struktur entsprechend füllen.
     ------------------------------------------------------------------------------
   EXCEPTION
     WHEN OTHERS THEN
-      SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_ERROR, c_package_name, c_routine, 'Fehler: ' || SQLERRM);
       p_param_out := NULL;
-      SOA_API_CUSTOM.API_ende_mit_fehler (v_api_handle, SQLCODE, SQLERRM, p_error_out);
-      -- serverStackTrace der Fault-Struktur wird mit Error-Backtrace gefüllt, damit erhält man auch
-      -- die ursprüngliche Codestelle, an der der Fehler auftrat
-      p_error_out.payload.errorDetail.serverStackTrace := dbms_utility.format_error_backtrace();
 
   END «operation.name»;
 «ENDLET-»
@@ -256,7 +241,7 @@ END «WSDL2PackageName(portType, 'E')»;
     , p_fault_out              OUT        NUMBER
   ) IS
 
-    c_routine           CONSTANT SOA_API_DEFAULT.oraclename_t       := '«operation.name»';
+    c_routine           CONSTANT SOAP_BASE.oraclename_t       := '«operation.name»';
 
     param_in               		 «getParameterOracleFQN(getInputElementQName(binding, operation.name))»;
     param_out                    «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»;
@@ -266,47 +251,22 @@ END «WSDL2PackageName(portType, 'E')»;
 
   BEGIN
 
-    SOA_API_CUSTOM.initLogger(c_package_name, c_routine);
-    SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_INFO, c_package_name, c_routine, 'Start');
-
-    IF SOA_API_CUSTOM.getLevel(c_package_name) <= SOA_API_CUSTOM.Level_DEBUG THEN
-      Soa_Api_Default.log_soap_message(SOA_API_CUSTOM.Level_DEBUG, c_package_name, c_routine, p_param_in);
-    END IF;
-    
     param_in := «getParameterOracleFQN(getInputElementQName(binding, operation.name))»_4x(p_param_in);
-
-    IF SOA_API_CUSTOM.getLevel(c_package_name) <= SOA_API_CUSTOM.Level_DEBUG THEN
-      SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_DEBUG, c_package_name, c_routine, «getParameterOracleFQN(getInputElementQName(binding, operation.name))»2c(param_in));
-    END IF;
 
     «WSDL2PackageName(portType, 'A')».«operation.name»(param_in, param_out«IF getFaultElementQName(binding, operation.name) != null», error_out«ENDIF»);
 
 «IF getFaultElementQName(binding, operation.name) != null-»
     IF error_out.payload.errorDetail.errorCode IS NULL THEN
 «ENDIF-»
-      IF SOA_API_CUSTOM.getLevel(c_package_name) <= SOA_API_CUSTOM.Level_DEBUG THEN
-        SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_DEBUG, c_package_name, c_routine, «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»2c(param_out));
-      END IF;
-
       p_param_out := «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»_2x(param_out);
       p_fault_out := 0;
 «IF getFaultElementQName(binding, operation.name) != null-»
     ELSE
-      IF SOA_API_CUSTOM.getLevel(c_package_name) <= SOA_API_CUSTOM.Level_DEBUG THEN
-        SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_DEBUG, c_package_name, c_routine, «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»2c(error_out));
-      END IF;
-
       p_param_out := «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»_2x(error_out);
       p_fault_out := 1;
     END IF;
 «ENDIF-»
 
-    IF SOA_API_CUSTOM.getLevel(c_package_name) <= SOA_API_CUSTOM.Level_DEBUG THEN
-      Soa_Api_Default.log_soap_message(SOA_API_CUSTOM.Level_DEBUG, c_package_name, c_routine, p_param_out);
-    END IF;
-
-    SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_INFO, c_package_name, c_routine, 'Ende');
-    SOA_API_CUSTOM.finalizeLogger(c_package_name, c_routine);
   END «operation.name»;
 «ENDLET-»
 «ENDDEFINE»
@@ -337,7 +297,7 @@ END «WSDL2PackageName(portType, 'E')»;
 «ENDIF-»
   ) IS
 
-    c_routine           CONSTANT SOA_API_DEFAULT.oraclename_T := '«operation.name»';
+    c_routine           CONSTANT SOAP_BASE.oraclename_T := '«operation.name»';
 
     param_in				     CLOB;
     param_out     			     CLOB;
@@ -355,15 +315,10 @@ END «WSDL2PackageName(portType, 'E')»;
 
     timeout                      INTEGER;
 	fault_mapped                 BOOLEAN := FALSE;
+    v_url                        VARCHAR2(255);
 
   BEGIN
 
-    SOA_API_CUSTOM.initLogger(c_package_name, c_routine);
-    SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_INFO, c_package_name, c_routine, 'Start');
-
-    IF SOA_API_CUSTOM.getLevel(c_package_name) <= SOA_API_CUSTOM.Level_DEBUG THEN
-      SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_DEBUG, c_package_name, c_routine, «getParameterOracleFQN(getInputElementQName(binding, operation.name))»2c(p_param_in));
-    END IF;
     outdomdoc := DBMS_XMLDOM.newDOMDocument;
     outdocnode := DBMS_XMLDOM.makeNode(outdomdoc);
 
@@ -383,7 +338,8 @@ END «WSDL2PackageName(portType, 'E')»;
     DBMS_XMLDOM.writeToClob(outdocnode, param_in);
     DBMS_XMLDOM.freeDocument(outdomdoc);
 
-    param_out := SOA_API_DEFAULT.call_soap_http(c_senderFQN, '"«bindingOperation.getSoapActionURI()»"', timeout, param_in);
+    v_url := SOAP_BASE.getUrlForService(c_PortType_URI, '«binding.portType.QName.localPart»', g_url);
+    param_out := SOAP_BASE.call_soap_http(v_url, '"«bindingOperation.getSoapActionURI()»"', timeout, param_in);
     DBMS_LOB.freeTemporary(param_in);
 
     myParser := DBMS_XMLPARSER.newParser;
@@ -417,13 +373,8 @@ END «WSDL2PackageName(portType, 'E')»;
 «ENDIF-»
     ELSE
       p_param_out := «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»4x(innode);
-      IF SOA_API_CUSTOM.getLevel(c_package_name) <= SOA_API_CUSTOM.Level_DEBUG THEN
-        SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_DEBUG, c_package_name, c_routine, «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»2c(p_param_out));
-      END IF;
     END IF;
     DBMS_XMLDOM.freeDocument(indomdoc);
-
-    SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_INFO, c_package_name, c_routine, 'Ende');
 
   END «operation.name»;
 «ENDLET-»
