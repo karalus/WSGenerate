@@ -9,16 +9,14 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».SOAP_BASE IS
 * <pre>
 *
 *  <b>Beschreibung:</b>
-*  Dieses Package beinhaltet die Routinen, welche vom API-Package-Generator verwendet werden.
+*  Dieses Package beinhaltet die Routinen, welche vom generierten Code verwendet werden.
 *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
 *
 *  </pre>
-*  @headcom
-*  @CHECK  XXXX-XXXX  -- Checkprogramm für diese Komponente ausschalten
 *
 *  Änderungs-Historie:   (neue Einträge immer oben anfügen)
 *  ========================================================
-*  Revision  Wann      Wer              Was (Request und ASB / Störfall vermerken)
+*  Revision  Wann      Wer              Was
 *  --------  --------  ---------------  ----------------------------------------
 *  R1.0      12.06.14  A.Karalus        Neuerstellung des Packages
 */
@@ -31,8 +29,6 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».SOAP_BASE IS
 
   SUBTYPE maxplsqltext_T IS VARCHAR2(32767);
   c_fl_maxplsqltext CONSTANT PLS_INTEGER := 32767;
-
-  c_SOAP_NS CONSTANT VARCHAR2(99) := 'http://schemas.xmlsoap.org/soap/envelope/';
 
   ------------------------------------------------------------------------------
   -- TABLE Typen für die Verwendung von XSD Basistypen in <element/> mit maxOccurs="unbounded"
@@ -57,7 +53,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».SOAP_BASE IS
   /**
   * Ruft zum angebenen Service den entsprechenden Webservice auf.
   *
-  * @param   p_service         <IN>    der definierte CEISeR FQN des Senders
+  * @param   p_url             <IN>    die Aufruf URL beim Service Gateway
   * @param   p_action          <IN>    die SOAPAction
   * @param   p_timeout         <IN>    der timeout in ms
   * @param   p_request         <IN>    die Daten fuer den SOAP Request im XML Format als CLOB
@@ -145,12 +141,12 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».SOAP_BASE IS
     
 
   /**
-  *
+  * Gibt die Aufruf-URL für den Service zurück.
   */
   FUNCTION getUrlForService (
       p_namespace           IN VARCHAR2
     , p_porttype            IN VARCHAR2
-    , p_url                 IN OUT NOCOPY VARCHAR2
+    , p_url                 IN VARCHAR2
   ) return VARCHAR2;
 
 
@@ -187,14 +183,14 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».SOAP_BASE IS
 * <pre>
 *
 *  <b>Beschreibung:</b>
-*  Dieses Package beinhaltet die Routinen, welche vom API-Package-Generator verwendet werden.
+*  Dieses Package beinhaltet die Routinen, welche vom generierten Code verwendet werden.
 *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
 *
 *  </pre>
 *
 *  Änderungs-Historie:   (neue Einträge immer oben anfügen)
 *  ========================================================
-*  Revision  Wann      Wer              Was (Request und ASB / Störfall vermerken)
+*  Revision  Wann      Wer              Was
 *  --------  --------  ---------------  ----------------------------------------
 *  R1.0      12.06.14  A.Karalus        Neuerstellung des Packages
 */
@@ -224,7 +220,6 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».SOAP_BASE IS
   ------------------------------------------------------------------------------
   -- Private Prozeduren/Funktionen
   ------------------------------------------------------------------------------
-
 
   ------------------------------------------------------------------------------
   -- Standard Prozeduren/Funktionen
@@ -416,7 +411,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».SOAP_BASE IS
   /**
   * Erzeugt eine neue ProcessInstanceId.
   * Wird benötigt wenn ein Geschäftsprozess initiert wird.
-  * Sollte man bereits vom OSB aufgerufen werden, ist die einkommenden ProcessInstanceId weiterzuverwenden (geschachtelter Aufruf).
+  * Sollte man bereits vom Service Gateway aufgerufen werden, ist die einkommenden ProcessInstanceId weiterzuverwenden (geschachtelter Aufruf).
   *
   * @return   = ProcessInstanceId
   */
@@ -537,19 +532,17 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».SOAP_BASE IS
       p_element         IN VARCHAR2
   ) IS
   BEGIN
-    -- TODO: Muss fuer jedes System angepasst werden
-
-    RAISE_APPLICATION_ERROR(-20000, 'Unerwartetes Element <' || p_element || '> in der XML-API-IN-Nachricht.');
+     RAISE_APPLICATION_ERROR(-20000, 'Unerwartetes Element <' || p_element || '> in der IN-Struktur.');
   END;
 
 
   /**
-  *
+  * Gibt die Aufruf-URL für den Service zurück.
   */
   FUNCTION getUrlForService (
       p_namespace           IN VARCHAR2
     , p_porttype            IN VARCHAR2
-    , p_url                 IN OUT NOCOPY VARCHAR2
+    , p_url                 IN VARCHAR2
   ) return VARCHAR2 IS
   BEGIN
     -- TODO: Muss fuer jedes System implementiert werden, ist umgebungsabhängig!
@@ -571,9 +564,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».SOAP_BASE IS
       p_element         IN VARCHAR2
   ) IS
   BEGIN
-    -- TODO: Muss fuer jedes System angepasst werden
-
-    RAISE_APPLICATION_ERROR(-20001, 'Pflichtelement <' || p_element || '> fehlt in der API-Out-Struktur.');
+     RAISE_APPLICATION_ERROR(-20001, 'Pflichtelement <' || p_element || '> fehlt in der OUT-Struktur.');
   END;
 
 BEGIN
@@ -583,7 +574,7 @@ BEGIN
   UTL_HTTP.set_detailed_excp_support(TRUE);
       
   -- Persistent Connections aktivieren
-  utl_http.set_persistent_conn_support (enable => TRUE,max_conns => 10);
+  utl_http.set_persistent_conn_support (enable => TRUE, max_conns => 10);
 
 END SOAP_BASE;
 /

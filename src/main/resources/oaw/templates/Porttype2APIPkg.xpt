@@ -121,7 +121,6 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, 'L')» IS
   *  <br/>
   *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
   *  documentBaseURI:     «definition.documentBaseURI»
-  *  technische Schicht:  api(a)                   -   Applikation-Interface
   *  <br/>
   *
   *  <b>Beschreibung:</b>

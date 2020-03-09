@@ -49,6 +49,10 @@ String getOracleName(Model model, String ns, Operation this) : checkLen(_getOrac
 private cached String _getOracleName(Model model, String ns, Operation this) : model.bindingDefinition.getMappingForName(ns, name, null);
 cached String getParameterOracleFQN(Model model, QName element) : let ens = model.findServiceNamespace(element.namespaceURI) : let e = ens.findElement(element.localPart) : let ns = getTypeNamespace(ens, e) :
 	getPackagePrefix(ens, ns) + (e.complexType != null ? anonymousTypeName2Oracle(ns, e, "") : XSDType2Oracle(ns, getNonLocalComplexType(ns, e)));
+cached String getParameterPackagePrefix(Model model, QName element) : let ens = model.findServiceNamespace(element.namespaceURI) : let e = ens.findElement(element.localPart) : let ns = getTypeNamespace(ens, e) :
+	getPackagePrefix(ens, ns);
+cached String getOracleFQN(Model model, QName element) : let ens = model.findServiceNamespace(element.namespaceURI) : let e = ens.findElement(element.localPart) :
+	XSD2PackageName(ens) + '.' + XSD2Oracle(ens, element.localPart, e);
 
 // Oracle Name fuer Element, Attribute, Facet
 boolean isXSD2OracleTooLong(ServiceNamespace ns, String name, Annotated this, String suffix) : _XSD2Oracle(ns, name).length > 128 - suffix.length;

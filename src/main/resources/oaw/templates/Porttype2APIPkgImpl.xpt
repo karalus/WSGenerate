@@ -36,9 +36,9 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'A')»
   *
   *  Änderungs-Historie:   (neue Einträge immer oben anfügen)
   *  ========================================================
-  *  Revision  Wann      Wer              Was (Bearbeitungsrequest und ASB / Störfall vermerken)
+  *  Revision  Wann      Wer              Was
   *  --------  --------  ---------------  ----------------------------------------
-  *  R1.0      heute     CEISeR           Generierung des Packages
+  *  R1.0      heute     WSGenerate       Generierung des Packages
   */
 
   -- Package-Name
@@ -171,15 +171,11 @@ END «WSDL2PackageName(portType, 'E')»;
 «ENDIF-»
 «ENDIF-»
   ) IS
-    -- Komplexe Type-Variablen für Parameter der BL-Schicht (return, in, out und in/out) !!!! dies ist individuell anzupassen !!!! ---
+    -- Komplexe Type-Variablen für Parameter der Geschäftslogik-Schicht (return, in, out und in/out) !!!! dies ist individuell anzupassen !!!! ---
 
     c_routine           CONSTANT SOAP_BASE.oraclename_T := '«operation.name»';
 
   BEGIN
-
-    ---------------------------------------------------------------------------
-    -- Initialisierungsmassnahmen für API durchführen, z.B. Berechtigungsprüfung etc.
-    ---------------------------------------------------------------------------
 
 «IF operation.name == 'checkAlive'-»
     ---------------------------------------------------------------------------
@@ -187,7 +183,7 @@ END «WSDL2PackageName(portType, 'E')»;
     ---------------------------------------------------------------------------
 «ELSE-»
     ---------------------------------------------------------------------------
-    -- !!!! BEGIN individueller Teil API-Routine / Operation               !!!!
+    -- !!!! BEGIN Implementierung individueller Teil der Operation         !!!!
     ---------------------------------------------------------------------------
 
     ---------------------------------------------------------------------------
@@ -195,32 +191,30 @@ END «WSDL2PackageName(portType, 'E')»;
     ---------------------------------------------------------------------------
 
     ---------------------------------------------------------------------------
-    -- Konvertieren / Transformieren API-Parameter in BL-Parameter
+    -- Konvertieren / Transformieren der generierten RECORDs in Geschäftslogik-Datentypen
     ---------------------------------------------------------------------------
 
     ---------------------------------------------------------------------------
-    -- Session-User bei Änderungsoperationen setzen
+    -- Aufruf der Geschäftslogik-Logik
     ---------------------------------------------------------------------------
 
     ---------------------------------------------------------------------------
-    -- Aufruf der Business-Logik
+    -- Konvertieren / Transformieren der Geschäftslogik-Datentypen in die generierten RECORDs
     ---------------------------------------------------------------------------
 
     ---------------------------------------------------------------------------
-    -- Konvertieren / Transformieren BL-Parameter in API-Parameter
-    ---------------------------------------------------------------------------
-
-    ---------------------------------------------------------------------------
-    -- !!!! ENDE individueller Teil API-Routine / Operation               !!!!
+    -- !!!! ENDE individueller Teil der implementierten Operation          !!!!
     ---------------------------------------------------------------------------
 «ENDIF-»
 
     ---------------------------------------------------------------------------
-    -- API erfolgreich beenden - OUT-Message-Header und Fehler Struktur entsprechend füllen.
+    -- Erfolgreich beenden - OUT-Message-Header oder Fehler Struktur entsprechend füllen.
     ---------------------------------------------------------------------------
 
+    NULL;
+
     ------------------------------------------------------------------------------
-    -- Exception - API mit Fehler beenden - OUT-Message-Header und Fehler Struktur entsprechend füllen.
+    -- Exception - Aufruf mit Fehlerbehandlung beenden - OUT-Message-Header und Fehler Struktur entsprechend füllen.
     ------------------------------------------------------------------------------
   EXCEPTION
     WHEN OTHERS THEN
@@ -251,18 +245,18 @@ END «WSDL2PackageName(portType, 'E')»;
 
   BEGIN
 
-    param_in := «getParameterOracleFQN(getInputElementQName(binding, operation.name))»_4x(p_param_in);
+    param_in := «getOracleFQN(getInputElementQName(binding, operation.name))»_4x(p_param_in);
 
     «WSDL2PackageName(portType, 'A')».«operation.name»(param_in, param_out«IF getFaultElementQName(binding, operation.name) != null», error_out«ENDIF»);
 
 «IF getFaultElementQName(binding, operation.name) != null-»
-    IF error_out.payload.errorDetail.errorCode IS NULL THEN
+    IF «getParameterPackagePrefix(getOutputElementQName(binding, operation.name))»isNotNull(param_out) THEN
 «ENDIF-»
-      p_param_out := «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»_2x(param_out);
+      p_param_out := «getOracleFQN(getOutputElementQName(binding, operation.name))»_2x(param_out);
       p_fault_out := 0;
 «IF getFaultElementQName(binding, operation.name) != null-»
     ELSE
-      p_param_out := «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»_2x(error_out);
+      p_param_out := «getOracleFQN(getFaultElementQName(binding, operation.name))»_2x(error_out);
       p_fault_out := 1;
     END IF;
 «ENDIF-»
