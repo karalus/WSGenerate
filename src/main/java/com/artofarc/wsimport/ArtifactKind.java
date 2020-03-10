@@ -16,22 +16,6 @@
  */
 package com.artofarc.wsimport;
 
-import javax.wsdl.PortType;
-
-import com.artofarc.schema.SchemaObject;
-
-public interface BindingDefinition {
-
-	String getMappingForPortType(String ns, String portType, ArtifactKind kind);
-
-	String getMappingForNamespace(String ns);
-
-	String getMappingForName(String ns, String name, SchemaObject annotated);
-
-	public String getMappingForBasePackage(String name);
-
-	boolean generateClient(PortType portType);
-
-	boolean generateServer(PortType portType);
-
+public enum ArtifactKind {
+	Schema, ClientStub, ProviderSkeleton, XMLAdapter
 }

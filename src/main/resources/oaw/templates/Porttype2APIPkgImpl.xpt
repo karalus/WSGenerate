@@ -17,8 +17,8 @@
 «ENDDEFINE»
 
 «DEFINE Provider(Definition definition, PortType portType) FOR Model»
-«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, 'A') + ".PKB"-»
-CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'A')» IS
+«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton) + ".PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)» IS
   /**
   * <pre>
   *
@@ -42,7 +42,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'A')»
   */
 
   -- Package-Name
-  c_package_name CONSTANT SOAP_BASE.oraclename_t := '«WSDL2PackageName(portType, 'A')»';
+  c_package_name CONSTANT «BaseBackageName()».oraclename_t := '«WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»';
 
   ------------------------------------------------------------------------------
   -- öffentliche Typen und Variablen
@@ -66,14 +66,14 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'A')»
 «ENDFOREACH»
 «ENDFOREACH»
 
-END «WSDL2PackageName(portType, 'A')»;
+END «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»;
 /
 «ENDFILE»
 «REM»========================================================================«ENDREM»
 «LET definition.getSOAPBindings(portType).reject(e|e.isJmsTransport()) AS bindings»
 «IF bindings.size > 0»
-«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, 'X') + ".PKB"-»
-CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'X')» IS
+«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + ".PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
   /**
   * <pre>
   *
@@ -91,11 +91,12 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'X')»
   *  @headcom
   *  <pre>
   *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+  *	 WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
   *
   */
 
   -- Package-Name
-  c_package_name CONSTANT SOAP_BASE.oraclename_t := '«WSDL2PackageName(portType, 'X')»';
+  c_package_name CONSTANT «BaseBackageName()».oraclename_t := '«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»';
 
 «FOREACH definition.getSOAPBindings(portType) AS binding-»
 «FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
@@ -103,7 +104,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'X')»
 «ENDFOREACH»
 «ENDFOREACH»
 
-END «WSDL2PackageName(portType, 'X')»;
+END «WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»;
 /
 «ENDFILE»
 «ENDIF»
@@ -112,8 +113,8 @@ END «WSDL2PackageName(portType, 'X')»;
 «ENDDEFINE»
 
 «DEFINE Consumer(Definition definition, PortType portType) FOR Model»
-«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, 'E') + ".PKB"-»
-CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'E')» IS
+«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, ArtifactKind::ClientStub) + ".PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, ArtifactKind::ClientStub)» IS
   /**
   * <pre>
   *
@@ -130,11 +131,12 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'E')»
   *  @headcom
   *  <pre>
   *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+  *	 WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
   *
   */
 
   -- Package-Name
-  c_package_name CONSTANT SOAP_BASE.oraclename_t := '«WSDL2PackageName(portType, 'E')»';
+  c_package_name CONSTANT «BaseBackageName()».oraclename_t := '«WSDL2PackageName(portType, ArtifactKind::ClientStub)»';
   c_SOAP_NS      CONSTANT VARCHAR2(99) := 'http://schemas.xmlsoap.org/soap/envelope/';
 
 «FOREACH definition.getSOAPBindings(portType) AS binding-»
@@ -145,7 +147,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, 'E')»
 «ENDFOREACH»
 «ENDFOREACH»
 
-END «WSDL2PackageName(portType, 'E')»;
+END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 /
 «ENDFILE»
 «ENDDEFINE»
@@ -173,7 +175,7 @@ END «WSDL2PackageName(portType, 'E')»;
   ) IS
     -- Komplexe Type-Variablen für Parameter der Geschäftslogik-Schicht (return, in, out und in/out) !!!! dies ist individuell anzupassen !!!! ---
 
-    c_routine           CONSTANT SOAP_BASE.oraclename_T := '«operation.name»';
+    c_routine           CONSTANT «BaseBackageName()».oraclename_T := '«operation.name»';
 
   BEGIN
 
@@ -235,7 +237,7 @@ END «WSDL2PackageName(portType, 'E')»;
     , p_fault_out              OUT        NUMBER
   ) IS
 
-    c_routine           CONSTANT SOAP_BASE.oraclename_t       := '«operation.name»';
+    c_routine           CONSTANT «BaseBackageName()».oraclename_t       := '«operation.name»';
 
     param_in               		 «getParameterOracleFQN(getInputElementQName(binding, operation.name))»;
     param_out                    «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»;
@@ -247,7 +249,7 @@ END «WSDL2PackageName(portType, 'E')»;
 
     param_in := «getOracleFQN(getInputElementQName(binding, operation.name))»_4x(p_param_in);
 
-    «WSDL2PackageName(portType, 'A')».«operation.name»(param_in, param_out«IF getFaultElementQName(binding, operation.name) != null», error_out«ENDIF»);
+    «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)».«operation.name»(param_in, param_out«IF getFaultElementQName(binding, operation.name) != null», error_out«ENDIF»);
 
 «IF getFaultElementQName(binding, operation.name) != null-»
     IF «getParameterPackagePrefix(getOutputElementQName(binding, operation.name))»isNotNull(param_out) THEN
@@ -291,7 +293,7 @@ END «WSDL2PackageName(portType, 'E')»;
 «ENDIF-»
   ) IS
 
-    c_routine           CONSTANT SOAP_BASE.oraclename_T := '«operation.name»';
+    c_routine           CONSTANT «BaseBackageName()».oraclename_T := '«operation.name»';
 
     param_in				     CLOB;
     param_out     			     CLOB;
@@ -332,8 +334,8 @@ END «WSDL2PackageName(portType, 'E')»;
     DBMS_XMLDOM.writeToClob(outdocnode, param_in);
     DBMS_XMLDOM.freeDocument(outdomdoc);
 
-    v_url := SOAP_BASE.getUrlForService(c_PortType_URI, '«binding.portType.QName.localPart»', g_url);
-    param_out := SOAP_BASE.call_soap_http(v_url, '"«bindingOperation.getSoapActionURI()»"', timeout, param_in);
+    v_url := «BaseBackageName()».getUrlForService(c_PortType_URI, '«binding.portType.QName.localPart»', g_url);
+    param_out := «BaseBackageName()».call_soap_http(v_url, '"«bindingOperation.getSoapActionURI()»"', timeout, param_in);
     DBMS_LOB.freeTemporary(param_in);
 
     myParser := DBMS_XMLPARSER.newParser;

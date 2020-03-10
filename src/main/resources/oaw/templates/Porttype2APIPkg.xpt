@@ -18,8 +18,8 @@
 «ENDDEFINE»
 
 «DEFINE Provider(Definition definition, PortType portType) FOR Model»
-«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, 'A') + ".PKS"-»
-CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, 'A')» IS
+«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton) + ".PKS"-»
+CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, ArtifactKind::ProviderSkeleton)» IS
   /**
   * <pre>
   *
@@ -65,14 +65,14 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, 'A')»
 «ENDFOREACH»
 «ENDFOREACH»
 
-END «WSDL2PackageName(portType, 'A')»;
+END «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»;
 /
 «ENDFILE»
 «REM»========================================================================«ENDREM»
 «FOREACH definition.getSOAPBindings(portType) AS binding»
 «IF isHttpTransport(binding)»
-«FILE "plsql/" + getDBSchema() + "/" +  WSDL2PackageName(portType, 'X') + ".PKS"-»
-CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, 'X')» IS
+«FILE "plsql/" + getDBSchema() + "/" +  WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + ".PKS"-»
+CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
   /**
   * <pre>
   *
@@ -89,6 +89,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, 'X')» IS
   *  @headcom
   *  <pre>
   *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+  *	 WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
   *
   */
 
@@ -107,14 +108,14 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, 'X')» IS
 «ENDLET-»
 «ENDFOREACH»
 
-END «WSDL2PackageName(portType, 'X')»;
+END «WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»;
 /
 «ENDFILE»
 «ENDIF»
 «REM»========================================================================«ENDREM»
 «IF isJmsTransport(binding)»
-«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, 'L') + ".PKS"-»
-CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, 'L')» IS
+«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + ".PKS"-»
+CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
   /**
   * <pre>
   *
@@ -131,6 +132,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, 'L')» IS
   *  @headcom
   *  <pre>
   *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+  *	 WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
   *
   */
 
@@ -149,12 +151,12 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, 'L')» IS
   );
 
 
-END «WSDL2PackageName(portType, 'L')»;
+END «WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»;
 /
 «ENDFILE»
 
 «LET getPort(definition, binding) AS port»
-«FILE "plsql/"+ getDBSchema() + "/" + WSDL2PackageName(portType, 'L') + ".SQL"-»
+«FILE "plsql/"+ getDBSchema() + "/" + WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + ".SQL"-»
 DECLARE
   v_test integer;
 
@@ -180,7 +182,7 @@ BEGIN
     dbms_aqadm.start_queue( queue_name => '«getDBSchema()».«getAQQueueName(port)»' );
   END IF;
 
-  reginfo1 := sys.aq$_reg_info('«getDBSchema()».«getAQQueueName(port)»', DBMS_AQ.NAMESPACE_AQ, 'plsql://«getDBSchema()».«WSDL2PackageName(portType, 'L')».handleMessage?PR=0', HEXTORAW('FF'));
+  reginfo1 := sys.aq$_reg_info('«getDBSchema()».«getAQQueueName(port)»', DBMS_AQ.NAMESPACE_AQ, 'plsql://«getDBSchema()».«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)».handleMessage?PR=0', HEXTORAW('FF'));
   reginfolist := sys.aq$_reg_info_list(reginfo1);
   sys.dbms_aq.register(reginfolist, 1);
 END;
@@ -193,8 +195,8 @@ END;
 «ENDDEFINE»
 
 «DEFINE Consumer(Definition definition, PortType portType) FOR Model»
-«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, 'E') + ".PKS"-»
-CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, 'E')» IS
+«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, ArtifactKind::ClientStub) + ".PKS"-»
+CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, ArtifactKind::ClientStub)» IS
   /**
   * <pre>
   *
@@ -211,6 +213,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, 'E')»
   *  @headcom
   *  <pre>
   *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+  *	 WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
   *
   */
 
@@ -245,7 +248,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, 'E')»
 «ENDLET-»
 «ENDFOREACH»
 «ENDFOREACH»
-END «WSDL2PackageName(portType, 'E')»;
+END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 /
 «ENDFILE»
 «ENDDEFINE»

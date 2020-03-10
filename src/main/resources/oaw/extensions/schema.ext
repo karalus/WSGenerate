@@ -169,7 +169,7 @@ boolean isTypeWithTime(QName this) : localPart == "dateTime" || localPart == "ti
 // Takes a sample. But how else can we tell that <xs:pattern value=".*T[^Z+-]*"/> forbids usage of a time zone?
 cached boolean hasTimezone(QName this, List[Object] facets) : facets == null || (let patterns = facets.getPatternFacets() :
 	switch (localPart) {
-		case "dateTime" : patterns.matchesAll("2001-10-26T19:32:52Z")
+		case "dateTime" : patterns.matchesAll("2001-10-26T19:32:52Z") || patterns.matchesAll("2001-10-26T19:32:52.000Z")
 		case "date" : patterns.matchesAll("2001-10-26Z")
 		case "time" : patterns.matchesAll("19:32:52Z")
 		case "gYearMonth" : patterns.matchesAll("2001-10Z")

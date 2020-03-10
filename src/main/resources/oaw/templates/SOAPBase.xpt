@@ -3,14 +3,15 @@
 «EXTENSION oaw::extensions::db»
 
 «DEFINE Root FOR Model»
-«FILE "plsql/" + getDBSchema() + "/SOAP_BASE.PKS"-»
-CREATE OR REPLACE PACKAGE «getDBSchema()».SOAP_BASE IS
+«FILE "plsql/" + getDBSchema() + "/" + BaseBackageName() + ".PKS"-»
+CREATE OR REPLACE PACKAGE «getDBSchema()».«BaseBackageName()» IS
 /**
 * <pre>
 *
 *  <b>Beschreibung:</b>
 *  Dieses Package beinhaltet die Routinen, welche vom generierten Code verwendet werden.
 *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+*  WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
 *
 *  </pre>
 *
@@ -32,7 +33,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».SOAP_BASE IS
 
   ------------------------------------------------------------------------------
   -- TABLE Typen für die Verwendung von XSD Basistypen in <element/> mit maxOccurs="unbounded"
-  -- (Voraussetzung: mapping.properties definiert Mapping 'orgW3Www2001=SOAP_BASE')
+  -- (Voraussetzung: mapping.properties definiert Mapping 'orgW3Www2001=«BaseBackageName()»')
   ------------------------------------------------------------------------------
 
   TYPE string_CT IS TABLE OF VARCHAR2(32767);
@@ -78,13 +79,6 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».SOAP_BASE IS
   *
   */
   FUNCTION createProcessInstanceId RETURN VARCHAR2;
-
-
-  /**
-  * Gibt den aktuellen Systemtimestamp im Format yyyy-mm-ddThh24:mi:ss.ff3Z zurück
-  *
-  */
-  FUNCTION getCurrentTimestampUTC RETURN VARCHAR2;
 
 
   /**
@@ -172,19 +166,20 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».SOAP_BASE IS
   );
 
 
-END SOAP_BASE;
+END «BaseBackageName()»;
 /
 «ENDFILE»
 
 
-«FILE "plsql/" + getDBSchema() + "/SOAP_BASE.PKB"-»
-CREATE OR REPLACE PACKAGE BODY «getDBSchema()».SOAP_BASE IS
+«FILE "plsql/" + getDBSchema() + "/" + BaseBackageName() + ".PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BaseBackageName()» IS
 /**
 * <pre>
 *
 *  <b>Beschreibung:</b>
 *  Dieses Package beinhaltet die Routinen, welche vom generierten Code verwendet werden.
 *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+*	 WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
 *
 *  </pre>
 *
@@ -200,7 +195,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».SOAP_BASE IS
   ------------------------------------------------------------------------------
 
   -- Package-Name
-  c_PACKAGE_NAME        CONSTANT oraclename_t := 'SOAP_BASE';
+  c_PACKAGE_NAME        CONSTANT oraclename_t := '«BaseBackageName()»';
 
   ------------------------------------------------------------------------------
   -- öffentliche Typen und Variablen
@@ -422,17 +417,6 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».SOAP_BASE IS
   END createProcessInstanceId;
 
 
-  /**
-  * Gibt den aktuellen Systemtimestamp im Format yyyy-mm-ddThh24:mi:ss.ff3Z zurück
-  *
-  * @return   = CurrentTimestampUTC
-  */
-  FUNCTION getCurrentTimestampUTC RETURN VARCHAR2 AS
-  BEGIN
-	RETURN TO_CHAR(SYS_EXTRACT_UTC(SYSTIMESTAMP),'yyyy-mm-dd"T"hh24:mi:ss.ff3"Z"');
-  END;
-
-
   -- https://community.oracle.com/thread/1026102
   PROCEDURE fillTextNode(
     p_node  IN DBMS_XMLDOM.DOMNode
@@ -576,7 +560,7 @@ BEGIN
   -- Persistent Connections aktivieren
   utl_http.set_persistent_conn_support (enable => TRUE, max_conns => 10);
 
-END SOAP_BASE;
+END «BaseBackageName()»;
 /
 «ENDFILE»
 

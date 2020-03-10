@@ -48,6 +48,13 @@ public class WSGenerateTest {
       assertFalse("Errors while processing", issues.hasErrors());
    }
    
+   @Test
+   public void testKonvention() {
+	   System.out.println(String.format("%.1s%s_%02d", "Client", "CbtSharedSoa", null));
+	   System.out.println(String.format("%sE01", "CbtSharedSoaV1"));
+	   System.out.println(String.format("PKC_%s", "CbtSharedSoaV1"));
+   }
+   
    private static void dumpFile(File file) throws IOException {
       BufferedReader br = new BufferedReader(new FileReader(file));
       String line;

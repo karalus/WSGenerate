@@ -15,7 +15,6 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«XSD2PackageName()» IS
   *
   *  <br/>
   *  XSD-Referenz:        «URI»
-  *  technische Schicht:  apidef(d)                -   Applikation-Interface-Definition
   *  <br/>
   *
   *  <b>Beschreibung:</b>
@@ -25,12 +24,13 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«XSD2PackageName()» IS
 «ENDFOREACH-»
   *
   * Dokumentation aus den XSDs:
-«FOREACH schemas.getDocumentationContent() AS doc»«doc.toString().formatDocumentation("  * ")»«ENDFOREACH-»
+«FOREACH distinct(schemas.collect(s|concat(s.getDocumentationContent().collect(c|c.toString().formatDocumentation("  * ")))), {}) AS doc»«doc»«ENDFOREACH-»
   *
   *  </pre>
   *  @headcom
   *  <pre>
   *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+  *	 WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
   *
   */
 

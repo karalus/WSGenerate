@@ -24,6 +24,7 @@ String repeat(String x, int n) : n > 0 ? x + repeat(x, n-1) : "";
 String chomp(String s, String suffix) : s.endsWith(suffix) ? s.subString(0, s.length - suffix.length) : s;
 String chomp(String s, int n) : s.subString(0, s.length - n);
 String padStringLeft(String s, char padChar, int len) : s.length < len ? padStringLeft(padChar + s, padChar, len) : s;
+List[String] distinct(List[String] src, List[String] dest) : src.isEmpty ? dest.flatten() : (let h = src.first() : distinct(src.withoutFirst(), dest.contains(h) ? dest : dest.add(h)));
 
 private String convertUri(String ns, String separator, boolean firstUpper) :
 	JAVA com.artofarc.util.UriHelper.convertUri(java.lang.String, java.lang.String, java.lang.Boolean);
@@ -35,15 +36,16 @@ String getAQQueueName(Port this) : getLocation().getQueryParam("QueueName");
 String getAQQueueTable(Port this, boolean multipleConsumers) : getLocation().getQueryParam("QueueTable");
 String getAQDeadLetterQueueName(Port this, boolean multipleConsumers) : "AQ$_" + getAQQueueTable(multipleConsumers) + "_E";
 
-String XSD2PackageName(ServiceNamespace this) : getMappingForNamespace("D");
+cached String XSD2PackageName(ServiceNamespace this) : mappingForNamespace;
 String getNsContextParam(ServiceNamespace this, ServiceNamespace elemNs) : isGenerateSmallXML() ? "p_nsContext" : "'" + elemNs.URI + "'";
 	
 private String checkLen(String s, String uri, String name) : s.length > 128 ? "!!!Too long: " + name + " in " + uri + " mapped to " + s : s;
 
-String WSDL2PackageNameCheck(Model model, PortType portType, char infix) :
-	let s = WSDL2PackageName(model, portType, infix) : s.length > 128 ? "!!!Too long: " + portType.QName + " mapped to " + s : s;
-cached String WSDL2PackageName(Model model, PortType portType, char infix) : 
-	model.bindingDefinition.getMappingForPortType(portType.QName.namespaceURI, portType.QName.localPart, infix.toString());
+cached String BaseBackageName(Model this) : bindingDefinition.getMappingForBasePackage("BASE");
+String WSDL2PackageNameCheck(Model model, PortType portType, ArtifactKind kind) :
+	let s = WSDL2PackageName(model, portType, kind) : s.length > 128 ? "!!!Too long: " + portType.QName + " mapped to " + s : s;
+cached String WSDL2PackageName(Model model, PortType portType, ArtifactKind kind) : 
+	model.bindingDefinition.getMappingForPortType(portType.QName.namespaceURI, portType.QName.localPart, kind);
 
 String getOracleName(Model model, String ns, Operation this) : checkLen(_getOracleName(model, ns, this), ns, name);
 private cached String _getOracleName(Model model, String ns, Operation this) : model.bindingDefinition.getMappingForName(ns, name, null);
@@ -118,7 +120,7 @@ cached String XSD2OracleSpecial(ServiceNamespace owner, TopLevelElement this) : 
 
 // Type mapping
 String formatDocumentation(String doc, String prefix) : doc.split("\n").collect(e|e.trim()).reject(e|e.length == 0).collect(e|prefix + e + lineSeparator()).concat();
-private String concat(List[String] list) : list.size > 1 ? list.first() + concat(list.withoutFirst()) : list.first();
+String concat(List[String] list) : list.isEmpty ? "" : (list.size > 1 ? list.first() + concat(list.withoutFirst()) : list.first());
 
 String convertXSDBasicTypeOracle(QName this) : convertXSDBasicTypeOracle(this, null);
 String convertXSDBasicTypeOracle(QName this, List[Object] facets) :
@@ -142,7 +144,7 @@ private String getNumberFormat(List[Object] this) :
 	getFacetTotalDigits() != null ?	getFacetTotalDigits().value + (getFacetFractionDigits() != null ? "," + getFacetFractionDigits().value : "") :
 		(getFacetFractionDigits() != null ? numberDefaultPrecision().toString() + "," + getFacetFractionDigits().value : numberDefaultPrecision());
 
-String convertOracle2XSDBasicType(QName this, List[Object] facets, String param) :
+String convertOracle2XSDBasicType(ServiceNamespace owner, QName this, List[Object] facets, String param) : let bp = BaseBackageName(owner.model) :
 	isStringType() ? param :
 		(isInt32Type() || isIntegerType() ? "to_char(" + param + ')' :
 			(localPart == "decimal" ? "to_char(" + param + ", 'TM9', 'nls_numeric_characters = ''.,''')" :
@@ -152,17 +154,17 @@ String convertOracle2XSDBasicType(QName this, List[Object] facets, String param)
 							(localPart == "gYearMonth" ? (hasTimezone(facets) ? "to_char(" + param + ", 'YYYY-MMTZH:TZM')" : "to_char(" + param + ", 'YYYY-MM')") :
 								(localPart == "gYear" ? (hasTimezone(facets) ? "to_char(" + param + ", 'YYYYTZH:TZM')" : "to_char(" + param + ')') :
 									(localPart == "boolean" ? "CASE " + param + " WHEN TRUE THEN 'true' WHEN false THEN 'false' ELSE 'NULL' END" :
-										(localPart == "float" ? "SOAP_BASE.FLOAT_TO_CHAR(" + param + ')' :
-											(localPart == "double" ? "SOAP_BASE.DOUBLE_TO_CHAR(" + param + ')' :
+										(localPart == "float" ? bp + ".FLOAT_TO_CHAR(" + param + ')' :
+											(localPart == "double" ? bp + ".DOUBLE_TO_CHAR(" + param + ')' :
 												(localPart == "base64Binary" ? "NULL" :
-													(localPart == "duration" ? "SOAP_BASE.DURATION_TO_CHAR(" + param + ')' :
+													(localPart == "duration" ? bp + ".DURATION_TO_CHAR(" + param + ')' :
 														(localPart == "anyType" ? null :
 															"Illegal XSD type: " + localPart)))))))))))));
 
 boolean isLOB(String expr) : expr == "NULL";
 boolean isXMLType(String expr) : expr == null;
 
-String convertXSDBasicType2Oracle(QName this, List[Object] facets, String param, String rawParam) :
+String convertXSDBasicType2Oracle(ServiceNamespace owner, QName this, List[Object] facets, String param, String rawParam) : let bp = BaseBackageName(owner.model) :
 	isStringType() ? param :
 		(isInt32Type() || isIntegerType() ? "to_number(" + param + ')' :
 			(localPart == "decimal" ? "to_number(" + param + ", '" + repeat("9", facets.getDigitsForDecimal()) + "." + repeat("9", facets.getFractionDigitsForDecimal()) + "')" :
@@ -172,11 +174,11 @@ String convertXSDBasicType2Oracle(QName this, List[Object] facets, String param,
 							(localPart == "gYearMonth" ? (hasTimezone(facets) ? "TO_TIMESTAMP_TZ(" + param + ", 'YYYY-MMTZH:TZM')" : "TO_DATE(" + param + ", 'YYYY-MM')") :
 								(localPart == "gYear" ? (hasTimezone(facets) ? "TO_TIMESTAMP_TZ(" + param + ", 'YYYYTZH:TZM')" : "to_number(" + param + ')') :
 									(localPart == "boolean" ? "CASE " + param + " WHEN 'true' THEN TRUE WHEN 'false' THEN FALSE WHEN '1' THEN TRUE WHEN '0' THEN FALSE ELSE NULL END" :
-										(localPart == "float" ? "SOAP_BASE.CHAR_TO_FLOAT(" + param + ')' :
-											(localPart == "double" ? "SOAP_BASE.CHAR_TO_DOUBLE(" + param + ')' :
-												(localPart == "base64Binary" ? "SOAP_BASE.getBlobFromNode(" + rawParam + ')' :
-													(localPart == "duration" ? "SOAP_BASE.CHAR_TO_DURATION(" + param + ')' :
-														(localPart == "anyType" ? "SOAP_BASE.getXMLType(" + rawParam + ')' :
+										(localPart == "float" ? bp + ".CHAR_TO_FLOAT(" + param + ')' :
+											(localPart == "double" ? bp + ".CHAR_TO_DOUBLE(" + param + ')' :
+												(localPart == "base64Binary" ? bp + ".getBlobFromNode(" + rawParam + ')' :
+													(localPart == "duration" ? bp + ".CHAR_TO_DURATION(" + param + ')' :
+														(localPart == "anyType" ? bp + ".getXMLType(" + rawParam + ')' :
 															"Illegal XSD type: " + localPart)))))))))))));
 
 private int getDigitsForDecimal(List[Object] this) :

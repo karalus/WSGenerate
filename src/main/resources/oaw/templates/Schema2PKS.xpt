@@ -17,7 +17,6 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«XSD2PackageName()» IS
   *
   *  <br/>
   *  XSD-Referenz:        «targetNamespace»
-  *  technische Schicht:  apidef(d)                -   Applikation-Interface-Definition
   *  <br/>
   *
   *  <b>Beschreibung:</b>

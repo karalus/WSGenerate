@@ -42,7 +42,7 @@ public final class UriHelper {
 			while (tokenizer.hasMoreTokens()) {
 				result.add(0, tokenizer.nextToken());
 			}
-		} else if (uri.getSchemeSpecificPart() != null) {
+		} else if (uri.getScheme() != null && uri.getSchemeSpecificPart() != null) {
 			StringTokenizer tokenizer = new StringTokenizer(uri.getSchemeSpecificPart(), ":");
 			while (tokenizer.hasMoreTokens()) {
 				result.add(tokenizer.nextToken());
@@ -73,10 +73,6 @@ public final class UriHelper {
 			}
 		}
 		return builder.toString();
-	}
-
-	public static void main(String[] args) {
-		System.out.println(convertUri("http://svi.de/service/rw/kasso/sap_fs-cd/PortalInkassoAuskunft1/", ".", null));
 	}
 
 }

@@ -16,7 +16,6 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«XSD2PackageName()» IS
   *
   *  <br/>
   *  XSD-Referenz:        «URI»
-  *  technische Schicht:  apidef(d)                -   Applikation-Interface-Definition
   *  <br/>
   *
   *  <b>Beschreibung:</b>
@@ -25,12 +24,14 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«XSD2PackageName()» IS
   * documentBaseURI: «documentBaseURI»
 «ENDFOREACH-»
   *
-«FOREACH schemas.getDocumentationContent() AS doc»«doc.toString().formatDocumentation("  * ")»«ENDFOREACH-»
+  * Dokumentation aus den XSDs:
+«FOREACH distinct(schemas.collect(s|concat(s.getDocumentationContent().collect(c|c.toString().formatDocumentation("  * ")))), {}) AS doc»«doc»«ENDFOREACH-»
   *
   *  </pre>
   *  @headcom
   *  <pre>
   *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+  *	 WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
   *
   */
 
@@ -162,14 +163,14 @@ END «XSD2PackageName()»;
     p_«XSDType2Oracle(name, ct)»	IN	«XSDType2Oracle(name, ct)»
   ) RETURN VARCHAR2
   IS
-    v_return            SOAP_BASE.maxplsqltext_t;
+    v_return            «BaseBackageName(model)».maxplsqltext_t;
   BEGIN
 
     v_return := substr(
          '«XSD2PackageName()».«XSDType2Oracle(name, ct)»('
 «EXPAND ToString(ct, "p_" + XSDType2Oracle(name, ct), name)-»
       || chr(10) || ')'
-      , 1, SOAP_BASE.c_fl_maxplsqltext);
+      , 1, «BaseBackageName(model)».c_fl_maxplsqltext);
 
     RETURN v_return;
 
@@ -204,7 +205,7 @@ END «XSD2PackageName()»;
 «EXPAND XML2Oracle(ct, "v_return", name)-»
          WHEN FALSE THEN NULL;
          ELSE
-          SOAP_BASE.fehler_unerwartetes_element('{' || namespace || '}' || localName);
+          «BaseBackageName(model)».fehler_unerwartetes_element('{' || namespace || '}' || localName);
         END CASE;
       END IF;
     END LOOP;
@@ -669,7 +670,7 @@ END «XSD2PackageName()»;
 «ENDFOREACH-»
     ELSE
 «IF g.minOccurs > 0 && parentGroupType != "choice"-»
-      SOAP_BASE.fehler_pflichtelement_fehlt('«parentParam»');
+      «BaseBackageName(model)».fehler_pflichtelement_fehlt('«parentParam»');
 «ELSE-»
       NULL;
 «ENDIF-»
@@ -711,12 +712,12 @@ END «XSD2PackageName()»;
 «ELSE-»
 «LET convertOracle2XSDBasicType(getBuiltInType(e), getFacets(e), isArrayElement(e) ? elementAccess + "(i)" : elementAccess) AS expr-»
 «IF isXMLType(expr)-»
-      SOAP_BASE.appendXMLType(«isArrayElement(e) ? elementAccess + "(i)" : elementAccess», p_domdoc, node);
+      «BaseBackageName(model)».appendXMLType(«isArrayElement(e) ? elementAccess + "(i)" : elementAccess», p_domdoc, node);
 «ELSE-»
       text := DBMS_XMLDOM.createTextNode(p_domdoc, «expr»);
       node := DBMS_XMLDOM.appendChild(node, DBMS_XMLDOM.makeNode(text));
 «IF isLOB(expr)-»
-      SOAP_BASE.fillTextNode(node, «isArrayElement(e) ? elementAccess + "(i)" : elementAccess»);
+      «BaseBackageName(model)».fillTextNode(node, «isArrayElement(e) ? elementAccess + "(i)" : elementAccess»);
 «ENDIF-»
 «ENDIF-»
 «ENDLET-»
@@ -766,7 +767,7 @@ END «XSD2PackageName()»;
       DBMS_XMLDOM.setAttribute(elmt, 'xsi:nil', 'true');
       DBMS_XMLDOM.setAttribute(elmt, 'xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
 «ELSE-»
-      SOAP_BASE.fehler_pflichtelement_fehlt('«elementAccess»');
+      «BaseBackageName(model)».fehler_pflichtelement_fehlt('«elementAccess»');
 «ENDIF-»
 «ENDIF-»
     END IF;
@@ -799,7 +800,7 @@ END «XSD2PackageName()»;
 
     IF namespace <> c_URI OR localName <> '«tle.name»' THEN
       DBMS_XMLDOM.freeDocument(indomdoc);
-      SOAP_BASE.fehler_unerwartetes_element('{' || namespace || '}' || localName);
+      «BaseBackageName(model)».fehler_unerwartetes_element('{' || namespace || '}' || localName);
     END IF;
 
     param_in := «getPackagePrefix(ns)»«typeName»4x(DBMS_XMLDOM.makeNode(inroot_elmt));

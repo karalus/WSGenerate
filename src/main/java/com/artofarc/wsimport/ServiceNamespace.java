@@ -31,65 +31,68 @@ import org.w3c.dom.Element;
 
 import com.artofarc.schema.SchemaObject;
 
-
 public final class ServiceNamespace {
-   
-   final static JAXBContext jaxbContext;
 
-   static {
-      try {
-         jaxbContext = JAXBContext.newInstance(Schema.class.getPackage().getName());
-      } catch (JAXBException e) {
-         throw new RuntimeException("Cannot initialize JAXBContext", e);
-      }
-   }
+	final static JAXBContext jaxbContext;
 
-   private final Model model;
-   private final String URI;
-   private final List<Definition> wsdls = new ArrayList<>();
-   private final LinkedHashMap<String, Schema> schemas = new LinkedHashMap<>();
+	static {
+		try {
+			jaxbContext = JAXBContext.newInstance(Schema.class.getPackage().getName());
+		} catch (JAXBException e) {
+			throw new RuntimeException("Cannot initialize JAXBContext", e);
+		}
+	}
 
-   ServiceNamespace(Model model, String uri) {
-      this.model = model;
-      URI = uri;
-   }
+	private final Model model;
+	private final String URI;
+	private final List<Definition> wsdls = new ArrayList<>();
+	private final LinkedHashMap<String, Schema> schemas = new LinkedHashMap<>();
 
-   public String getURI() {
-      return URI;
-   }
-   
-   public List<Definition> getWsdls() {
-      return wsdls;
-   }
+	ServiceNamespace(Model model, String uri) {
+		this.model = model;
+		URI = uri;
+	}
 
-   void addSchema(String documentBaseURI, Element element, Unmarshaller xsdUnmarshaller) throws JAXBException {
-      final Schema schema = (Schema) xsdUnmarshaller.unmarshal(element);
-      schemas.put(documentBaseURI, schema);
-   }
+	public String getURI() {
+		return URI;
+	}
 
-   public Collection<Schema> getSchemas() {
-      return schemas.values();
-   }
+	public List<Definition> getWsdls() {
+		return wsdls;
+	}
 
-   public Collection<String> getDocumentBaseURIs() {
-      return schemas.keySet();
-   }
+	void addSchema(String documentBaseURI, Element element, Unmarshaller xsdUnmarshaller) throws JAXBException {
+		final Schema schema = (Schema) xsdUnmarshaller.unmarshal(element);
+		schemas.put(documentBaseURI, schema);
+	}
 
-   public ServiceNamespace findUsedServiceNamespace(String ns) {
-      return model.findServiceNamespace(ns);
-   }
+	public Collection<Schema> getSchemas() {
+		return schemas.values();
+	}
 
-   public String getMappingForNamespace(String fileType) {
-      return model.getBindingDefinition().getMappingForNamespace(URI, fileType);
-   }
+	public Collection<String> getDocumentBaseURIs() {
+		return schemas.keySet();
+	}
 
-   public String getMappingForName(String name, SchemaObject annotated) {
-      return model.getBindingDefinition().getMappingForName(URI, name, annotated);
-   }
+	public ServiceNamespace findUsedServiceNamespace(String ns) {
+		return model.findServiceNamespace(ns);
+	}
 
-   @Override
-   public String toString() {
-      return URI;
-   }
+	public String getMappingForNamespace() {
+		return model.getBindingDefinition().getMappingForNamespace(URI);
+	}
+
+	public String getMappingForName(String name, SchemaObject annotated) {
+		return model.getBindingDefinition().getMappingForName(URI, name, annotated);
+	}
+
+	@Override
+	public String toString() {
+		return URI;
+	}
+
+	public Model getModel() {
+		return model;
+	}
 
 }
