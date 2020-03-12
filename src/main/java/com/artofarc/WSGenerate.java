@@ -49,12 +49,29 @@ import com.artofarc.wsimport.BindingDefinition;
 import com.artofarc.wsimport.BindingDefinitionByProperties;
 import com.artofarc.wsimport.WsdlParser;
 
-
 public class WSGenerate {
 
    public static final String ENCODING_ISO_8859_1 = "ISO-8859-1";
+   public static final String VERSION;
+   public static final String BUILD_TIME;
+   
+	static {
+		Properties properties = new Properties();
+		InputStream inputStream = WSGenerate.class.getClassLoader().getResourceAsStream("META-INF/MANIFEST.MF");
+		if (inputStream != null) {
+			try {
+				properties.load(inputStream);
+				inputStream.close();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+		VERSION = properties.getProperty("Implementation-Version", "0.0");
+		BUILD_TIME = properties.getProperty("Build-Time", "1970-01-01 00:00UTC");
+	}
 
    public static void main(String[] args) throws Exception {
+	  System.out.println("WSGenerate Version " + VERSION + " Build Time " + BUILD_TIME); 
       CommandLine line = parse(args);
       if (line != null) {
          Issues issues = process(line);
@@ -72,7 +89,6 @@ public class WSGenerate {
    @SuppressWarnings("static-access")
    public static CommandLine parse(String[] args) {
       // create the parser
-      CommandLineParser parser = new BasicParser();
       Options options = new Options();
       options.addOption(new Option("help", "print this message"));
       options.addOption(new Option("verbose", "be extra verbose"));
@@ -85,6 +101,7 @@ public class WSGenerate {
       // parse the command line arguments
       CommandLine line = null;
       try {
+         CommandLineParser parser = new BasicParser();
          line = parser.parse(options, args);
       } catch (ParseException e) {
          System.err.println("Error parsing command line: " + e.getMessage());
@@ -92,7 +109,7 @@ public class WSGenerate {
       // create model
       if (line == null || line.hasOption("help") || line.getArgList().isEmpty()) {
          HelpFormatter formatter = new HelpFormatter();
-         formatter.printHelp("WSImport <list of wsdl>", options);
+         formatter.printHelp("WSGenerate <list of wsdl>", options);
          line = null;
       }
       return line;
@@ -123,9 +140,8 @@ public class WSGenerate {
       WorkflowContext ctx = new WorkflowContextDefaultImpl();
       ctx.set("model", model);
       Properties globalProperties = line.getOptionProperties("B");
-      Properties metadata = getMetadata();
-      globalProperties.setProperty("WSGenerateVersion", metadata.getProperty("Implementation-Version", "0.0"));
-      globalProperties.setProperty("WSGenerateBuildTime", '"' + metadata.getProperty("Build-Time", "1970-01-01 00:00UTC") + '"');
+      globalProperties.setProperty("WSGenerateVersion", '"' + VERSION + '"');
+      globalProperties.setProperty("WSGenerateBuildTime", '"' + BUILD_TIME + '"');
       if (line.hasOption("c")) {
          String[] optionValues = line.getOptionValues("c");
          Issues issues = check(ctx, globalProperties, optionValues);
@@ -148,16 +164,6 @@ public class WSGenerate {
       return invoke(ctx, generator, globalProperties);
    }
 
-	private static Properties getMetadata() throws IOException {
-		Properties properties = new Properties();
-		InputStream inputStream = WSGenerate.class.getClassLoader().getResourceAsStream("/META-INF/MANIFEST.MF");
-		if (inputStream != null) {
-			properties.load(inputStream);
-			inputStream.close();
-		}
-		return properties;
-	}
- 
    private static Issues check(WorkflowContext ctx, Properties globalProperties, String... checkFiles) {
       CheckComponent check = new CheckComponent();
       check.getResourceManager().setFileEncoding(ENCODING_ISO_8859_1);

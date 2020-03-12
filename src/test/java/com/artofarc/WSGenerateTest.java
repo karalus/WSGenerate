@@ -44,7 +44,7 @@ public class WSGenerateTest {
    @Test
    public void testEAS2() throws Exception {
       File genFolder = new File("output");
-      Issues issues = invokeWSGenerate("input/ifc2/de.itzbund.cbt.zoll.ESUW.service.NESRiskAnalysis1.wsdl -B dbSchema='sys_tlnr' -b input/mapping.properties -d", genFolder);
+      Issues issues = invokeWSGenerate("input/ifc2/de.itzbund.cbt.zoll.ESUW.service.NESRiskAnalysis1.wsdl input/de.itzbund.cbt.zoll.VVUW.service.ErledigungVoruebergehendeVerwahrung1.wsdl -B dbSchema='sys_tlnr' -b input/mapping.properties -d", genFolder);
       assertFalse("Errors while processing", issues.hasErrors());
    }
    
