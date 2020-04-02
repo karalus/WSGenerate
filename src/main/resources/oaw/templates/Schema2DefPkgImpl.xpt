@@ -36,7 +36,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«XSD2PackageName()» IS
   */
 
   /*
-  * to_char(2c), xml_to_record(4x) und record_to_xml(2x) Routinen für die einzelnen Typen
+  * xml_to_record(4x) und record_to_xml(2x) Routinen für die einzelnen Typen
   */
 «FOREACH simpleTypes().select(e|isSimpleTypeList(e)) AS listType-»
 «LET getBaseTypeForListType(listType) AS baseType-»
@@ -159,23 +159,6 @@ END «XSD2PackageName()»;
 «REM»«ENDREM»
 
 «DEFINE XSDSchema(ComplexType ct, String name) FOR ServiceNamespace-»
-  FUNCTION «XSDType2Oracle(name, ct, "2c")» (
-    p_«XSDType2Oracle(name, ct)»	IN	«XSDType2Oracle(name, ct)»
-  ) RETURN VARCHAR2
-  IS
-    v_return            «BaseBackageName(model)».maxplsqltext_t;
-  BEGIN
-
-    v_return := substr(
-         '«XSD2PackageName()».«XSDType2Oracle(name, ct)»('
-«EXPAND ToString(ct, "p_" + XSDType2Oracle(name, ct), name)-»
-      || chr(10) || ')'
-      , 1, «BaseBackageName(model)».c_fl_maxplsqltext);
-
-    RETURN v_return;
-
-  END «XSDType2Oracle(name, ct, "2c")»;
-
   FUNCTION «XSDType2Oracle(name, ct, "4x")» (
       p_node	              IN DBMS_XMLDOM.DOMNode
   ) RETURN «XSDType2Oracle(name, ct)»
@@ -265,147 +248,6 @@ END «XSD2PackageName()»;
     RETURN p_«XSDType2Oracle(name, ct)» IS NOT NULL AND p_«XSDType2Oracle(name, ct)».count > 0;
   END isNotEmpty;
 
-«ENDDEFINE»
-
-«REM»«ENDREM»
-«DEFINE ToString(ComplexType ct, String parentParam, String name) FOR ServiceNamespace-»
-«IF ct.complexContent != null-»
-«IF ct.complexContent.extension != null-»
-«LET findUsedServiceNamespace(ct.complexContent.extension.base.namespaceURI) AS ns-»
-«LET findComplexType(ns, ct.complexContent.extension.base) AS tlct-»
-«EXPAND ToString(tlct, parentParam, tlct.name) FOR ns-»
-«ENDLET-»
-«ENDLET-»
-«EXPAND ToString(ct.complexContent.extension, parentParam, name)-»
-«ELSEIF ct.complexContent.restriction != null-»
-«EXPAND ToString(ct.complexContent.restriction, parentParam, name)-»
-«ENDIF-»
-«ELSE-»
-«IF ct.group != null-»
-«EXPAND ToString(ct.group, parentParam, name, null, null, "group")-»
-«ELSEIF ct.all != null-»
-«EXPAND ToString(ct.all, parentParam, name, null, null, "all")-»
-«ELSEIF ct.choice != null-»
-«EXPAND ToString(ct.choice, parentParam, name, null, null, "choice")-»
-«ELSEIF ct.sequence != null-»
-«EXPAND ToString(ct.sequence, parentParam, name, null, null, "sequence")-»
-«ENDIF-»
-«ENDIF-»
-«FOREACH ct.attributeOrAttributeGroup AS a-»
-«EXPAND ToString(a, parentParam)-»
-«ENDFOREACH-»
-«ENDDEFINE»
-
-«DEFINE ToString(ExtensionType et, String parentParam, String name) FOR ServiceNamespace-»
-«IF et.group != null-»
-«EXPAND ToString(et.group, parentParam, name, null, null, "group")-»
-«ELSEIF et.all != null-»
-«EXPAND ToString(et.all, parentParam, name, null, null, "all")-»
-«ELSEIF et.choice != null-»
-«EXPAND ToString(et.choice, parentParam, name, null, null, "choice")-»
-«ELSEIF et.sequence != null-»
-«EXPAND ToString(et.sequence, parentParam, name, null, null, "sequence")-»
-«ENDIF-»
-«FOREACH et.attributeOrAttributeGroup AS a-»
-«EXPAND ToString(a, parentParam)-»
-«ENDFOREACH-»
-«ENDDEFINE»
-
-«DEFINE ToString(ComplexRestrictionType crt, String parentParam, String name) FOR ServiceNamespace-»
-«IF crt.group != null-»
-«EXPAND ToString(crt.group, parentParam, name, null, null, "group")-»
-«ELSEIF crt.all != null-»
-«EXPAND ToString(crt.all, parentParam, name, null, null, "all")-»
-«ELSEIF crt.choice != null-»
-«EXPAND ToString(crt.choice, parentParam, name, null, null, "choice")-»
-«ELSEIF crt.sequence != null-»
-«EXPAND ToString(crt.sequence, parentParam, name, null, null, "sequence")-»
-«ENDIF-»
-«FOREACH crt.attributeOrAttributeGroup AS a-»
-«EXPAND ToString(a, parentParam)-»
-«ENDFOREACH-»
-«ENDDEFINE»
-
-«DEFINE ToString(GroupRef gr, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
-«EXPAND ToString(findReferencedGroup(gr.ref), parentParam, typeName, parentGroupType, parentGroup, particleType)-»
-«ENDDEFINE»
-
-«DEFINE ToString(Group g, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
-«FOREACH g.particle.typeSelect(JAXBElement) AS p-»
-«EXPAND ToString(p.getValue(), parentParam, typeName, particleType, g, p.name.localPart)-»
-«ENDFOREACH-»
-«ENDDEFINE»
-
-«DEFINE ToString(Object obj, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
-«ERROR "Particle type not supported: " + particleType»
-«ENDDEFINE»
-
-«DEFINE ToString(Element e, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
-«LET getTypeNamespace(e) AS ns-»
-«LET parentParam + '.' + getOracleName(e) AS elementAccess-»
-«IF isArray(e, parentGroup)-»
-      || chr(10) || rpad(', Anzahl «XSD2Oracle(e.ref != null ? ns : this, e.ref != null ? e.ref.localPart : e.name, e)»',31) || '= ' || CASE WHEN «elementAccess» IS NULL THEN '0' ELSE «elementAccess».count END
-«ELSE-»
-«IF hasSimpleType(e)-»
-«IF isSimpleTypeList(e)-»
-      || chr(10) || rpad(', «getOracleName(e)»',31) || '= ' || «XSD2PackageName(ns)».«XSDType2Oracle(ns, (TopLevelSimpleType) getSimpleType(e), "2l")»(«elementAccess»)
-«ELSE-»
-«LET convertOracle2XSDBasicType(getBuiltInType(e), getFacets(e), elementAccess) AS expr-»
-      || chr(10) || rpad(', «getOracleName(e)»',31) || '= ' || «IF isLOB(expr)»'<lob: ' || dbms_lob.getlength(«elementAccess») || '>'«ELSEIF isXMLType(expr)»'<embedded XML>'«ELSE»«expr»«ENDIF»
-«ENDLET-»
-«ENDIF-»
-«ELSE-»
-«LET getNonLocalComplexType(e) AS ct-»
-«IF e.complexType != null-»
-      || chr(10) || rpad(', «XSD2Oracle(e.name, e)»',31) || '= ' || CASE WHEN «getIsNotNullExpression(e, parentParam, parentGroup)» THEN «XSD2PackageName(ns)».«anonymousTypeName2Oracle(e, typeName)»2c(«elementAccess») ELSE 'NULL' END
-«ELSEIF e.ref != null-»
-«LET findReferencedElement(e.ref) AS refElement-»
-«IF refElement.complexType != null-»
-      || chr(10) || rpad(', «XSD2Oracle(ns, e.ref.localPart, refElement)»',31) || '= ' || CASE WHEN «getIsNotNullExpression(e, parentParam, parentGroup)» THEN «XSD2PackageName(ns)».«anonymousTypeName2Oracle(ns, refElement, "")»2c(«elementAccess») ELSE 'NULL' END
-«ELSEIF ct != null-»
-      || chr(10) || rpad(', «XSD2Oracle(ns, e.ref.localPart, refElement)»',31) || '= ' || CASE WHEN «getIsNotNullExpression(e, parentParam, parentGroup)» THEN «XSD2PackageName(ns)».«XSDType2Oracle(ns, ct, "2c")»(«elementAccess») ELSE 'NULL' END
-«ELSE-»
--- No Type found for «e.ref»
-«ENDIF-»
-«ENDLET-»
-«ELSEIF e.type != null-»
-      || chr(10) || rpad(', «XSD2Oracle(e.name, e)»',31) || '= ' || CASE WHEN «getIsNotNullExpression(e, parentParam, parentGroup)» THEN «XSD2PackageName(ns)».«XSDType2Oracle(ns, ct, "2c")»(«elementAccess») ELSE 'NULL' END
-«ELSE-»
--- No Type found for «e.name»
-«ENDIF-»
-«ENDLET-»
-«ENDIF-»
-«ENDIF-»
-«ENDLET-»
-«ENDLET-»
-«ENDDEFINE»
-
-«DEFINE ToString(Attribute a, String parentParam) FOR ServiceNamespace-»
-«IF isSimpleTypeList(a)-»
-«IF getSimpleType(a).name != null-»
-      || chr(10) || rpad(', «XSD2Oracle(a.name, a)»',31) || '= ' || «XSDType2Oracle((TopLevelSimpleType) getSimpleType(a), "2l")»(«parentParam + '.' + XSD2Oracle(a.name, a)»)
-«ELSE-»
--- Nicht implementiert: anonymer SimpleListType in Attribut «a.name»
-«ENDIF-»
-«ELSE-»
-      || chr(10) || rpad(', «XSD2Oracle(a.name, a)»',31) || '= ' || «convertOracle2XSDBasicType(getBuiltInType(a), getFacets(a), parentParam + '.' + XSD2Oracle(a.name, a))»
-«ENDIF-»
-«ENDDEFINE»
-
-«DEFINE ToString(AttributeGroupRef agr, String parentParam) FOR ServiceNamespace-»
-«LET findUsedServiceNamespace(agr.ref.namespaceURI) AS ns-»
-«EXPAND ToString(findAttributeGroup(ns, agr.ref.localPart), parentParam) FOR ns-»
-«ENDLET-»
-«ENDDEFINE»
-
-«DEFINE ToString(AttributeGroup ag, String parentParam) FOR ServiceNamespace-»
-«FOREACH ag.attributeOrAttributeGroup AS a-»
-«EXPAND ToString(a, parentParam)-»
-«ENDFOREACH-»
-«ENDDEFINE»
-
-«DEFINE ToString(Annotated a, String parentParam) FOR ServiceNamespace-»
-«ERROR "Abstract type: " + this»
 «ENDDEFINE»
 
 «REM»«ENDREM»

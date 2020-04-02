@@ -310,8 +310,6 @@ TYPE «XSDType2Oracle(name, ct)» IS RECORD (
   INTERN_isPresent  BOOLEAN«EXPAND XSDSchemaElements(name, this, ct)»
 );
 
-FUNCTION «XSDType2Oracle(name, ct, "2c")»(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct)») RETURN VARCHAR2;
-
 FUNCTION «XSDType2Oracle(name, ct, "4x")»(p_node IN DBMS_XMLDOM.DOMNode) RETURN «XSDType2Oracle(name, ct)»;
 
 PROCEDURE «XSDType2Oracle(name, ct, "2x")» (
