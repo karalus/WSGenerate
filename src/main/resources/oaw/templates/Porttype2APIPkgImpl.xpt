@@ -311,6 +311,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 
     timeout                      INTEGER;
 	fault_mapped                 BOOLEAN := FALSE;
+    fault_string                 VARCHAR2(4000);
     v_url                        VARCHAR2(255);
 
   BEGIN
@@ -360,13 +361,14 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
           p_error_out := «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»4x(innode);
           fault_mapped := TRUE;
         END IF;
-      END IF;
-«ELSE-»
-      END IF;
-      DBMS_XMLDOM.writeToBuffer(innode, param_out);
-      DBMS_XMLDOM.freeDocument(indomdoc);
-      RAISE_APPLICATION_ERROR(-20001, 'Fault ' || param_out);
 «ENDIF-»
+      END IF;
+      IF NOT fault_mapped THEN
+        innode := DBMS_XMLDOM.getFirstChild(innode);
+        fault_string := DBMS_XMLDOM.getNodeValue(innode);
+        DBMS_XMLDOM.freeDocument(indomdoc);
+        RAISE_APPLICATION_ERROR(-20001, 'Fault: ' || fault_string);
+      END IF;
     ELSE
       p_param_out := «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»4x(innode);
     END IF;

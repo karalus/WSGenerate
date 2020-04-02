@@ -128,9 +128,9 @@ String convertXSDBasicTypeOracle(QName this, List[Object] facets) :
 		(localPart == "int" && getIntegerTypeTotalDigits(facets) == 10 ? "BINARY_INTEGER" : // more precise than NUMBER(10)
 			(isInt32Type() || isIntegerType() ? (let td = getIntegerTypeTotalDigits(facets) : td != null ? "NUMBER(" + td + ")" : "NUMBER") :
 				(localPart == "decimal" ? (hasNumberFormat(facets) ? "NUMBER(" + getNumberFormat(facets) + ")" : "NUMBER") :
-					(localPart == "dateTime" || localPart == "time" ? (hasTimezone(facets) ? "TIMESTAMP WITH TIME ZONE" : "TIMESTAMP") :
-						(localPart == "date" || localPart == "gYearMonth" ? (hasTimezone(facets) ? "TIMESTAMP WITH TIME ZONE" : "DATE") :
-							(localPart == "gYear" ? (hasTimezone(facets) ? "TIMESTAMP WITH TIME ZONE" : "NUMBER(4)") :
+					(localPart == "dateTime" || localPart == "time" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "TIMESTAMP" : "VARCHAR2(" + getCharLength(facets) + " CHAR)") : "TIMESTAMP WITH TIME ZONE") :
+						(localPart == "date" || localPart == "gYearMonth" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "DATE" : "VARCHAR2(" + getCharLength(facets) + " CHAR)") : "TIMESTAMP WITH TIME ZONE") :
+							(localPart == "gYear" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "NUMBER(4)" : "VARCHAR2(" + getCharLength(facets) + " CHAR)") : "TIMESTAMP WITH TIME ZONE") :
 								(localPart == "boolean" ? "BOOLEAN" :
 									(localPart == "float" ? "BINARY_FLOAT" :
 										(localPart == "double" ? "BINARY_DOUBLE" :
@@ -148,11 +148,11 @@ String convertOracle2XSDBasicType(ServiceNamespace owner, QName this, List[Objec
 	isStringType() ? param :
 		(isInt32Type() || isIntegerType() ? "to_char(" + param + ')' :
 			(localPart == "decimal" ? "to_char(" + param + ", 'TM9', 'nls_numeric_characters = ''.,''')" :
-				(localPart == "dateTime" ? (hasTimezone(facets) ? "to_char(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF3TZH:TZM')" : "to_char(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF3')") :
-					(localPart == "date" ? (hasTimezone(facets) ? "to_char(" + param + ", 'YYYY-MM-DDTZH:TZM')" : "to_char(" + param + ", 'YYYY-MM-DD')") :
-						(localPart == "time" ? (hasTimezone(facets) ? "to_char(" + param + ", 'HH24:MI:SSTZH:TZM')" : "to_char(" + param + ", 'HH24:MI:SS')") :
-							(localPart == "gYearMonth" ? (hasTimezone(facets) ? "to_char(" + param + ", 'YYYY-MMTZH:TZM')" : "to_char(" + param + ", 'YYYY-MM')") :
-								(localPart == "gYear" ? (hasTimezone(facets) ? "to_char(" + param + ", 'YYYYTZH:TZM')" : "to_char(" + param + ')') :
+				(localPart == "dateTime" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "to_char(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF3')" : param) : "to_char(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF3TZH:TZM')") :
+					(localPart == "date" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "to_char(" + param + ", 'YYYY-MM-DD')" : param) : "to_char(" + param + ", 'YYYY-MM-DDTZH:TZM')") :
+						(localPart == "time" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "to_char(" + param + ", 'HH24:MI:SS')" : param) : "to_char(" + param + ", 'HH24:MI:SSTZH:TZM')") :
+							(localPart == "gYearMonth" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "to_char(" + param + ", 'YYYY-MM')" : param) : "to_char(" + param + ", 'YYYY-MMTZH:TZM')") :
+								(localPart == "gYear" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "to_char(" + param + ')' : param) : "to_char(" + param + ", 'YYYYTZH:TZM')") :
 									(localPart == "boolean" ? "CASE " + param + " WHEN TRUE THEN 'true' WHEN false THEN 'false' ELSE 'NULL' END" :
 										(localPart == "float" ? bp + ".FLOAT_TO_CHAR(" + param + ')' :
 											(localPart == "double" ? bp + ".DOUBLE_TO_CHAR(" + param + ')' :
@@ -168,11 +168,11 @@ String convertXSDBasicType2Oracle(ServiceNamespace owner, QName this, List[Objec
 	isStringType() ? param :
 		(isInt32Type() || isIntegerType() ? "to_number(" + param + ')' :
 			(localPart == "decimal" ? "to_number(" + param + ", '" + repeat("9", facets.getDigitsForDecimal()) + "." + repeat("9", facets.getFractionDigitsForDecimal()) + "')" :
-				(localPart == "dateTime" ? (hasTimezone(facets) ? "TO_TIMESTAMP_TZ(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF3TZH:TZM')" : "TO_TIMESTAMP(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF3')") :
-					(localPart == "date" ? (hasTimezone(facets) ? "TO_TIMESTAMP_TZ(" + param + ", 'YYYY-MM-DDTZH:TZM')" : "TO_DATE(" + param + ", 'YYYY-MM-DD')") :
-						(localPart == "time" ? (hasTimezone(facets) ? "TO_TIMESTAMP_TZ(" + param + ", 'HH24:MI:SS.FF3TZH:TZM')" : "TO_TIMESTAMP(" + param + ", 'HH24:MI:SS.FF3')") :
-							(localPart == "gYearMonth" ? (hasTimezone(facets) ? "TO_TIMESTAMP_TZ(" + param + ", 'YYYY-MMTZH:TZM')" : "TO_DATE(" + param + ", 'YYYY-MM')") :
-								(localPart == "gYear" ? (hasTimezone(facets) ? "TO_TIMESTAMP_TZ(" + param + ", 'YYYYTZH:TZM')" : "to_number(" + param + ')') :
+				(localPart == "dateTime" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "TO_TIMESTAMP(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF3')" : param) : "TO_TIMESTAMP_TZ(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF3TZH:TZM')") : 
+					(localPart == "date" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "TO_DATE(" + param + ", 'YYYY-MM-DD')" : param) : "TO_TIMESTAMP_TZ(" + param + ", 'YYYY-MM-DDTZH:TZM')") :
+						(localPart == "time" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "TO_TIMESTAMP(" + param + ", 'HH24:MI:SS.FF3')" : param) : "TO_TIMESTAMP_TZ(" + param + ", 'HH24:MI:SS.FF3TZH:TZM')") :
+							(localPart == "gYearMonth" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "TO_DATE(" + param + ", 'YYYY-MM')" : param) : "TO_TIMESTAMP_TZ(" + param + ", 'YYYY-MMTZH:TZM')") :
+								(localPart == "gYear" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "to_number(" + param + ')' : param) : "TO_TIMESTAMP_TZ(" + param + ", 'YYYYTZH:TZM')") :
 									(localPart == "boolean" ? "CASE " + param + " WHEN 'true' THEN TRUE WHEN 'false' THEN FALSE WHEN '1' THEN TRUE WHEN '0' THEN FALSE ELSE NULL END" :
 										(localPart == "float" ? bp + ".CHAR_TO_FLOAT(" + param + ')' :
 											(localPart == "double" ? bp + ".CHAR_TO_DOUBLE(" + param + ')' :

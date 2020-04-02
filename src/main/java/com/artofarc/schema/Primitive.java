@@ -27,8 +27,8 @@ public final class Primitive extends Type {
 	private Integer maxLength;
 	private Integer totalDigits;
 	private Integer fractionDigits;
-	private BigInteger minValue;
-	private BigInteger maxValue;
+	private String minValue;
+	private String maxValue;
 	private List<String> patterns = new ArrayList<>();
 	private List<Enum> enumerations = new ArrayList<>();
 
@@ -84,19 +84,19 @@ public final class Primitive extends Type {
 		this.fractionDigits = fractionDigits;
 	}
 
-	public BigInteger getMinValue() {
+	public String getMinValue() {
 		return minValue;
 	}
 
-	public void setMinValue(BigInteger minValue) {
+	public void setMinValue(String minValue) {
 		this.minValue = minValue;
 	}
 
-	public BigInteger getMaxValue() {
+	public String getMaxValue() {
 		return maxValue;
 	}
 
-	public void setMaxValue(BigInteger maxValue) {
+	public void setMaxValue(String maxValue) {
 		this.maxValue = maxValue;
 	}
 

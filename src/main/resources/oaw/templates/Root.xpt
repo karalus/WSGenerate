@@ -4,6 +4,7 @@
 «IMPORT javax::xml::namespace»
 
 «EXTENSION oaw::extensions::wsdl»
+«EXTENSION oaw::extensions::simplify»
 
 «DEFINE _Root FOR Model»
 «EXPAND SOAPBase::Root»
@@ -15,4 +16,10 @@
 «EXPAND Porttype2APIPkgImpl::Root(wsdl)»
 «ENDFOREACH-»
 «ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE _Root2 FOR Model»
+«LET transform() AS schemaModel»
+«EXPAND Schema2PKS::Root FOREACH schemaModel.definitions»
+«ENDLET»
 «ENDDEFINE»

@@ -54,10 +54,10 @@ addFacet(Primitive this, JAXBElement e) : let v = e.getValueAsFacet().value : sw
  case "maxLength" : setMaxLength(v.asInteger())
  case "length" : (let l = v.asInteger() : setMinLength(l) -> setMaxLength(l))
  case "fractionDigits" : setFractionDigits(v.asInteger())
- case "minInclusive" : setMinValue(v.asInteger())
- case "maxInclusive" : setMaxValue(v.asInteger())
- case "minExclusive" : setMinValue(v.asInteger()+1)
- case "maxExclusive" : setMaxValue(v.asInteger()-1)
+ case "minInclusive" : setMinValue(v)
+ case "maxInclusive" : setMaxValue(v)
+// case "minExclusive" : setMinValue(v.asInteger()+1)
+// case "maxExclusive" : setMaxValue(v.asInteger()-1)
  default : null
 };
 create Enum transform(SchemaObject owner, NoFixedFacet e) : setOwner(owner) -> fillSchemaObject(e) -> setValue(e.value);

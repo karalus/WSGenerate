@@ -80,6 +80,17 @@ public abstract class Referrer extends SchemaObject {
 		return null;
 	}
 
+	public Type getType() {
+		SchemaModel model = getSchemaModel();
+		if (ref != null) {
+			Global global = model.getDefinition(ref.getNamespaceURI()).getDefinition(ref.getLocalPart());
+			return global.getType();
+		} else if (typeRef != null) {
+			return typeRef.getType(model);
+		}
+		return null;
+	}
+	
 	@Override
 	public String toString() {
 		return getFullName();

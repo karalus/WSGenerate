@@ -63,6 +63,17 @@ public final class TypeRef {
 		return type;
 	}
 	
+	public Type getType(SchemaModel model) {
+		if (innerType != null) {
+			return innerType;
+		}
+		Type type = model.getCompositeType(ref);
+		if (type == null) {
+			type = model.getPrimitiveType(ref);
+		}
+		return type;
+	}
+	
 	public Type getLocalType(SchemaDef schema) {
 		Type type = innerType;
 		if (type == null) {
@@ -71,6 +82,9 @@ public final class TypeRef {
 				if (type == null) {
 					type = schema.getPrimitiveType(ref.getLocalPart());
 				}
+			}
+			if (type == null) {
+				System.out.println();
 			}
 		}
 		return type;

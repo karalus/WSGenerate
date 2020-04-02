@@ -28,7 +28,7 @@ private java::net::URI createURI(String uri) :
 	JAVA com.artofarc.util.UriHelper.createURI(java.lang.String);
 private String getQueryParam(String uri, String key) : createURI(uri).query.split("&").selectFirst(p|p.startsWith(key + "=")).split("=").get(1);
 
-String XSD2PackageName(SchemaDef this) : model.bindingDefinition.getMappingForNamespace(targetNamespace, "D");
+String XSD2PackageName(SchemaDef this) : model.bindingDefinition.getMappingForNamespace(targetNamespace);
 	
 String XSDType2Oracle(SchemaDef ns, String name, SchemaObject this) : checkLen(_XSDType2Oracle(ns, name, false), ns.targetNamespace, name);
 String XSDType2Oracle(SchemaDef ns, String name, SchemaObject this, boolean isArray) : checkLen(_XSDType2Oracle(ns, name, isArray), ns.targetNamespace, name);
@@ -44,18 +44,20 @@ String enumValue2OracleName(SchemaDef owner, String oracleTypeName, Enum this) :
 	let n = oracleTypeName.chomp(1) + value.replaceAll("\\.|,", "").replaceAll(" |-", "_") : // reduce "_T" to "_"
 		checkLen(owner.getMappingForName(n, this) + "_c", owner.targetNamespace, n);
 
-String anonymousTypeName(Primitive element, String parentTypeName) :
-	let s = parentTypeName.chomp("Type") : (s.length > 0 ? s + element.name.toFirstUpper() : element.name) + "Type";
+//String anonymousTypeName(Primitive element, String parentTypeName) : let s = parentTypeName.chomp("Type") : (s.length > 0 ? s + element.name.toFirstUpper() : element.name) + "Type";
 
+// Type mapping
+String formatDocumentation(String doc, String prefix) : doc.split("\n").collect(e|e.trim()).reject(e|e.length == 0).collect(e|prefix + e + lineSeparator()).concat();
+String concat(List[String] list) : list.isEmpty ? "" : (list.size > 1 ? list.first() + concat(list.withoutFirst()) : list.first());
 
-String convertXSDBasicTypeOracle(Primitive this) : let ref = baseRef :
-	isStringType(ref) ? (isFixedLength() ? "CHAR(" + maxLength + ")" : "VARCHAR2(" + maxLength + " CHAR)") :
-		(ref.localPart == "int" && getIntegerTypeTotalDigits(facets) == 10 ? "BINARY_INTEGER" : // more precise than NUMBER(10)
-			(isInt32Type() || isIntegerType() ? (let td = getIntegerTypeTotalDigits(facets) : td != null ? "NUMBER(" + td + ")" : "NUMBER") :
-				(localPart == "decimal" ? (hasNumberFormat(facets) ? "NUMBER(" + getNumberFormat(facets) + ")" : "NUMBER") :
-					(localPart == "dateTime" || localPart == "time" ? (hasTimezone(facets) ? "TIMESTAMP WITH TIME ZONE" : "TIMESTAMP") :
-						(localPart == "date" || localPart == "gYearMonth" ? (hasTimezone(facets) ? "TIMESTAMP WITH TIME ZONE" : "DATE") :
-							(localPart == "gYear" ? (hasTimezone(facets) ? "TIMESTAMP WITH TIME ZONE" : "NUMBER(4)") :
+String convertXSDBasicTypeOracle(QName this, Primitive primitive) : 
+	isStringType() ? (isFixedLength(primitive) ? "CHAR(" + getMaxCharLength(primitive) + ")" : "VARCHAR2(" + getMaxCharLength(primitive) + " CHAR)") :
+		(localPart == "int" && getIntegerTypeTotalDigits(primitive) == 10 ? "BINARY_INTEGER" : // more precise than NUMBER(10)
+			(isInt32Type() || isIntegerType() ? (let td = getIntegerTypeTotalDigits(primitive) : td != null ? "NUMBER(" + td + ")" : "NUMBER") :
+				(localPart == "decimal" ? (hasNumberFormat(primitive) ? "NUMBER(" + getNumberFormat(primitive) + ")" : "NUMBER") :
+					(localPart == "dateTime" || localPart == "time" ? (hasTimezone(primitive) ? "TIMESTAMP WITH TIME ZONE" : "TIMESTAMP") :
+						(localPart == "date" || localPart == "gYearMonth" ? (hasTimezone(primitive) ? "TIMESTAMP WITH TIME ZONE" : "DATE") :
+							(localPart == "gYear" ? (hasTimezone(primitive) ? "TIMESTAMP WITH TIME ZONE" : "NUMBER(4)") :
 								(localPart == "boolean" ? "BOOLEAN" :
 									(localPart == "float" ? "BINARY_FLOAT" :
 										(localPart == "double" ? "BINARY_DOUBLE" :
@@ -65,3 +67,8 @@ String convertXSDBasicTypeOracle(Primitive this) : let ref = baseRef :
 														"Illegal XSD type: " + localPart))))))))))));
 
 //
+private boolean hasNumberFormat(Primitive primitive) : primitive != null && (primitive.totalDigits != null || primitive.fractionDigits != null);
+private String getNumberFormat(Primitive this) :
+	totalDigits != null ? totalDigits.toString() + (fractionDigits != null ? "," + fractionDigits : "") :
+		(fractionDigits != null ? numberDefaultPrecision().toString() + "," + fractionDigits : numberDefaultPrecision());
+private int numberDefaultPrecision() : 38;

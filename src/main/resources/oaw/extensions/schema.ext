@@ -45,6 +45,7 @@ NumFacet getFacetMaxInclusive(List[Object] this) : getFirstFacetForName("maxIncl
 //NumFacet getFacetMaxExclusive(List[Object] this) : getFirstFacetForName("maxExclusive");
 // All of them apply: http://docstore.mik.ua/orelly/xml/schema/ch05_01.htm
 List[Pattern] getPatternFacets(List[Object] facets) : facets.typeSelect(Pattern);
+boolean hasPatternFacets(List[Object] facets) : getPatternFacets(facets).size > 0;
 
 TopLevelComplexType findReferencedComplexType(ServiceNamespace owner, QName type) : owner.findUsedServiceNamespace(type.namespaceURI).findComplexType(type);
 TopLevelSimpleType findReferencedSimpleType(ServiceNamespace owner, QName type) : owner.findUsedServiceNamespace(type.namespaceURI).findSimpleType(type);
@@ -167,13 +168,22 @@ private int charDefaultLength() : 32767;
 boolean isTypeWithTimeZone(QName this) : localPart == "dateTime" || localPart == "date" || localPart == "time" || localPart == "gYearMonth" || localPart == "gYear";
 boolean isTypeWithTime(QName this) : localPart == "dateTime" || localPart == "time";
 // Takes a sample. But how else can we tell that <xs:pattern value=".*T[^Z+-]*"/> forbids usage of a time zone?
-cached boolean hasTimezone(QName this, List[Object] facets) : facets == null || (let patterns = facets.getPatternFacets() :
+cached int getCharLength(QName this, List[Object] facets) : (let m = minimum(facets.getPatternFacets().value.newRegExHelper().maxLength) :
 	switch (localPart) {
-		case "dateTime" : patterns.matchesAll("2001-10-26T19:32:52Z") || patterns.matchesAll("2001-10-26T19:32:52.000Z")
-		case "date" : patterns.matchesAll("2001-10-26Z")
-		case "time" : patterns.matchesAll("19:32:52Z")
-		case "gYearMonth" : patterns.matchesAll("2001-10Z")
-		case "gYear" : patterns.matchesAll("2001Z")
+		case "dateTime" : minimumN(m, 29)
+		case "date" : minimumN(m, 16)
+		case "time" : minimumN(m, 14)
+		case "gYearMonth" : minimumN(m, 13)
+		case "gYear" : minimumN(m, 10)
+		default : true
+	});
+cached boolean isWithoutTimezone(QName this, List[Object] facets) : facets == null || (let patterns = facets.getPatternFacets() :
+	switch (localPart) {
+		case "dateTime" : patterns.matchesAll("2001-10-26T19:32:52.000")
+		case "date" : patterns.matchesAll("2001-10-26")
+		case "time" : patterns.matchesAll("19:32:52")
+		case "gYearMonth" : patterns.matchesAll("2001-10")
+		case "gYear" : patterns.matchesAll("2001")
 		default : true
 	});
 private boolean matchesAll(List[Pattern] patterns, String s) : patterns.forAll(e|newRegExHelper(e.value).matcher(s).matches());

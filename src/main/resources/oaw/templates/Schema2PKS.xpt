@@ -49,7 +49,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«XSD2PackageName()» IS
 «ENDFOREACH-»
 «EXPAND XSDSchemaComplexTypes(done, composites.typeRef.innerType)-»
 «FOREACH definitions AS topLevelElement-»
-«EXPAND XSDSchemaComplexTypes(done, "", topLevelElement.typeRef.innerType)-»
+«EXPAND XSDSchemaComplexTypes(done, "", topLevelElement.type)-»
 «ENDFOREACH-»
 «ENDLET-»
   ------------------------------------------------------------------------------
@@ -164,7 +164,7 @@ TYPE «XSDType2Oracle(refType, true)» IS TABLE OF «oracleName»;
 «FOREACH type.patterns AS pattern-»
 --   Pattern: «pattern»
 «ENDFOREACH-»
-SUBTYPE «oracleName» IS «convertXSDBasicTypeOracle(type)-»;
+SUBTYPE «oracleName» IS «convertXSDBasicTypeOracle(type.baseRef, type)-»;
 
 TYPE «XSDType2Oracle(typeName, type, true)» IS TABLE OF «oracleName»;
 «FOREACH type.enumerations AS enumeration-»
@@ -187,7 +187,11 @@ TYPE «XSDType2Oracle(typeName, type, true)» IS TABLE OF «oracleName»;
 «LET done.add(ct) AS newDone»«ENDLET-»
 «IF !ct.restriction && ct.isBaseTypeInNamespace(targetNamespace)-»
 «LET model.getCompositeType(ct.baseRef) AS bct-»
+«IF bct != null-»
 «EXPAND XSDSchemaComplexTypes(done, bct.fullName, bct)-»
+«ELSE-»
+Nicht gefunden: «typeName»: «ct.baseRef»
+«ENDIF»
 «ENDLET-»
 «ENDIF-»
 «FOREACH ct.members AS m-»
@@ -221,6 +225,9 @@ TYPE «XSDType2Oracle(typeName, type, true)» IS TABLE OF «oracleName»;
 «ENDLET-»
 «ENDDEFINE»
 
+«DEFINE XSDSchemaComplexTypes(Set[Composite] done, String typeName, Type t) FOR SchemaDef-»
+«ERROR "abstract: " + t»
+«ENDDEFINE»
 «REM»«ENDREM»
 
 «DEFINE XSDSchema(String name, ComplexType ct) FOR ServiceNamespace-»
