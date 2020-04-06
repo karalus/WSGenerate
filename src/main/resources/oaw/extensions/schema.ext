@@ -22,9 +22,12 @@ List[Object] getDocumentationContent(Schema this) : includeOrImportOrRedefine.ty
 List[Appinfo] appinfos(Annotated this) : annotation.appinfoOrDocumentation.typeSelect(Appinfo);
 List[org::w3c::dom::Element] domElements(Appinfo appinfo) : appinfo.content.typeSelect(org::w3c::dom::Element);
 
-cached List[TopLevelComplexType] complexTypes(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(ComplexType);
-cached List[TopLevelComplexType] complexTypesNotAbstract(ServiceNamespace ns) : complexTypes(ns).reject(ct|ct.abstract);
-cached List[TopLevelSimpleType] simpleTypes(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(SimpleType);
+cached List[TopLevelComplexType] complexTypes(ServiceNamespace ns) : removeDuplicates(_complexTypes(ns), {}, {}.toSet());
+private List[TopLevelComplexType] removeDuplicates(List[TopLevelComplexType] source, List[TopLevelComplexType] dest, Set[String] names) :
+	source.isEmpty ? dest : (let n = source.last() : removeDuplicates(source.withoutLast(), names.contains(n.name) ? dest : dest.add(n), (Set[String]) names.add(n.name)));
+private List[TopLevelComplexType] _complexTypes(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(TopLevelComplexType);
+List[TopLevelComplexType] complexTypesNotAbstract(ServiceNamespace ns) : complexTypes(ns).reject(ct|ct.abstract);
+cached List[TopLevelSimpleType] simpleTypes(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(TopLevelSimpleType);
 cached List[TopLevelElement] topLevelElements(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(TopLevelElement);
 cached List[TopLevelAttribute] topLevelAttributes(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(TopLevelAttribute);
 cached List[NamedGroup] namedGroups(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(NamedGroup);
