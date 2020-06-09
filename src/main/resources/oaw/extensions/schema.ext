@@ -170,7 +170,6 @@ private int minimum(List[int] this) : let l = first() : size > 1 ? (let r = mini
 private int charDefaultLength() : 32767;
 boolean isTypeWithTimeZone(QName this) : localPart == "dateTime" || localPart == "date" || localPart == "time" || localPart == "gYearMonth" || localPart == "gYear";
 boolean isTypeWithTime(QName this) : localPart == "dateTime" || localPart == "time";
-// Takes a sample. But how else can we tell that <xs:pattern value=".*T[^Z+-]*"/> forbids usage of a time zone?
 cached int getCharLength(QName this, List[Object] facets) : (let m = minimum(facets.getPatternFacets().value.newRegExHelper().maxLength) :
 	switch (localPart) {
 		case "dateTime" : minimumN(m, 29)
@@ -180,6 +179,7 @@ cached int getCharLength(QName this, List[Object] facets) : (let m = minimum(fac
 		case "gYear" : minimumN(m, 10)
 		default : true
 	});
+// Takes a sample. But how else can we tell that <xs:pattern value=".*T[^Z+-]*"/> forbids usage of a time zone?
 cached boolean isWithoutTimezone(QName this, List[Object] facets) : facets == null || (let patterns = facets.getPatternFacets() :
 	switch (localPart) {
 		case "dateTime" : patterns.matchesAll("2001-10-26T19:32:52.000")
@@ -190,7 +190,7 @@ cached boolean isWithoutTimezone(QName this, List[Object] facets) : facets == nu
 		default : true
 	});
 private boolean matchesAll(List[Pattern] patterns, String s) : patterns.forAll(e|newRegExHelper(e.value).matcher(s).matches());
-boolean isStringType(QName this) : localPart == "string" || localPart == "normalizedString" || localPart == "token";
+boolean isStringType(QName this) : localPart == "string" || localPart == "normalizedString" || localPart == "token" || localPart == "NMTOKEN";
 boolean isInt32Type(QName this) : isInt32TypeSigned() || localPart == "unsignedShort" || localPart == "unsignedByte";
 boolean isInt32TypeSigned(QName this) : localPart == "int" || localPart == "short" || localPart == "byte";
 boolean isIntegerType(QName this) : isIntegerTypeSigned() || localPart == "unsignedInt" || localPart == "unsignedLong" || localPart == "nonNegativeInteger" || localPart == "positiveInteger";

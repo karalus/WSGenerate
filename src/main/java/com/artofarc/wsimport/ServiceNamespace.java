@@ -26,10 +26,9 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 
+import org.w3._2001.xmlschema.Annotated;
 import org.w3._2001.xmlschema.Schema;
 import org.w3c.dom.Element;
-
-import com.artofarc.schema.SchemaObject;
 
 public final class ServiceNamespace {
 
@@ -82,7 +81,7 @@ public final class ServiceNamespace {
 		return model.getBindingDefinition().getMappingForNamespace(URI);
 	}
 
-	public String getMappingForName(String name, SchemaObject annotated) {
+	public String getMappingForName(String name, Annotated annotated) {
 		return model.getBindingDefinition().getMappingForName(URI, name, annotated);
 	}
 

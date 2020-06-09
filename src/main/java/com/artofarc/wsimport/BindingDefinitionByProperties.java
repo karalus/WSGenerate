@@ -21,7 +21,8 @@ import java.io.IOException;
 
 import javax.wsdl.PortType;
 
-import com.artofarc.schema.SchemaObject;
+import org.w3._2001.xmlschema.Annotated;
+
 import com.artofarc.util.PropertiesExpansion;
 import com.artofarc.util.UriHelper;
 
@@ -63,7 +64,7 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 	}
 
 	@Override
-	public String getMappingForName(String ns, String name, SchemaObject annotated) {
+	public String getMappingForName(String ns, String name, Annotated annotated) {
 		return _propertiesExpansion.getPropertyFromSection(ns, name, name);
 	}
 
@@ -90,7 +91,13 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 		while (Character.isDigit((c = portType.charAt(--i)))) {
 			v = c + v;
 		}
-		return v.isEmpty() ? extractVersionForNamespace(ns) : new String[] { portType.substring(0, i + 1), v };
+		if (v.isEmpty()) {
+			String[] split = extractVersionForNamespace(ns);
+			split[0] = portType;
+			return split;
+		} else {
+			return new String[] { portType.substring(0, i + 1), v };
+		}
 	}
 
 	protected static String[] extractVersionForNamespace(String ns) {

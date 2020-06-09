@@ -18,7 +18,7 @@ package com.artofarc.wsimport;
 
 import javax.wsdl.PortType;
 
-import com.artofarc.schema.SchemaObject;
+import org.w3._2001.xmlschema.Annotated;
 
 public interface BindingDefinition {
 
@@ -26,7 +26,7 @@ public interface BindingDefinition {
 
 	String getMappingForNamespace(String ns);
 
-	String getMappingForName(String ns, String name, SchemaObject annotated);
+	String getMappingForName(String ns, String name, Annotated annotated);
 
 	public String getMappingForBasePackage(String name);
 
