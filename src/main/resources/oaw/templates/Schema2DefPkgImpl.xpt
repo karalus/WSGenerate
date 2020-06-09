@@ -321,16 +321,16 @@ END «XSD2PackageName()»;
 	-- Init Array Element
 «IF e.type != null-»
 «IF findSimpleType(ns, e.type) != null-»
-    «elementAccess» := «XSD2PackageName()».«XSDType2Oracle(ns, e.type, true)»();
+    «elementAccess» := «XSD2PackageName(ns)».«XSDType2Oracle(ns, e.type, true)»();
 «ELSE-»
-    «elementAccess» := «XSD2PackageName()».«XSDType2Oracle(ns, findComplexType(ns, e.type), true)»();
+    «elementAccess» := «XSD2PackageName(ns)».«XSDType2Oracle(ns, findComplexType(ns, e.type), true)»();
 «ENDIF-»
 «ELSEIF e.ref != null-»
 «LET findReferencedElement(e.ref) AS refElement-»
     «elementAccess» := «getOracleTypeForRefElement(ns, refElement, true, parentGroup)»();
 «ENDLET-»
 «ELSEIF e.complexType != null-»
-    «elementAccess» := «XSD2PackageName()».«anonymousTypeName2Oracle(e, typeName, true)»();
+    «elementAccess» := «XSD2PackageName(ns)».«anonymousTypeName2Oracle(e, typeName, true)»();
 «ELSEIF e.simpleType != null-»
   	«elementAccess» := «getPackagePrefix(e.simpleType.restriction.base)»«XSDType2Oracle(e.simpleType.restriction.base, true)»();
 «ELSE-»
@@ -549,7 +549,7 @@ END «XSD2PackageName()»;
       ELSE
 «ENDIF-»
 «IF isSimpleTypeList(e)-»
-      text := DBMS_XMLDOM.createTextNode(p_domdoc, «XSD2PackageName()».«XSDType2Oracle(ns, (TopLevelSimpleType) getSimpleType(e), "2l")»(«elementAccess»));
+      text := DBMS_XMLDOM.createTextNode(p_domdoc, «XSD2PackageName(ns)».«XSDType2Oracle(ns, (TopLevelSimpleType) getSimpleType(e), "2l")»(«elementAccess»));
       node := DBMS_XMLDOM.appendChild(node, DBMS_XMLDOM.makeNode(text));
 «ELSE-»
 «LET convertOracle2XSDBasicType(getBuiltInType(e), getFacets(e), isArrayElement(e) ? elementAccess + "(i)" : elementAccess) AS expr-»
@@ -566,14 +566,14 @@ END «XSD2PackageName()»;
 «ENDIF-»
 «ELSE-»
 «IF e.nillable && isArray(e, parentGroup)-»
-      IF «XSD2PackageName()».isNotNull(«elementAccess»(i)) THEN
+      IF «XSD2PackageName(ns)».isNotNull(«elementAccess»(i)) THEN
        DBMS_XMLDOM.setAttribute(elmt, 'xsi:nil', 'true');
        DBMS_XMLDOM.setAttribute(elmt, 'xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
       ELSE
 «ENDIF-»
 «LET getNonLocalComplexType(e) AS ct-»
 «IF e.complexType != null-»
-      «XSD2PackageName()».«anonymousTypeName2Oracle(e, typeName)»2x(«elementAccess»«IF isArray(e, parentGroup)»(i)«ENDIF», p_domdoc, node, «getNsContextParam(elemNs)»);
+      «XSD2PackageName(ns)».«anonymousTypeName2Oracle(e, typeName)»2x(«elementAccess»«IF isArray(e, parentGroup)»(i)«ENDIF», p_domdoc, node, «getNsContextParam(elemNs)»);
 «ELSEIF e.ref != null-»
 «LET findReferencedElement(e.ref) AS refElement-»
 «IF refElement.complexType != null-»
