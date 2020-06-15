@@ -169,12 +169,21 @@ END «XSD2PackageName()»;
     node    					 DBMS_XMLDOM.DOMNode;
     elmt 	  					 DBMS_XMLDOM.DOMElement;
     text                       	 DBMS_XMLDOM.DOMNode;
+«IF ct.attributeOrAttributeGroup.size > 0-»
+    attr                       	 DBMS_XMLDOM.DOMAttr;
+«ENDIF-»
     localName                    VARCHAR2(255);
     namespace                    VARCHAR2(999);
   BEGIN
 
-«EXPAND XML2Oracle_Init(ct, "v_return", name)-»
+«IF ct.attributeOrAttributeGroup.size > 0-»
+	elmt := DBMS_XMLDOM.makeElement(p_node);
+«FOREACH ct.attributeOrAttributeGroup AS a-»
+«EXPAND XML2Oracle(a)-»
+«ENDFOREACH-»
 
+«ENDIF-»
+«EXPAND XML2Oracle_Init(ct, "v_return", name)-»
     children := DBMS_XMLDOM.getChildNodes(p_node);
     len := DBMS_XMLDOM.getLength(children);
     FOR i IN 0..len-1 LOOP
@@ -212,6 +221,13 @@ END «XSD2PackageName()»;
 
   BEGIN
 
+«IF ct.attributeOrAttributeGroup.size > 0-»
+	elmt := DBMS_XMLDOM.makeElement(p_parent_node);
+«FOREACH ct.attributeOrAttributeGroup AS a-»
+«EXPAND Oracle2XML(a, "p_" + XSDType2Oracle(name, ct))-»
+«ENDFOREACH-»
+
+«ENDIF-»
 «EXPAND Oracle2XML(ct, "p_" + XSDType2Oracle(name, ct), name)»
     RETURN;
   END «XSDType2Oracle(name, ct, "2x")»;
@@ -450,6 +466,31 @@ END «XSD2PackageName()»;
 «ENDLET-»
 «ENDDEFINE»
 
+«DEFINE XML2Oracle(Attribute a) FOR ServiceNamespace-»
+«IF a.use == "required"-»
+	v_return.«XSD2Oracle(a.name, a)» := «convertXSDBasicType2Oracle(getBuiltInType(a), getFacets(a), "DBMS_XMLDOM.getAttribute(elmt, '" + a.name + "')", null)»;
+«ELSE-»
+	attr := DBMS_XMLDOM.getAttributeNode(elmt, '«a.name»');
+	IF NOT DBMS_XMLDOM.ISNULL(attr) THEN
+	  v_return.«XSD2Oracle(a.name, a)» := «convertXSDBasicType2Oracle(getBuiltInType(a), getFacets(a), "DBMS_XMLDOM.getValue(attr)", null)»;
+	END IF;
+«ENDIF-»
+«ENDDEFINE»
+
+«DEFINE XML2Oracle(AttributeGroupRef agr) FOR ServiceNamespace-»
+«REM»Nothing to do cause all named attribute groups within owner ns are already expanded«ENDREM»
+«ENDDEFINE»
+
+«DEFINE XML2Oracle(AttributeGroup ag) FOR ServiceNamespace-»
+«FOREACH ag.attributeOrAttributeGroup AS a-»
+«EXPAND XML2Oracle(a)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE XML2Oracle(Annotated a) FOR ServiceNamespace-»
+«ERROR "Abstract type: " + this»
+«ENDDEFINE»
+
 «REM»Logik um PL/SQL RECORD TYPEs nach XML zu transformieren«ENDREM»
 «DEFINE Oracle2XML(ComplexType ct, String parentParam, String name) FOR ServiceNamespace-»
 «IF ct.complexContent != null-»
@@ -617,6 +658,32 @@ END «XSD2PackageName()»;
 «ENDLET-»
 «ENDLET-»
 «ENDLET-»
+«ENDDEFINE»
+
+«DEFINE Oracle2XML(Attribute a, String parentParam) FOR ServiceNamespace-»
+«LET parentParam + '.' + XSD2Oracle(a.name, a) AS attributeAccess-»
+	IF «attributeAccess» IS NOT NULL THEN
+      DBMS_XMLDOM.setAttribute(elmt, '«a.name»', «convertOracle2XSDBasicType(getBuiltInType(a), getFacets(a), attributeAccess)»);
+«IF a.use == "required"-»
+    ELSE
+      SOAP_BASE.fehler_pflichtelement_fehlt('«attributeAccess»');
+«ENDIF-»
+    END IF;
+«ENDLET-»
+«ENDDEFINE»
+
+«DEFINE Oracle2XML(AttributeGroupRef agr, String parentParam) FOR ServiceNamespace-»
+«REM»Nothing to do cause all named attribute groups within owner ns are already expanded«ENDREM»
+«ENDDEFINE»
+
+«DEFINE Oracle2XML(AttributeGroup ag, String parentParam) FOR ServiceNamespace-»
+«FOREACH ag.attributeOrAttributeGroup AS a-»
+«EXPAND Oracle2XML(a, parentParam)-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE Oracle2XML(Annotated a, String parentParam) FOR ServiceNamespace-»
+«ERROR "Abstract type: " + this»
 «ENDDEFINE»
 
 «DEFINE XMLStringConversion(TopLevelElement tle) FOR ServiceNamespace-»
