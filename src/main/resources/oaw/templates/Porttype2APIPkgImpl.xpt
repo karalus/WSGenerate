@@ -7,10 +7,10 @@
 
 «DEFINE Root(Definition definition) FOR Model»
 «FOREACH definition.getSOAPBindings().portType.toSet() AS portType»
-«IF bindingDefinition.generateServer(portType)»
+«IF generateServer(portType)»
 «EXPAND Provider(definition, portType)»
 «ENDIF»
-«IF bindingDefinition.generateClient(portType)»
+«IF generateClient(portType)»
 «EXPAND Consumer(definition, portType)»
 «ENDIF»
 «ENDFOREACH»
@@ -62,7 +62,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, Artif
 
 «FOREACH definition.getSOAPBindings(portType) AS binding-»
 «FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
-«EXPAND OperationContentA(portType, binding, bindingOperation)»
+«EXPAND OperationContentP(portType, binding, bindingOperation)»
 «ENDFOREACH»
 «ENDFOREACH»
 
@@ -143,7 +143,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, Artif
   g_url          VARCHAR2(255) := '«definition.getPort(binding).getLocation()»';
 
 «FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
-«EXPAND OperationContentE(portType, binding, bindingOperation)»
+«EXPAND OperationContentC(portType, binding, bindingOperation)»
 «ENDFOREACH»
 «ENDFOREACH»
 
@@ -152,7 +152,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 «ENDFILE»
 «ENDDEFINE»
 
-«DEFINE OperationContentA(PortType portType, Binding binding, BindingOperation bindingOperation) FOR Model-»
+«DEFINE OperationContentP(PortType portType, Binding binding, BindingOperation bindingOperation) FOR Model-»
 «LET portType.getOperation(bindingOperation.name, null, null) AS operation-»
   /**
   * WSDL Operation: «operation.name»
@@ -200,6 +200,12 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     -- Aufruf der Geschäftslogik-Logik
     ---------------------------------------------------------------------------
 
+«IF bindingDefinition.getPortTypeProperty(portType, "delegate", null) != null-»
+	«bindingDefinition.getPortTypeProperty(portType, "delegate", null)».«operation.name»(p_param_in«IF !binding.isJmsTransport()», p_param_out«IF getFaultElementQName(binding, operation.name) != null», p_error_out«ENDIF»«ENDIF»);
+«ELSE-»
+    NULL;
+«ENDIF-»
+
     ---------------------------------------------------------------------------
     -- Konvertieren / Transformieren der Geschäftslogik-Datentypen in die generierten RECORDs
     ---------------------------------------------------------------------------
@@ -212,8 +218,6 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     ---------------------------------------------------------------------------
     -- Erfolgreich beenden - OUT-Message-Header oder Fehler Struktur entsprechend füllen.
     ---------------------------------------------------------------------------
-
-    NULL;
 
     ------------------------------------------------------------------------------
     -- Exception - Aufruf mit Fehlerbehandlung beenden - OUT-Message-Header und Fehler Struktur entsprechend füllen.
@@ -267,7 +271,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 «ENDLET-»
 «ENDDEFINE»
 
-«DEFINE OperationContentE(PortType portType, Binding binding, BindingOperation bindingOperation) FOR Model-»
+«DEFINE OperationContentC(PortType portType, Binding binding, BindingOperation bindingOperation) FOR Model-»
 «LET portType.getOperation(bindingOperation.name, null, null) AS operation-»
   /**
   * WSDL Operation: «operation.name»

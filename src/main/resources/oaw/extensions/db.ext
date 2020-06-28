@@ -8,10 +8,8 @@ import com::artofarc::wsimport;
 extension oaw::extensions::schema reexport;
 extension oaw::extensions::wsdl;
 
-private Boolean _generateClient() : GLOBALVAR generateClient;
-boolean generateClient() : _generateClient() == true;
-private Boolean _generateServer() : GLOBALVAR generateServer;
-boolean generateServer() : _generateServer() == true;
+boolean generateClient(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "generateClient", "true") == "true";
+boolean generateServer(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "generateServer", "true") == "true";
 String getDBSchema() : GLOBALVAR dbSchema;
 boolean isGenerateSmallXML(ServiceNamespace this) : false;
 String getGeneratorVersion() : GLOBALVAR WSGenerateVersion;
@@ -41,7 +39,8 @@ String getNsContextParam(ServiceNamespace this, ServiceNamespace elemNs) : isGen
 	
 private String checkLen(String s, String uri, String name) : s.length > 128 ? "!!!Too long: " + name + " in " + uri + " mapped to " + s : s;
 
-cached String BaseBackageName(Model this) : bindingDefinition.getMappingForBasePackage("BASE");
+cached String BaseBackageName(Model this) : bindingDefinition.getGlobalProperty("BasePackage", "SOAP_BASE");
+String BaseBackage_getUrlForServiceDelegate(Model this) : bindingDefinition.getGlobalProperty("BasePackage_getUrlForServiceDelegate", null);
 String WSDL2PackageNameCheck(Model model, PortType portType, ArtifactKind kind) :
 	let s = WSDL2PackageName(model, portType, kind) : s.length > 128 ? "!!!Too long: " + portType.QName + " mapped to " + s : s;
 cached String WSDL2PackageName(Model model, PortType portType, ArtifactKind kind) : 
@@ -99,7 +98,7 @@ String anonymousTypeName(Attribute attribute, String parentTypeName) :
 	let s = parentTypeName.chomp("Type") : (s.length > 0 ? s + attribute.name.toFirstUpper() : attribute.name) + "Type";
 
 String enumValue2OracleName(ServiceNamespace owner, String oracleTypeName, Facet this) :
-	let n = oracleTypeName.chomp(1) + value.replaceAll("\\.|,", "").replaceAll(" |-", "_") : // reduce "_T" to "_"
+	let n = oracleTypeName.chomp(1) + value.replaceAll("\\.|,", "").replaceAll(" |-|\\+", "_") : // reduce "_T" to "_"
 		checkLen(owner.getMappingForName(n, null) + "_c", owner.URI, n);
 
 String getPackagePrefix(ServiceNamespace owner, QName type) : type.namespaceURI != owner.URI ?

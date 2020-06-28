@@ -28,10 +28,8 @@ public interface BindingDefinition {
 
 	String getMappingForName(String ns, String name, Annotated annotated);
 
-	public String getMappingForBasePackage(String name);
+	String getGlobalProperty(String name, String def);
 
-	boolean generateClient(PortType portType);
-
-	boolean generateServer(PortType portType);
+	String getPortTypeProperty(PortType portType, String name, String def);
 
 }

@@ -8,10 +8,10 @@
 
 «DEFINE Root(Definition definition) FOR Model»
 «FOREACH definition.getSOAPBindings().portType.toSet() AS portType»
-«IF bindingDefinition.generateServer(portType)»
+«IF generateServer(portType)»
 «EXPAND Provider(definition, portType)»
 «ENDIF»
-«IF bindingDefinition.generateClient(portType)»
+«IF generateClient(portType)»
 «EXPAND Consumer(definition, portType)»
 «ENDIF»
 «ENDFOREACH»

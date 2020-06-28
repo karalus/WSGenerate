@@ -31,7 +31,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«XSD2PackageName()» IS
   *  @headcom
   *  <pre>
   *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
-  *	 WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
+  *  WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
   *
   */
 
@@ -160,17 +160,17 @@ END «XSD2PackageName()»;
 
 «DEFINE XSDSchema(ComplexType ct, String name) FOR ServiceNamespace-»
   FUNCTION «XSDType2Oracle(name, ct, "4x")» (
-      p_node	              IN DBMS_XMLDOM.DOMNode
+      p_node                  IN DBMS_XMLDOM.DOMNode
   ) RETURN «XSDType2Oracle(name, ct)»
   IS
     v_return                     «XSDType2Oracle(name, ct)»;
     children                     DBMS_XMLDOM.DOMNodeList;
-    len							 NUMBER;
-    node    					 DBMS_XMLDOM.DOMNode;
-    elmt 	  					 DBMS_XMLDOM.DOMElement;
-    text                       	 DBMS_XMLDOM.DOMNode;
+    len                          NUMBER;
+    node                         DBMS_XMLDOM.DOMNode;
+    elmt                         DBMS_XMLDOM.DOMElement;
+    text                         DBMS_XMLDOM.DOMNode;
 «IF ct.attributeOrAttributeGroup.size > 0-»
-    attr                       	 DBMS_XMLDOM.DOMAttr;
+    attr                         DBMS_XMLDOM.DOMAttr;
 «ENDIF-»
     localName                    VARCHAR2(255);
     namespace                    VARCHAR2(999);
@@ -210,14 +210,14 @@ END «XSD2PackageName()»;
 
   PROCEDURE «XSDType2Oracle(name, ct, "2x")» (
     p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct)»
-  , p_domdoc 				  IN DBMS_XMLDOM.DOMDocument
-  , p_parent_node 		      IN DBMS_XMLDOM.DOMNode
+  , p_domdoc                  IN DBMS_XMLDOM.DOMDocument
+  , p_parent_node             IN DBMS_XMLDOM.DOMNode
   , p_default_ns              IN VARCHAR2
   ) IS
 
-    elmt 	  					 DBMS_XMLDOM.DOMElement;
-    node    					 DBMS_XMLDOM.DOMNode;
-    text                       	 DBMS_XMLDOM.DOMText;
+    elmt                         DBMS_XMLDOM.DOMElement;
+    node                         DBMS_XMLDOM.DOMNode;
+    text                         DBMS_XMLDOM.DOMText;
 
   BEGIN
 
@@ -472,7 +472,7 @@ END «XSD2PackageName()»;
 «ELSE-»
 	attr := DBMS_XMLDOM.getAttributeNode(elmt, '«a.name»');
 	IF NOT DBMS_XMLDOM.ISNULL(attr) THEN
-	  v_return.«XSD2Oracle(a.name, a)» := «convertXSDBasicType2Oracle(getBuiltInType(a), getFacets(a), "DBMS_XMLDOM.getValue(attr)", null)»;
+      v_return.«XSD2Oracle(a.name, a)» := «convertXSDBasicType2Oracle(getBuiltInType(a), getFacets(a), "DBMS_XMLDOM.getValue(attr)", null)»;
 	END IF;
 «ENDIF-»
 «ENDDEFINE»

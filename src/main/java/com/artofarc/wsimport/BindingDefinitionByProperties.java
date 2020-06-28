@@ -69,19 +69,13 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 	}
 
 	@Override
-	public String getMappingForBasePackage(String name) {
-		String formatPattern = _propertiesExpansion.getProperty("BasePackage", "SOAP_%s");
-		return String.format(formatPattern, name);
+	public String getGlobalProperty(String name, String def) {
+		return _propertiesExpansion.getProperty(name, def);
 	}
 
 	@Override
-	public boolean generateClient(PortType portType) {
-		return Boolean.parseBoolean(_propertiesExpansion.getPropertyFromSection(portType.getQName().getLocalPart(), "generateClient", "true"));
-	}
-
-	@Override
-	public boolean generateServer(PortType portType) {
-		return Boolean.parseBoolean(_propertiesExpansion.getPropertyFromSection(portType.getQName().getLocalPart(), "generateServer", "true"));
+	public String getPortTypeProperty(PortType portType, String name, String def) {
+		return _propertiesExpansion.getPropertyFromSection(portType.getQName().getLocalPart(), name, def);
 	}
 
 	protected static String[] extractVersionForPortType(String ns, String portType) {
