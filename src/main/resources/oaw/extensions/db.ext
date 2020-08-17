@@ -59,7 +59,7 @@ cached String getOracleFQN(Model model, QName element) : let ens = model.findSer
 boolean isXSD2OracleTooLong(ServiceNamespace ns, String name, Annotated this, String suffix) : _XSD2Oracle(ns, name).length > 128 - suffix.length;
 String XSD2Oracle(ServiceNamespace ns, String name, Annotated this) : checkLen(_XSD2Oracle(ns, name), ns.URI, name);
 String XSD2Oracle(ServiceNamespace ns, String name, Annotated this, String suffix) : checkLen(_XSD2Oracle(ns, name) + suffix, ns.URI, name);
-private cached String _XSD2Oracle(Annotated this, ServiceNamespace ns, String name) : ns.getMappingForName(name, null);
+private cached String _XSD2Oracle(Annotated this, ServiceNamespace ns, String name) : ns.getMappingForName(name, null).replaceAll("-", "_");
 
 String XSDType2Oracle(ServiceNamespace ns, TopLevelSimpleType this) : XSDType2Oracle(ns, name, this, false);
 String XSDType2Oracle(ServiceNamespace ns, TopLevelSimpleType this, boolean isArray) : XSDType2Oracle(ns, name, this, isArray);

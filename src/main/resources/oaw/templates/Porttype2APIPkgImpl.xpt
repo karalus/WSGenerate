@@ -183,6 +183,8 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     ---------------------------------------------------------------------------
     -- !!!! Nichts zu tun für checkAlive - gen. Code ist ausreichend       !!!!
     ---------------------------------------------------------------------------
+
+    p_param_out.messageHeader := p_param_in.messageHeader; 
 «ELSE-»
     ---------------------------------------------------------------------------
     -- !!!! BEGIN Implementierung individueller Teil der Operation         !!!!
