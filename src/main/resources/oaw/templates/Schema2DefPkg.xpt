@@ -346,7 +346,7 @@ FUNCTION isNotEmpty(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct, tr
 «EXPAND XSDSchemaElements(name, currentNS, ct.complexContent.restriction)-»
 «ENDIF-»
 «ELSEIF ct.simpleContent != null-»
-«LET ct.simpleContent.extension.base AS type-»
+«LET ct.simpleContent.extension != null ? ct.simpleContent.extension.base : ct.simpleContent.restriction.base AS type-»
 «LET findUsedServiceNamespace(type.namespaceURI) AS ns-»
 «IF findComplexType(ns, type) != null-»
 «EXPAND XSDSchemaElements(name, currentNS, findComplexType(ns, type))-»
@@ -359,9 +359,11 @@ FUNCTION isNotEmpty(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct, tr
 «getPackagePrefix(ns)»«XSDType2Oracle(ns, type)-»
 «ENDIF-»
 «ENDIF-»
+«LET ct.simpleContent.extension != null ? ct.simpleContent.extension.attributeOrAttributeGroup : ct.simpleContent.restriction.attributeOrAttributeGroup AS attributes-»
 «FOREACH ct.simpleContent.extension.attributeOrAttributeGroup AS a-»
 «EXPAND XSDSchemaElements(a)-»
 «ENDFOREACH-»
+«ENDLET-»
 «ENDLET-»
 «ENDLET-»
 «ELSE-»
