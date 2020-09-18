@@ -260,13 +260,14 @@ TYPE «XSDType2Oracle(typeName, type, true)» IS TABLE OF «oracleName»;
 «IF e.simpleType != null-»
 -- Anonymous SimpleType for element with name: «e.name» = «anonymousTypeName(e, typeName)»
 «IF isArray(e, parentGroup) || isSimpleTypeList(e.simpleType)-»
-<Not implemented>
-«ENDIF-»
+«EXPAND XSDSchema(anonymousTypeName(e, typeName), e.simpleType)-»
+«ELSE-»
 «FOREACH getFacets(e.simpleType).getEnumerationFacets() AS enumeration-»
 «FOREACH getDocumentationContent(enumeration) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
-«enumValue2OracleName(e.name + "T", enumeration)» CONSTANT «EXPAND XSDSchema_SimpleType(e.simpleType, false)» := '«enumeration.value»';
+«enumValue2OracleName(e.name + "T", enumeration)» CONSTANT «EXPAND XSDSchema_SimpleType(e, typeName, false)» := '«enumeration.value»';
 
 «ENDFOREACH-»
+«ENDIF-»
 «ELSEIF e.complexType != null-»
 -- Anonymous ComplexType for element with name: «e.name» = «anonymousTypeName(e, typeName)»
 «EXPAND XSDSchemaComplexTypes(done, anonymousTypeName(e, typeName), e.complexType)-»
@@ -282,7 +283,7 @@ TYPE «XSDType2Oracle(typeName, type, true)» IS TABLE OF «oracleName»;
 «DEFINE XSDSchemaComplexTypes(String typeName, Attribute a) FOR ServiceNamespace-»
 «IF a.simpleType != null && isSimpleTypeList(a.simpleType)-»
 -- Anonymous SimpleType for attribute with name: «a.name» = «anonymousTypeName(a, typeName)»
-<Not implemented>
+«EXPAND XSDSchema(anonymousTypeName(a, typeName), a.simpleType)-»
 «ENDIF-»
 «ENDDEFINE»
 
@@ -460,7 +461,7 @@ FUNCTION isNotEmpty(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct, tr
 «ELSEIF e.complexType != null-»
   «XSD2Oracle(currentNS, e.name, e)»	«getPackagePrefix(ns)»«anonymousTypeName2Oracle(e, typeName, isArray(e, parentGroup))-»
 «ELSEIF e.simpleType != null-»
-  «XSD2Oracle(currentNS, e.name, e)»	«EXPAND XSDSchema_SimpleType(e.simpleType, isArrayElement(e))-»
+  «XSD2Oracle(currentNS, e.name, e)»	«EXPAND XSDSchema_SimpleType(e, typeName, isArrayElement(e))-»
 «ELSE-»
 -- No Type found for «e.name-»
 «ENDIF-»
@@ -490,7 +491,7 @@ FUNCTION isNotEmpty(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct, tr
 «ENDLET-»
 «ENDLET-»
 «ELSEIF a.simpleType != null-»
-  «XSD2Oracle(a.name, a)»	«EXPAND XSDSchema_SimpleType(a.simpleType, isSimpleTypeList(a.simpleType))-»
+  «XSD2Oracle(a.name, a)»	«EXPAND XSDSchema_SimpleType(a, a.name, isSimpleTypeList(a.simpleType))-»
 «ELSE-»
 -- No Type found for «a.name-»
 «ENDIF-»
@@ -518,16 +519,38 @@ FUNCTION isNotEmpty(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct, tr
 «ERROR "Abstract type: " + a»
 «ENDDEFINE»
 
-«DEFINE XSDSchema_SimpleType(SimpleType st, boolean isArray) FOR ServiceNamespace-»
-«LET getBaseType(st) AS baseType-»
+«DEFINE XSDSchema_SimpleType(Element e, String typeName, boolean isArray) FOR ServiceNamespace-»
+«LET getBaseType(e.simpleType) AS baseType-»
 «IF !isArray && isBuiltInType(baseType)-»
-«IF isSimpleTypeList(st)-»
-«convertXSDBasicTypeOracle(baseType, getFacets(getBaseTypeForListType(st)))-»
+«IF isSimpleTypeList(e.simpleType)-»
+«convertXSDBasicTypeOracle(baseType, getFacets(getBaseTypeForListType(e.simpleType)))-»
 «ELSE-»
-«convertXSDBasicTypeOracle(baseType, getFacets(st))-»
+«convertXSDBasicTypeOracle(baseType, getFacets(e.simpleType))-»
 «ENDIF-»
 «ELSE-»
+«IF isBuiltInType(baseType)-»
+«XSDType2Oracle(anonymousTypeName(e, typeName), e.simpleType, isArray)»
+«ELSE-»
 «getPackagePrefix(baseType)»«XSDType2Oracle(baseType, isArray)-»
+«ENDIF-»
+«ENDIF-»
+«ENDLET-»
+«ENDDEFINE»
+
+«DEFINE XSDSchema_SimpleType(Attribute a, String typeName, boolean isArray) FOR ServiceNamespace-»
+«LET getBaseType(a.simpleType) AS baseType-»
+«IF !isArray && isBuiltInType(baseType)-»
+«IF isSimpleTypeList(a.simpleType)-»
+«convertXSDBasicTypeOracle(baseType, getFacets(getBaseTypeForListType(a.simpleType)))-»
+«ELSE-»
+«convertXSDBasicTypeOracle(baseType, getFacets(a.simpleType))-»
+«ENDIF-»
+«ELSE-»
+«IF isBuiltInType(baseType)-»
+«XSDType2Oracle(anonymousTypeName(a, typeName), a.simpleType, isArray)»
+«ELSE-»
+«getPackagePrefix(baseType)»«XSDType2Oracle(baseType, isArray)-»
+«ENDIF-»
 «ENDIF-»
 «ENDLET-»
 «ENDDEFINE»
