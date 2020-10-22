@@ -94,6 +94,7 @@ public class WSGenerate {
       options.addOption(new Option("verbose", "be extra verbose"));
       options.addOption(OptionBuilder.withArgName("check").hasArgs().withValueSeparator(',').withDescription("whether to check the model").create("c"));
       options.addOption(OptionBuilder.withArgName("directory").hasArg().withDescription("where to place generated output files").create("d"));
+      options.addOption(OptionBuilder.withArgName("encoding").hasArg().withDescription("code page for output files").create("encoding"));
       options.addOption(OptionBuilder.withArgName("file").hasArg().withDescription("use file for mapping names").create("b"));
       options.addOption(OptionBuilder.withArgName("classname[=init param]").hasOptionalArgs().withValueSeparator()
                                      .withDescription("the class to perform name mapping").create("bc"));
@@ -159,7 +160,8 @@ public class WSGenerate {
       generator.setFileEncoding(ENCODING_ISO_8859_1);
       generator.setExpand("oaw::templates::Root::_Root FOR model");
       Outlet defaultOutlet = line.hasOption("d") ? new Outlet(line.getOptionValue("d")) : new Outlet();
-      defaultOutlet.setFileEncoding(ENCODING_ISO_8859_1);
+      String fileEncoding = line.hasOption("encoding") ? line.getOptionValue("encoding") : ENCODING_ISO_8859_1;
+      defaultOutlet.setFileEncoding(fileEncoding);
       generator.addOutlet(defaultOutlet);
       return invoke(ctx, generator, globalProperties);
    }
