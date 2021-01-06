@@ -235,7 +235,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BaseBackageName()» IS
 
   FUNCTION FLOAT_TO_CHAR(p_n IN BINARY_FLOAT) RETURN VARCHAR2 IS
   BEGIN
-    RETURN to_char(p_n, 'TMe', 'NLS_NUMERIC_CHARACTERS=''.,'''); -- R4.11
+    RETURN to_char(p_n, 'TMe', 'NLS_NUMERIC_CHARACTERS=''.,''');
   END;
 
   FUNCTION CHAR_TO_DOUBLE(p_exp IN VARCHAR2) RETURN BINARY_DOUBLE IS
@@ -253,7 +253,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BaseBackageName()» IS
 
   FUNCTION DOUBLE_TO_CHAR(p_n IN BINARY_DOUBLE) RETURN VARCHAR2 IS
   BEGIN
-    RETURN to_char(p_n, 'TMe', 'NLS_NUMERIC_CHARACTERS=''.,'''); -- R4.11
+    RETURN to_char(p_n, 'TMe', 'NLS_NUMERIC_CHARACTERS=''.,''');
   END;
 
   FUNCTION CHAR_TO_DURATION(p_exp IN VARCHAR2) RETURN INTERVAL DAY TO SECOND IS
@@ -348,7 +348,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BaseBackageName()» IS
     UTL_HTTP.set_header(v_http_request, 'Content-Type', 'text/xml; charset=utf-8');
     UTL_HTTP.set_header(v_http_request, 'Content-Length', l_blob_length);
     -- Response im Charset der Datenbank anfordern
-    UTL_HTTP.set_header(v_http_request, 'Accept-Charset', g_charset); -- R4.10
+    UTL_HTTP.set_header(v_http_request, 'Accept-Charset', g_charset);
     UTL_HTTP.set_header(v_http_request, 'SOAPAction', p_action);
     -- write_raw kann nur 32 K pro Aufruf schreiben, deshalb mehrmaliger
     -- Aufruf um auch groessere Datenmengen uebergeben zu koennen.
@@ -428,7 +428,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BaseBackageName()» IS
     chunksize  CONSTANT INTEGER := 57;
     offset     integer := 1;
     chunk      raw(57);
-    chunk_b64  varchar2(78); -- R4.9
+    chunk_b64  varchar2(78);
     dummy      integer;
   BEGIN
     ostream := DBMS_XMLDOM.setNodeValueAsCharacterStream(p_node);
@@ -453,27 +453,46 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BaseBackageName()» IS
     v_response                    BLOB;
     v_chunksize                   integer := 16384;
     v_chunk                       varchar2(16384);
+    v_offset                      integer := 0;
+    v_char                        char;
+    v_count                       integer := 0;
+    v_lastValid                   integer;
     v_buffer                      raw(12288);
   BEGIN
     v_istream := DBMS_XMLDOM.getNodeValueAsCharacterStream(p_node);
-
     DBMS_LOB.createTemporary(v_response, TRUE, dbms_lob.call);
-    -- Read stream in chunks
-    LOOP
-       v_istream.read(v_chunk, v_chunksize);
-       if v_chunksize <= 0 then
-          exit;
-       end if;
-       v_buffer := utl_encode.base64_decode(utl_raw.cast_to_raw(v_chunk));
-       DBMS_LOB.writeappend(v_response, 
-                            utl_raw.length (v_buffer), -- R4.9
-                            v_buffer);
-    END LOOP;
-
+    IF NOT v_istream.isnull() THEN
+      -- Read stream in chunks
+      LOOP
+         v_chunksize := 16384 - v_offset;
+         v_istream.read(v_chunk, v_offset, v_chunksize);
+         EXIT WHEN v_chunksize <= 0;
+         -- Find last valid end of a 4 char block
+         v_lastValid := 0;
+         FOR v_pos IN 1 + v_offset..length(v_chunk)
+         LOOP
+            v_char := substr(v_chunk, v_pos, 1);
+            IF ASCII(v_char) > 32 AND ASCII(v_char) < 128 THEN
+               v_count := v_count + 1;
+            END IF;
+            IF BITAND(v_count, 3) = 0 THEN
+               v_lastValid := v_pos;
+            END IF;
+         END LOOP;
+         EXIT WHEN v_lastValid = 0;
+         v_offset := length(v_chunk) - v_lastValid;
+         IF v_offset > 0 THEN
+            v_buffer := utl_encode.base64_decode(utl_raw.cast_to_raw(substr(v_chunk, 1, v_lastValid)));
+            -- Take remaining chars into next iteration
+            v_chunk := substr(v_chunk, v_lastValid + 1, v_offset);
+         ELSE
+            v_buffer := utl_encode.base64_decode(utl_raw.cast_to_raw(v_chunk));
+         END IF;
+         DBMS_LOB.writeappend(v_response, utl_raw.length(v_buffer), v_buffer);
+      END LOOP;
+    END IF;
     v_istream.close();
-
     return v_response;
-
   END getBlobFromNode;
 
   
@@ -563,6 +582,9 @@ BEGIN
       
   -- Persistent Connections aktivieren
   utl_http.set_persistent_conn_support (enable => TRUE, max_conns => 10);
+
+  -- Wallet mit Zertifikaten für HTTPS setzen 
+  UTL_HTTP.set_wallet('file:/u01/app/oracle/soa/wallet');
 
 END «BaseBackageName()»;
 /
