@@ -3,8 +3,8 @@
 «EXTENSION oaw::extensions::db»
 
 «DEFINE Root FOR Model»
-«FILE "plsql/" + getDBSchema() + "/" + BaseBackageName() + ".PKS"-»
-CREATE OR REPLACE PACKAGE «getDBSchema()».«BaseBackageName()» IS
+«FILE "plsql/" + getDBSchema() + "/" + BasePackageName() + ".PKS"-»
+CREATE OR REPLACE PACKAGE «getDBSchema()».«BasePackageName()» IS
 /**
 * <pre>
 *
@@ -33,7 +33,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«BaseBackageName()» IS
 
   ------------------------------------------------------------------------------
   -- TABLE Typen für die Verwendung von XSD Basistypen in <element/> mit maxOccurs="unbounded"
-  -- (Voraussetzung: mapping.properties definiert Mapping 'orgW3Www2001=«BaseBackageName()»')
+  -- (Voraussetzung: mapping.properties definiert Mapping 'orgW3Www2001=«BasePackageName()»')
   ------------------------------------------------------------------------------
 
   TYPE string_CT IS TABLE OF VARCHAR2(32767);
@@ -166,13 +166,13 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«BaseBackageName()» IS
   );
 
 
-END «BaseBackageName()»;
+END «BasePackageName()»;
 /
 «ENDFILE»
 
 
-«FILE "plsql/" + getDBSchema() + "/" + BaseBackageName() + ".PKB"-»
-CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BaseBackageName()» IS
+«FILE "plsql/" + getDBSchema() + "/" + BasePackageName() + ".PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BasePackageName()» IS
 /**
 * <pre>
 *
@@ -195,7 +195,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BaseBackageName()» IS
   ------------------------------------------------------------------------------
 
   -- Package-Name
-  c_PACKAGE_NAME        CONSTANT oraclename_t := '«BaseBackageName()»';
+  c_PACKAGE_NAME        CONSTANT oraclename_t := '«BasePackageName()»';
 
   ------------------------------------------------------------------------------
   -- öffentliche Typen und Variablen
@@ -548,8 +548,8 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BaseBackageName()» IS
     , p_url                 IN VARCHAR2
   ) return VARCHAR2 IS
   BEGIN
- «IF BaseBackage_getUrlForServiceDelegate() != null-»
- 	return «BaseBackage_getUrlForServiceDelegate()»(p_namespace, p_porttype);
+ «IF BasePackage_getUrlForServiceDelegate() != null-»
+ 	return «BasePackage_getUrlForServiceDelegate()»(p_namespace, p_porttype);
  «ELSE-»
     -- TODO: Muss fuer jedes System implementiert werden, ist umgebungsabhängig!
 	
@@ -586,7 +586,7 @@ BEGIN
   -- Wallet mit Zertifikaten für HTTPS setzen 
   UTL_HTTP.set_wallet('file:/u01/app/oracle/soa/wallet');
 
-END «BaseBackageName()»;
+END «BasePackageName()»;
 /
 «ENDFILE»
 

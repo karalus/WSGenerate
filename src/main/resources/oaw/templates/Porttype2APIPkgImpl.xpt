@@ -42,7 +42,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, Artif
   */
 
   -- Package-Name
-  c_package_name CONSTANT «BaseBackageName()».oraclename_t := '«WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»';
+  c_package_name CONSTANT «BasePackageName()».oraclename_t := '«WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»';
 
   ------------------------------------------------------------------------------
   -- öffentliche Typen und Variablen
@@ -96,7 +96,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, Artif
   */
 
   -- Package-Name
-  c_package_name CONSTANT «BaseBackageName()».oraclename_t := '«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»';
+  c_package_name CONSTANT «BasePackageName()».oraclename_t := '«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»';
 
 «FOREACH definition.getSOAPBindings(portType) AS binding-»
 «FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
@@ -136,7 +136,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, Artif
   */
 
   -- Package-Name
-  c_package_name CONSTANT «BaseBackageName()».oraclename_t := '«WSDL2PackageName(portType, ArtifactKind::ClientStub)»';
+  c_package_name CONSTANT «BasePackageName()».oraclename_t := '«WSDL2PackageName(portType, ArtifactKind::ClientStub)»';
   c_SOAP_NS      CONSTANT VARCHAR2(99) := 'http://schemas.xmlsoap.org/soap/envelope/';
 
 «FOREACH definition.getSOAPBindings(portType) AS binding-»
@@ -175,7 +175,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
   ) IS
     -- Komplexe Type-Variablen für Parameter der Geschäftslogik-Schicht (return, in, out und in/out) !!!! dies ist individuell anzupassen !!!! ---
 
-    c_routine           CONSTANT «BaseBackageName()».oraclename_T := '«operation.name»';
+    c_routine           CONSTANT «BasePackageName()».oraclename_T := '«operation.name»';
 
   BEGIN
 
@@ -243,7 +243,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     , p_fault_out              OUT        NUMBER
   ) IS
 
-    c_routine           CONSTANT «BaseBackageName()».oraclename_t       := '«operation.name»';
+    c_routine           CONSTANT «BasePackageName()».oraclename_t       := '«operation.name»';
 
     param_in               		 «getParameterOracleFQN(getInputElementQName(binding, operation.name))»;
     param_out                    «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»;
@@ -299,7 +299,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 «ENDIF-»
   ) IS
 
-    c_routine           CONSTANT «BaseBackageName()».oraclename_T := '«operation.name»';
+    c_routine           CONSTANT «BasePackageName()».oraclename_T := '«operation.name»';
 
     param_in				     CLOB;
     param_out     			     CLOB;
@@ -341,8 +341,8 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     DBMS_XMLDOM.writeToClob(outdocnode, param_in);
     DBMS_XMLDOM.freeDocument(outdomdoc);
 
-    v_url := «BaseBackageName()».getUrlForService(c_PortType_URI, '«binding.portType.QName.localPart»', g_url);
-    param_out := «BaseBackageName()».call_soap_http(v_url, '"«bindingOperation.getSoapActionURI()»"', timeout, param_in);
+    v_url := «BasePackageName()».getUrlForService(c_PortType_URI, '«binding.portType.QName.localPart»', g_url);
+    param_out := «BasePackageName()».call_soap_http(v_url, '"«bindingOperation.getSoapActionURI()»"', timeout, param_in);
     DBMS_LOB.freeTemporary(param_in);
 
     myParser := DBMS_XMLPARSER.newParser;

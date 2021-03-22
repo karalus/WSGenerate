@@ -30,6 +30,7 @@ import javax.wsdl.extensions.schema.SchemaImport;
 import javax.wsdl.extensions.schema.SchemaReference;
 import javax.wsdl.factory.WSDLFactory;
 import javax.wsdl.xml.WSDLReader;
+import javax.xml.XMLConstants;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 
@@ -90,6 +91,9 @@ public final class WsdlParser extends AbstractWorkflowComponent2 {
          parseTypes(definition, model);
          model.getServiceNamespace(definition.getTargetNamespace()).getWsdls().add(definition);
       }
+      // add well known namespaces
+      model.getServiceNamespace(XMLConstants.W3C_XML_SCHEMA_NS_URI).addSchema(XMLConstants.W3C_XML_SCHEMA_NS_URI,
+            getClass().getClassLoader().getResource("schema.xsd"), xsdUnmarshaller);
    }
 
    private void parseTypes(Definition definition, Model model) throws JAXBException {

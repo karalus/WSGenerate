@@ -7,7 +7,7 @@
 
 «DEFINE _Root FOR Model»
 «EXPAND SOAPBase::Root»
-«FOREACH serviceNamespaces AS serviceNamespace»
+«FOREACH serviceNamespaces.reject(e|e.URI == javax::xml::XMLConstants::W3C_XML_SCHEMA_NS_URI) AS serviceNamespace»
 «EXPAND Schema2DefPkg::Root FOR serviceNamespace»
 «EXPAND Schema2DefPkgImpl::Root FOR serviceNamespace»
 «FOREACH serviceNamespace.wsdls AS wsdl-»

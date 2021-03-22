@@ -8,6 +8,9 @@ import com::artofarc::wsimport;
 extension oaw::extensions::schema reexport;
 extension oaw::extensions::wsdl;
 
+// For debugging purposes
+Void introspect(List l) : JAVA com.artofarc.WSGenerateTest.introspect(java.util.List);
+
 boolean generateClient(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "generateClient", "true") == "true";
 boolean generateServer(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "generateServer", "true") == "true";
 String getDBSchema() : GLOBALVAR dbSchema;
@@ -39,8 +42,8 @@ String getNsContextParam(ServiceNamespace this, ServiceNamespace elemNs) : isGen
 	
 private String checkLen(String s, String uri, String name) : s.length > 128 ? "!!!Too long: " + name + " in " + uri + " mapped to " + s : s;
 
-cached String BaseBackageName(Model this) : bindingDefinition.getGlobalProperty("BasePackage", "SOAP_BASE");
-String BaseBackage_getUrlForServiceDelegate(Model this) : bindingDefinition.getGlobalProperty("BasePackage_getUrlForServiceDelegate", null);
+cached String BasePackageName(Model this) : bindingDefinition.getGlobalProperty("BasePackage", "SOAP_BASE");
+String BasePackage_getUrlForServiceDelegate(Model this) : bindingDefinition.getGlobalProperty("BasePackage_getUrlForServiceDelegate", null);
 String WSDL2PackageNameCheck(Model model, PortType portType, ArtifactKind kind) :
 	let s = WSDL2PackageName(model, portType, kind) : s.length > 128 ? "!!!Too long: " + portType.QName + " mapped to " + s : s;
 cached String WSDL2PackageName(Model model, PortType portType, ArtifactKind kind) : 
@@ -143,7 +146,7 @@ private String getNumberFormat(List[Object] this) :
 	getFacetTotalDigits() != null ?	getFacetTotalDigits().value + (getFacetFractionDigits() != null ? "," + getFacetFractionDigits().value : "") :
 		(getFacetFractionDigits() != null ? numberDefaultPrecision().toString() + "," + getFacetFractionDigits().value : numberDefaultPrecision());
 
-String convertOracle2XSDBasicType(ServiceNamespace owner, QName this, List[Object] facets, String param) : let bp = BaseBackageName(owner.model) :
+String convertOracle2XSDBasicType(ServiceNamespace owner, QName this, List[Object] facets, String param) : let bp = BasePackageName(owner.model) :
 	isStringType() ? param :
 		(isInt32Type() || isIntegerType() ? "to_char(" + param + ')' :
 			(localPart == "decimal" ? "to_char(" + param + ", 'TM9', 'nls_numeric_characters = ''.,''')" :
@@ -163,7 +166,7 @@ String convertOracle2XSDBasicType(ServiceNamespace owner, QName this, List[Objec
 boolean isLOB(String expr) : expr == "NULL";
 boolean isXMLType(String expr) : expr == null;
 
-String convertXSDBasicType2Oracle(ServiceNamespace owner, QName this, List[Object] facets, String param, String rawParam) : let bp = BaseBackageName(owner.model) :
+String convertXSDBasicType2Oracle(ServiceNamespace owner, QName this, List[Object] facets, String param, String rawParam) : let bp = BasePackageName(owner.model) :
 	isStringType() ? param :
 		(isInt32Type() || isIntegerType() ? "to_number(" + param + ')' :
 			(localPart == "decimal" ? "to_number(" + param + ", '" + repeat("9", facets.getDigitsForDecimal()) + "." + repeat("9", facets.getFractionDigitsForDecimal()) + "')" :

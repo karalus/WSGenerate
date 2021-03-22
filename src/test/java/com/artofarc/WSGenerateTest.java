@@ -8,6 +8,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.StringTokenizer;
 
 import org.apache.commons.cli.CommandLine;
@@ -18,6 +19,10 @@ import org.junit.rules.TemporaryFolder;
 
 public class WSGenerateTest {
 
+	public static void introspect(List<?> list) {
+		System.out.println(list);
+	}
+	
    @Rule
    public TemporaryFolder folder = new TemporaryFolder();
    

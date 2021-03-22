@@ -16,6 +16,7 @@
  */
 package com.artofarc.wsimport;
 
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -62,6 +63,11 @@ public final class ServiceNamespace {
 
 	void addSchema(String documentBaseURI, Element element, Unmarshaller xsdUnmarshaller) throws JAXBException {
 		final Schema schema = (Schema) xsdUnmarshaller.unmarshal(element);
+		schemas.put(documentBaseURI, schema);
+	}
+
+	void addSchema(String documentBaseURI, URL url, Unmarshaller xsdUnmarshaller) throws JAXBException {
+		final Schema schema = (Schema) xsdUnmarshaller.unmarshal(url);
 		schemas.put(documentBaseURI, schema);
 	}
 

@@ -20,6 +20,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 
 import javax.wsdl.PortType;
+import javax.xml.XMLConstants;
 
 import org.w3._2001.xmlschema.Annotated;
 
@@ -54,6 +55,9 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 
 	@Override
 	public String getMappingForNamespace(String ns) {
+		if (ns.equals(XMLConstants.W3C_XML_SCHEMA_NS_URI)) {
+			return getGlobalProperty("BasePackage", "SOAP_BASE");
+		}
 		String formatPattern = _propertiesExpansion.getProperty(ArtifactKind.Schema.name(), "%sV%s");
 		String mapping = _propertiesExpansion.getProperty(ns, ns);
 		String[] split = extractVersionForNamespace(mapping);

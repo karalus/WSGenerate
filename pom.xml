@@ -161,5 +161,10 @@
 				</configuration>
 			</plugin>
 		</plugins>
+		<resources>
+			<resource>
+				<directory>src/main/xsd</directory>
+			</resource>
+		</resources>
 	</build>
 </project>
