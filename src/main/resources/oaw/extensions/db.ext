@@ -43,7 +43,8 @@ String getNsContextParam(ServiceNamespace this, ServiceNamespace elemNs) : isGen
 private String checkLen(String s, String uri, String name) : s.length > 128 ? "!!!Too long: " + name + " in " + uri + " mapped to " + s : s;
 
 cached String BasePackageName(Model this) : bindingDefinition.getGlobalProperty("BasePackage", "SOAP_BASE");
-String BasePackage_getUrlForServiceDelegate(Model this) : bindingDefinition.getGlobalProperty("BasePackage_getUrlForServiceDelegate", null);
+String BasePackage_getUrlForServiceDelegate(Model this) : let s = bindingDefinition.getGlobalProperty("BasePackage_getUrlForServiceDelegate", null) :
+	s.contains("(") ? s : s + "(p_namespace, p_porttype)";
 String WSDL2PackageNameCheck(Model model, PortType portType, ArtifactKind kind) :
 	let s = WSDL2PackageName(model, portType, kind) : s.length > 128 ? "!!!Too long: " + portType.QName + " mapped to " + s : s;
 cached String WSDL2PackageName(Model model, PortType portType, ArtifactKind kind) : 

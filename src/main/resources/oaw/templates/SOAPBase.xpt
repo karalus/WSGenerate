@@ -549,7 +549,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BasePackageName()» IS
   ) return VARCHAR2 IS
   BEGIN
  «IF BasePackage_getUrlForServiceDelegate() != null-»
- 	return «BasePackage_getUrlForServiceDelegate()»(p_namespace, p_porttype);
+ 	return «BasePackage_getUrlForServiceDelegate()»;
  «ELSE-»
     -- TODO: Muss fuer jedes System implementiert werden, ist umgebungsabhängig!
 	

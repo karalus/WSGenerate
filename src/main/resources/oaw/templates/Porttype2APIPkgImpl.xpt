@@ -140,7 +140,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, Artif
   c_SOAP_NS      CONSTANT VARCHAR2(99) := 'http://schemas.xmlsoap.org/soap/envelope/';
 
 «FOREACH definition.getSOAPBindings(portType) AS binding-»
-  g_url          VARCHAR2(255) := '«definition.getPort(binding).getLocation()»';
+  g_url          VARCHAR2(255) := '«bindingDefinition.getPortTypeProperty(portType, "addressLocation", definition.getPort(binding).getLocation())»';
 
 «FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
 «EXPAND OperationContentC(portType, binding, bindingOperation)»
