@@ -171,9 +171,9 @@ String convertXSDBasicType2Oracle(ServiceNamespace owner, QName this, List[Objec
 	isStringType() ? param :
 		(isInt32Type() || isIntegerType() ? "to_number(" + param + ')' :
 			(localPart == "decimal" ? "to_number(" + param + ", '" + repeat("9", facets.getDigitsForDecimal()) + "." + repeat("9", facets.getFractionDigitsForDecimal()) + "')" :
-				(localPart == "dateTime" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "TO_TIMESTAMP(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF3')" : param) : "TO_TIMESTAMP_TZ(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF3TZH:TZM')") : 
+				(localPart == "dateTime" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "TO_TIMESTAMP(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF')" : param) : "TO_TIMESTAMP_TZ(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FFTZH:TZM')") : 
 					(localPart == "date" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "TO_DATE(" + param + ", 'YYYY-MM-DD')" : param) : "TO_TIMESTAMP_TZ(" + param + ", 'YYYY-MM-DDTZH:TZM')") :
-						(localPart == "time" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "TO_TIMESTAMP(" + param + ", 'HH24:MI:SS.FF3')" : param) : "TO_TIMESTAMP_TZ(" + param + ", 'HH24:MI:SS.FF3TZH:TZM')") :
+						(localPart == "time" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "TO_TIMESTAMP(" + param + ", 'HH24:MI:SS.FF')" : param) : "TO_TIMESTAMP_TZ(" + param + ", 'HH24:MI:SS.FFTZH:TZM')") :
 							(localPart == "gYearMonth" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "TO_DATE(" + param + ", 'YYYY-MM')" : param) : "TO_TIMESTAMP_TZ(" + param + ", 'YYYY-MMTZH:TZM')") :
 								(localPart == "gYear" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "to_number(" + param + ')' : param) : "TO_TIMESTAMP_TZ(" + param + ", 'YYYYTZH:TZM')") :
 									(localPart == "boolean" ? "CASE " + param + " WHEN 'true' THEN TRUE WHEN 'false' THEN FALSE WHEN '1' THEN TRUE WHEN '0' THEN FALSE ELSE NULL END" :
