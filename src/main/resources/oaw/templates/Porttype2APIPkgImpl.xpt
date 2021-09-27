@@ -179,19 +179,11 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 
   BEGIN
 
-«IF operation.name == 'checkAlive'-»
-    ---------------------------------------------------------------------------
-    -- !!!! Nichts zu tun für checkAlive - gen. Code ist ausreichend       !!!!
-    ---------------------------------------------------------------------------
-
-    p_param_out.messageHeader := p_param_in.messageHeader; 
+«IF bindingDefinition.getPortTypeProperty(portType, "impl." + operation.name, null) != null-»
+	«bindingDefinition.getPortTypeProperty(portType, "impl." + operation.name, null)»
 «ELSE-»
     ---------------------------------------------------------------------------
     -- !!!! BEGIN Implementierung individueller Teil der Operation         !!!!
-    ---------------------------------------------------------------------------
-
-    ---------------------------------------------------------------------------
-    -- Initialisierung OUT-Parameter - zu Beginn, dass dieser auch im Fehlerfall existiert
     ---------------------------------------------------------------------------
 
     ---------------------------------------------------------------------------
@@ -205,7 +197,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 «IF bindingDefinition.getPortTypeProperty(portType, "delegate", null) != null-»
 	«bindingDefinition.getPortTypeProperty(portType, "delegate", null)».«operation.name»(p_param_in«IF !binding.isJmsTransport()», p_param_out«IF getFaultElementQName(binding, operation.name) != null», p_error_out«ENDIF»«ENDIF»);
 «ELSE-»
-    NULL;
+    RAISE_APPLICATION_ERROR(-20004, 'Not implemented, yet');
 «ENDIF-»
 
     ---------------------------------------------------------------------------
@@ -213,20 +205,19 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     ---------------------------------------------------------------------------
 
     ---------------------------------------------------------------------------
-    -- !!!! ENDE individueller Teil der implementierten Operation          !!!!
-    ---------------------------------------------------------------------------
-«ENDIF-»
-
-    ---------------------------------------------------------------------------
     -- Erfolgreich beenden - OUT-Message-Header oder Fehler Struktur entsprechend füllen.
     ---------------------------------------------------------------------------
 
     ------------------------------------------------------------------------------
-    -- Exception - Aufruf mit Fehlerbehandlung beenden - OUT-Message-Header und Fehler Struktur entsprechend füllen.
+    -- Exception - Aufruf ggf. mit Fehlerbehandlung beenden - Ggf. Fehler Struktur (p_error_out) entsprechend füllen.
     ------------------------------------------------------------------------------
-  EXCEPTION
-    WHEN OTHERS THEN
-      p_param_out := NULL;
+
+--  EXCEPTION WHEN OTHERS THEN RAISE;
+
+    ---------------------------------------------------------------------------
+    -- !!!! ENDE individueller Teil der implementierten Operation          !!!!
+    ---------------------------------------------------------------------------
+«ENDIF-»
 
   END «operation.name»;
 «ENDLET-»
