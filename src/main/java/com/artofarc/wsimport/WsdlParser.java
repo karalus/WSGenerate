@@ -1,12 +1,11 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * Copyright 2022 Andre Karalus
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,6 +37,7 @@ import org.eclipse.emf.mwe.core.WorkflowContext;
 import org.eclipse.emf.mwe.core.issues.Issues;
 import org.eclipse.emf.mwe.core.lib.AbstractWorkflowComponent2;
 import org.eclipse.emf.mwe.core.monitor.ProgressMonitor;
+import org.w3c.dom.Element;
 
 public final class WsdlParser extends AbstractWorkflowComponent2 {
 
@@ -99,32 +99,37 @@ public final class WsdlParser extends AbstractWorkflowComponent2 {
    private void parseTypes(Definition definition, Model model) throws JAXBException {
       for (Object o : definition.getTypes().getExtensibilityElements()) {
          if (Schema.class.isInstance(o)) {
-            addSchema(Schema.class.cast(o), definition.getTargetNamespace(), model);
+            addSchema(Schema.class.cast(o), definition.getTargetNamespace(), model, false);
          }
       }
    }
 
-   private void addSchema(Schema schema, String defaultNamespace, Model model) throws JAXBException {
+   private void addSchema(Schema schema, String defaultNamespace, Model model, boolean checkDone) throws JAXBException {
       final String documentBaseURI = schema.getDocumentBaseURI();
-      if (!_done.contains(documentBaseURI)) {
-         String targetNamespace = schema.getElement().getAttribute("targetNamespace");
-         if (targetNamespace.isEmpty()) targetNamespace = defaultNamespace;
-         model.getServiceNamespace(targetNamespace).addSchema(documentBaseURI, schema.getElement(), xsdUnmarshaller);
-         _done.add(documentBaseURI);
-         @SuppressWarnings("unchecked")
-         final Map<String, List<SchemaImport>> imports = schema.getImports();
-         for (Entry<String, List<SchemaImport>> entry : imports.entrySet()) {
-            for (SchemaImport schemaImport : entry.getValue()) {
-               addSchema(schemaImport.getReferencedSchema(), schemaImport.getNamespaceURI(), model);
-            }
-         }
-         @SuppressWarnings("unchecked")
-         final List<SchemaReference> includes = schema.getIncludes();
-         for (SchemaReference schemaReference : includes) {
-            addSchema(schemaReference.getReferencedSchema(), targetNamespace, model);
-         }
+      if (checkDone && _done.contains(documentBaseURI)) {
+          if (verbose) System.out.println("Cache hit: " + documentBaseURI);
       } else {
-         if (verbose) System.out.println("Cache hit: " + documentBaseURI);
+          Element schemaElement = schema.getElement();
+          String targetNamespace = schemaElement.getAttribute("targetNamespace");
+          if (targetNamespace.isEmpty() && !defaultNamespace.isEmpty()) {
+             targetNamespace = defaultNamespace;
+             schemaElement.setAttribute("targetNamespace", targetNamespace);
+             schemaElement.setAttribute("xmlns", targetNamespace);
+          }
+          model.getServiceNamespace(targetNamespace).addSchema(documentBaseURI, schemaElement, xsdUnmarshaller);
+          _done.add(documentBaseURI);
+          @SuppressWarnings("unchecked")
+          final Map<String, List<SchemaImport>> imports = schema.getImports();
+          for (Entry<String, List<SchemaImport>> entry : imports.entrySet()) {
+             for (SchemaImport schemaImport : entry.getValue()) {
+                addSchema(schemaImport.getReferencedSchema(), schemaImport.getNamespaceURI(), model, checkDone);
+             }
+          }
+          @SuppressWarnings("unchecked")
+          final List<SchemaReference> includes = schema.getIncludes();
+          for (SchemaReference schemaReference : includes) {
+             addSchema(schemaReference.getReferencedSchema(), targetNamespace, model, checkDone);
+          }
       }
    }
 

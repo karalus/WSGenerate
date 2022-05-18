@@ -1,12 +1,11 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * Copyright 2022 Andre Karalus
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -127,7 +126,7 @@ public final class RegExHelper {
 	/**
 	 * @param regex
 	 * @return regex
-	 * @see <a href="http://www.xmlschemareference.com/regularExpression.html"/>XML schema regular expression</a>
+	 * @see <a href="https://web.archive.org/web/20190305094825/http://www.xmlschemareference.com/regularExpression.html"/>XML schema regular expression</a>
 	 */
 	public static String convertXMLSchemaRegEx(String regex) {
 		return _c.matcher(_i.matcher(_C.matcher(_I.matcher(regex).replaceAll($_I)).replaceAll($_C)).replaceAll($_i)).replaceAll($_c);
