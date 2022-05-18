@@ -186,7 +186,7 @@ String convertXSDBasicType2Oracle(ServiceNamespace owner, QName this, List[Objec
 
 private int getDigitsForDecimal(List[Object] this) :
 	(getFacetTotalDigits() != null ? getFacetTotalDigits().value.asInteger() : numberDefaultPrecision()) - getFractionDigitsForDecimal();
-private int getFractionDigitsForDecimal(List[Object] this) : getFacetFractionDigits().value.asInteger();
+private int getFractionDigitsForDecimal(List[Object] this) : getFacetFractionDigits() != null ? getFacetFractionDigits().value.asInteger() : 9;
 private int numberDefaultPrecision() : 38;
 
 String getOracleTypeForRefElement(ServiceNamespace ns, Element this, boolean isArray, Group parentGroup) :
