@@ -121,7 +121,7 @@ public final class RegExHelper {
 	private static final Pattern _i = Pattern.compile("(^|[^\\\\])\\\\i");
 	private static final String $_i = "$1[\\\\p{Alpha}:_]";
 	private static final Pattern _c = Pattern.compile("(^|[^\\\\])\\\\c");
-	private static final String $_c = "$1[\\\\p{Alnum}:_]";
+	private static final String $_c = "$1[\\\\p{Alnum}:_\\-\\.]";
 
 	/**
 	 * @param regex
