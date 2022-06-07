@@ -112,23 +112,27 @@ public final class WsdlParser extends AbstractWorkflowComponent2 {
           Element schemaElement = schema.getElement();
           String targetNamespace = schemaElement.getAttribute("targetNamespace");
           if (targetNamespace.isEmpty() && !defaultNamespace.isEmpty()) {
-             targetNamespace = defaultNamespace;
+             schemaElement.setAttribute("targetNamespace", defaultNamespace);
+             schemaElement.setAttribute("xmlns", defaultNamespace);
+             model.getServiceNamespace(defaultNamespace).addSchema(documentBaseURI, schemaElement, xsdUnmarshaller);
              schemaElement.setAttribute("targetNamespace", targetNamespace);
              schemaElement.setAttribute("xmlns", targetNamespace);
+             targetNamespace = defaultNamespace;
+          } else {
+             model.getServiceNamespace(targetNamespace).addSchema(documentBaseURI, schemaElement, xsdUnmarshaller);
           }
-          model.getServiceNamespace(targetNamespace).addSchema(documentBaseURI, schemaElement, xsdUnmarshaller);
           _done.add(documentBaseURI);
           @SuppressWarnings("unchecked")
           final Map<String, List<SchemaImport>> imports = schema.getImports();
           for (Entry<String, List<SchemaImport>> entry : imports.entrySet()) {
              for (SchemaImport schemaImport : entry.getValue()) {
-                addSchema(schemaImport.getReferencedSchema(), schemaImport.getNamespaceURI(), model, checkDone);
+                addSchema(schemaImport.getReferencedSchema(), schemaImport.getNamespaceURI(), model, true);
              }
           }
           @SuppressWarnings("unchecked")
           final List<SchemaReference> includes = schema.getIncludes();
           for (SchemaReference schemaReference : includes) {
-             addSchema(schemaReference.getReferencedSchema(), targetNamespace, model, checkDone);
+             addSchema(schemaReference.getReferencedSchema(), targetNamespace, model, false);
           }
       }
    }
