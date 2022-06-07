@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import javax.wsdl.Definition;
 import javax.wsdl.WSDLException;
@@ -51,17 +50,12 @@ public final class WsdlParser extends AbstractWorkflowComponent2 {
       }
    }
 
-   private final Unmarshaller       xsdUnmarshaller;
-
-   private final HashSet<String>    _done     = new HashSet<>();
-
-   private String                   outputSlot;
-
-   private boolean                  verbose;
-
-   private final List<String>       fileNames = new ArrayList<>();
-
-   private BindingDefinition        bindingDefinition;
+   private final Unmarshaller xsdUnmarshaller;
+   private final HashSet<String> _done = new HashSet<>();
+   private String outputSlot;
+   private boolean verbose;
+   private final List<String> fileNames = new ArrayList<>();
+   private BindingDefinition bindingDefinition;
 
    public WsdlParser() throws JAXBException {
       xsdUnmarshaller = ServiceNamespace.jaxbContext.createUnmarshaller();
@@ -124,7 +118,7 @@ public final class WsdlParser extends AbstractWorkflowComponent2 {
           _done.add(documentBaseURI);
           @SuppressWarnings("unchecked")
           final Map<String, List<SchemaImport>> imports = schema.getImports();
-          for (Entry<String, List<SchemaImport>> entry : imports.entrySet()) {
+          for (Map.Entry<String, List<SchemaImport>> entry : imports.entrySet()) {
              for (SchemaImport schemaImport : entry.getValue()) {
                 addSchema(schemaImport.getReferencedSchema(), schemaImport.getNamespaceURI(), model, true);
              }
