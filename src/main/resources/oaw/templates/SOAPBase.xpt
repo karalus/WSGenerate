@@ -384,7 +384,10 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BasePackageName()» IS
     EXCEPTION
       WHEN UTL_HTTP.end_of_body THEN
         UTL_HTTP.end_response(v_http_response);
-    END;
+      WHEN OTHERS THEN
+        UTL_HTTP.end_response(v_http_response);
+        RAISE;
+     END;
 
     return v_response;
 
@@ -392,7 +395,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BasePackageName()» IS
 
   /**
   * Erzeugt eine neue MessageId.
-  * Wird intern benötigt wenn ein E-Package aufgerufen wird.
+  * Wird intern benötigt wenn ein C-Package aufgerufen wird.
   *
   * @return   = MessageId
   */
@@ -583,8 +586,9 @@ BEGIN
   -- Persistent Connections aktivieren
   utl_http.set_persistent_conn_support (enable => TRUE, max_conns => 10);
 
-  -- Wallet mit Zertifikaten für HTTPS setzen 
-  UTL_HTTP.set_wallet('file:/u01/app/oracle/soa/wallet');
+  -- Wallet mit Zertifikaten für HTTPS setzen
+  -- UTL_HTTP.set_wallet('file:/u01/app/oracle/admin/wallet');
+  «BasePackage_getPackageInitializer()»
 
 END «BasePackageName()»;
 /
