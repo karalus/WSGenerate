@@ -60,6 +60,12 @@
 			<version>2.3.0-v200706262000</version>
 			<scope>test</scope>
 		</dependency>
+		<!-- For JDK 11 -->
+		<dependency>
+			<groupId>org.glassfish.jaxb</groupId>
+			<artifactId>jaxb-runtime</artifactId>
+			<version>2.3.3</version>
+		</dependency>
 	</dependencies>
 	<build>
 		<pluginManagement>
@@ -78,7 +84,7 @@
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>jaxb2-maven-plugin</artifactId>
-				<version>2.3.1</version>
+				<version>2.5.0</version>
 				<executions>
 					<execution>
 						<id>xjc</id>
@@ -89,13 +95,12 @@
 				</executions>
 				<configuration>
 					<locale>en</locale>
-					<generateEpisode>false</generateEpisode>
 				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-shade-plugin</artifactId>
-				<version>3.2.1</version>
+				<version>3.2.4</version>
 				<executions>
 					<execution>
 						<phase>package</phase>
@@ -113,6 +118,7 @@
 					</execution>
 				</executions>
 				<configuration>
+					<minimizeJar>true</minimizeJar>
 					<filters>
 						<filter>
 							<artifact>*:*</artifact>
@@ -122,6 +128,37 @@
 								<exclude>META-INF/*.RSA</exclude>
 							</excludes>
 						</filter>
+	                    <filter>
+	                       <artifact>commons-logging:commons-logging</artifact>
+	                       <includes>
+	                           <include>**</include>
+	                       </includes>
+	                    </filter>                      
+	                    <filter>
+	                       <artifact>wsdl4j:wsdl4j</artifact>
+	                       <includes>
+	                           <include>**</include>
+	                       </includes>
+	                    </filter>                      
+	                    <filter>
+	                       <artifact>org.glassfish.jaxb:jaxb-runtime</artifact>
+	                       <includes>
+	                           <include>**</include>
+	                       </includes>
+	                    </filter>                      
+	                    <filter>
+	                       <artifact>com.ibm.icu:icu4j</artifact>
+	                       <includes>
+	                           <include>com/ibm/icu/text/*</include>
+	                           <include>com/ibm/icu/util/*</include>
+	                           <include>com/ibm/icu/impl/locale/*</include>
+	                           <include>com/ibm/icu/impl/*</include>
+	                           <include>com/ibm/icu/impl/data/icudt46b/*</include>
+	                           <include>com/ibm/icu/lang/*</include>
+	                           <include>com/ibm/icu/impl/data/icudt46b/curr/*</include>
+	                           <include>com/ibm/icu/math/*</include>
+	                       </includes>
+	                    </filter>                      
 					</filters>
 				</configuration>
 			</plugin>
