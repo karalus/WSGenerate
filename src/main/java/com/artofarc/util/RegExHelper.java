@@ -111,7 +111,8 @@ public final class RegExHelper {
    }
 
 	public static RegExHelper newRegExHelper(String regex) {
-		return new RegExHelper(Pattern.compile(convertXMLSchemaRegEx(regex)));
+		// https://stackoverflow.com/questions/4304928/unicode-equivalents-for-w-and-b-in-java-regular-expressions/4307261#4307261
+		return new RegExHelper(Pattern.compile(convertXMLSchemaRegEx(regex), Pattern.UNICODE_CHARACTER_CLASS));
 	}
 
 	private static final Pattern _I = Pattern.compile("(^|[^\\\\])\\\\I");

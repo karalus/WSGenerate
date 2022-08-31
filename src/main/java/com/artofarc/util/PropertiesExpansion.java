@@ -369,7 +369,7 @@ public class PropertiesExpansion extends Properties {
          }
          int i = s.indexOf(startSecSep);
          if (i == 0){
-            curSec = replace(s.substring(i+1,s.indexOf(endSecSep,i+1)));
+            curSec = replace(s.substring(1,s.indexOf(endSecSep,1)));
             Properties p = (Properties) get(curSec);
             if (p == null && curSec.length() > 0){
                p = new PropertiesExpansion();

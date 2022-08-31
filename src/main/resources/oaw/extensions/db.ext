@@ -38,7 +38,7 @@ String getAQQueueTable(Port this, boolean multipleConsumers) : getLocation().get
 String getAQDeadLetterQueueName(Port this, boolean multipleConsumers) : "AQ$_" + getAQQueueTable(multipleConsumers) + "_E";
 
 cached String XSD2PackageName(ServiceNamespace this) : mappingForNamespace;
-String getNsContextParam(ServiceNamespace this, ServiceNamespace elemNs) : isGenerateSmallXML() ? "p_nsContext" : "'" + elemNs.URI + "'";
+String getNsContextParam(ServiceNamespace this, ServiceNamespace elemNs) : isGenerateSmallXML() ? "p_nsContext" : (elemNs != null ? "'" + elemNs.URI + "'" : "NULL");
 	
 private String checkLen(String s, String uri, String name) : s.length > 128 ? "!!!Too long: " + name + " in " + uri + " mapped to " + s : s;
 
@@ -90,7 +90,7 @@ String XSDType2Oracle(ServiceNamespace ns, String name, ComplexType this, boolea
 String XSDType2Oracle(ServiceNamespace ns, String name, ComplexType this, String suffix) : checkLen(_XSDType2Oracle(ns, name, false) + suffix, ns.URI, name);
 
 private cached String _XSDType2Oracle(Annotated this, ServiceNamespace ns, String name, boolean isArray) :
-	let s = ns.getMappingForName(name, null) :
+	let s = ns.getMappingForName(name, null).replaceAll("-", "_") :
 		s.endsWith("PayloadType") ? s.chomp(11) + (isArray ? "P_CT" : "P_T") :
 			(s.endsWith("Type") ? s.chomp(4) : s) + (isArray ? "_CT" : "_T");
 

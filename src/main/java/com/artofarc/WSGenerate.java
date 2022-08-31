@@ -92,6 +92,7 @@ public class WSGenerate {
       Options options = new Options();
       options.addOption(new Option("help", "print this message"));
       options.addOption(new Option("verbose", "be extra verbose"));
+      // 1.2
       options.addOption(OptionBuilder.withArgName("check").hasArgs().withValueSeparator(',').withDescription("whether to check the model").create("c"));
       options.addOption(OptionBuilder.withArgName("directory").hasArg().withDescription("where to place generated output files").create("d"));
       options.addOption(OptionBuilder.withArgName("encoding").hasArg().withDescription("code page for output files").create("encoding"));
@@ -99,6 +100,15 @@ public class WSGenerate {
       options.addOption(OptionBuilder.withArgName("classname[=init param]").hasOptionalArgs().withValueSeparator()
                                      .withDescription("the class to perform name mapping").create("bc"));
       options.addOption(OptionBuilder.withArgName("property=value").hasArgs(2).withValueSeparator().withDescription("pass property to generator").create("B"));
+      // 1.4
+//      options.addOption(Option.builder("c").longOpt("check").hasArgs().valueSeparator(',').desc("whether to check the model").build());
+//      options.addOption(Option.builder("d").longOpt("directory").hasArg().desc("where to place generated output files").build());
+//      options.addOption(Option.builder().longOpt("encoding").hasArg().desc("code page for output files").build());
+//      options.addOption(Option.builder("b").longOpt("file").hasArg().desc("use file for mapping names").build());
+//      options.addOption(Option.builder("bc").longOpt("classname[=init param]").optionalArg(true).valueSeparator()
+//                                     .desc("the class to perform name mapping").build());
+//      options.addOption(Option.builder("B").longOpt("property=value").numberOfArgs(2).valueSeparator().desc("pass property to generator").build());
+      
       // parse the command line arguments
       CommandLine line = null;
       try {
@@ -107,7 +117,6 @@ public class WSGenerate {
       } catch (ParseException e) {
          System.err.println("Error parsing command line: " + e.getMessage());
       }
-      // create model
       if (line == null || line.hasOption("help") || line.getArgList().isEmpty()) {
          HelpFormatter formatter = new HelpFormatter();
          formatter.printHelp("WSGenerate <list of wsdl>", options);

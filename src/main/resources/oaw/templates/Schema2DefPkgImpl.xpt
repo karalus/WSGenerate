@@ -425,7 +425,7 @@ END «XSD2PackageName()»;
 «ERROR "Particle type not supported: " + particleType»
 «ENDDEFINE»
 
-«DEFINE XML2Oracle(Element e, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«DEFINE XML2Oracle(LocalElement e, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
 «LET getTypeNamespace(e) AS ns-»
 «LET parentParam + '.' + getOracleName(e) AS elementAccess-»
          WHEN localName = '«e.ref != null ? e.ref.localPart : e.name»' AND namespace «IF getElementNamespace(e) != null»= '«getElementNamespace(e).URI»'«ELSE»IS NULL«ENDIF» THEN
@@ -573,7 +573,7 @@ END «XSD2PackageName()»;
 «ERROR "Particle type not supported: " + particleType»
 «ENDDEFINE»
 
-«DEFINE Oracle2XML(Element e, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
+«DEFINE Oracle2XML(LocalElement e, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
 «LET getTypeNamespace(e) AS ns-»
 «LET getElementNamespace(e) AS elemNs-»
 «LET parentParam + '.' + getOracleName(e) AS elementAccess-»

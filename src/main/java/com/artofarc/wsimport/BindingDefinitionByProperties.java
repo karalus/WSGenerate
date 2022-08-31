@@ -59,7 +59,13 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 			return getGlobalProperty("BasePackage", "SOAP_BASE");
 		}
 		String formatPattern = _propertiesExpansion.getProperty(ArtifactKind.Schema.name(), "%sV%s");
-		String mapping = _propertiesExpansion.getProperty(ns, ns);
+		String mapping;
+		Object property = _propertiesExpansion.get(ns);
+		if (property instanceof PropertiesExpansion) {
+			mapping = ((PropertiesExpansion) property).getProperty(".", ns);
+		} else {
+			mapping = _propertiesExpansion.getProperty(ns, ns);
+		}
 		String[] split = extractVersionForNamespace(mapping);
 		String uri = split[0].replaceAll("/", "");
 		String uriDots = UriHelper.convertUri(ns, ".", false);
