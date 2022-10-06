@@ -305,6 +305,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     indomdoc 					 DBMS_XMLDOM.DOMDocument;
     inelmt 			             DBMS_XMLDOM.DOMElement;
     innode 				         DBMS_XMLDOM.DOMNode;
+    text                         DBMS_XMLDOM.DOMNode;
 
     timeout                      INTEGER;
 	fault_mapped                 BOOLEAN := FALSE;
@@ -348,21 +349,37 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     innode := DBMS_XMLDOM.getFirstChild(innode);
     inelmt := DBMS_XMLDOM.makeElement(innode);
     IF DBMS_XMLDOM.getNamespace(inelmt) = c_SOAP_NS AND DBMS_XMLDOM.getLocalName(inelmt) = 'Fault' THEN
-      innode := DBMS_XMLDOM.getLastChild(innode);
-      inelmt := DBMS_XMLDOM.makeElement(innode);
-      IF DBMS_XMLDOM.getLocalName(inelmt) = 'detail' THEN
-        innode := DBMS_XMLDOM.getFirstChild(innode);
-«IF getFaultElementQName(binding, operation.name) != null-»
+      innode := DBMS_XMLDOM.getFirstChild(innode); -- faultcode
+      innode := DBMS_XMLDOM.getNextSibling(innode); -- faultstring
+      text := DBMS_XMLDOM.getFirstChild(innode);
+      fault_string := DBMS_XMLDOM.getNodeValue(text);
+      innode := DBMS_XMLDOM.getNextSibling(innode);
+      IF NOT DBMS_XMLDOM.isNull(innode) THEN
         inelmt := DBMS_XMLDOM.makeElement(innode);
-        IF DBMS_XMLDOM.getNamespace(inelmt) = '«getFaultElementQName(binding, operation.name).namespaceURI»' AND DBMS_XMLDOM.getLocalName(inelmt) = '«getFaultElementQName(binding, operation.name).localPart»' THEN
-          p_error_out := «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»4x(innode);
-          fault_mapped := TRUE;
+        IF DBMS_XMLDOM.getLocalName(inelmt) = 'faultactor' THEN
+          innode := DBMS_XMLDOM.getNextSibling(innode); -- detail
+          IF NOT DBMS_XMLDOM.isNull(innode) THEN
+            inelmt := DBMS_XMLDOM.makeElement(innode);
+          END IF;
         END IF;
+        IF DBMS_XMLDOM.getLocalName(inelmt) = 'detail' THEN
+          innode := DBMS_XMLDOM.getFirstChild(innode);
+«IF getFaultElementQName(binding, operation.name) != null-»
+          inelmt := DBMS_XMLDOM.makeElement(innode);
+          IF DBMS_XMLDOM.getNamespace(inelmt) = '«getFaultElementQName(binding, operation.name).namespaceURI»' AND DBMS_XMLDOM.getLocalName(inelmt) = '«getFaultElementQName(binding, operation.name).localPart»' THEN
+            p_error_out := «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»4x(innode);
+            fault_mapped := TRUE;
+          ELSE
+            text := DBMS_XMLDOM.getFirstChild(innode);
+            fault_string := fault_string || DBMS_XMLDOM.getNodeValue(text);
+          END IF;
+«ELSE-»
+          text := DBMS_XMLDOM.getFirstChild(innode);
+          fault_string := fault_string || DBMS_XMLDOM.getNodeValue(text);
 «ENDIF-»
+        END IF;
       END IF;
       IF NOT fault_mapped THEN
-        innode := DBMS_XMLDOM.getFirstChild(innode);
-        fault_string := DBMS_XMLDOM.getNodeValue(innode);
         DBMS_XMLDOM.freeDocument(indomdoc);
         RAISE_APPLICATION_ERROR(-20001, 'Fault: ' || fault_string);
       END IF;
