@@ -94,12 +94,13 @@ private cached String _XSDType2Oracle(Annotated this, ServiceNamespace ns, Strin
 		s.endsWith("PayloadType") ? s.chomp(11) + (isArray ? "P_CT" : "P_T") :
 			(s.endsWith("Type") ? s.chomp(4) : s) + (isArray ? "_CT" : "_T");
 
-String anonymousTypeName(Element element, String parentTypeName) :
-	let s = parentTypeName.chomp("Type") : (s.length > 0 ? s + element.name.toFirstUpper() : element.name) + "Type";
+private boolean checkNameClash(ServiceNamespace ns, String name) : complexTypes(ns).notExists(e|e.name == name) && simpleTypes(ns).notExists(e|e.name == name);
+String anonymousTypeName(ServiceNamespace ns, Element this, String parentTypeName) :
+	let s = parentTypeName.chomp("Type") : let n = (s.length > 0 ? s + name.toFirstUpper() : name) : checkNameClash(ns, n + "Type") ? n + "Type" : n + "AType";
 String anonymousTypeName2Oracle(ServiceNamespace ns, Element this, String parentTypeName) :
- 	XSDType2Oracle(ns, anonymousTypeName(parentTypeName), complexType, false);
+ 	XSDType2Oracle(ns, anonymousTypeName(ns, this, parentTypeName), complexType, false);
 String anonymousTypeName2Oracle(ServiceNamespace ns, Element this, String parentTypeName, boolean isArray) :
-	XSDType2Oracle(ns, anonymousTypeName(parentTypeName), complexType, isArray);
+	XSDType2Oracle(ns, anonymousTypeName(ns, this, parentTypeName), complexType, isArray);
 String anonymousTypeName(Attribute attribute, String parentTypeName) :
 	let s = parentTypeName.chomp("Type") : (s.length > 0 ? s + attribute.name.toFirstUpper() : attribute.name) + "Type";
 
