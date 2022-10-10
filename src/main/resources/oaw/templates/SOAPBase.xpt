@@ -289,16 +289,14 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BasePackageName()» IS
     RETURN g_http_response_code;
   END get_last_http_resp_code;
 
-  /**
-  * Gibt ein basic auth credential oder NULL zurück.
-  */
-  FUNCTION getBasicAuthCredential (
-      p_url IN VARCHAR2
-  ) RETURN VARCHAR2 IS
+  PROCEDURE setBasicAuthCredential(
+    p_url IN VARCHAR2,
+    p_http_request IN OUT NOCOPY UTL_HTTP.req
+  ) IS
   BEGIN
-    RETURN «BasePackage_getBasicAuthCredential()»;
+    «BasePackage_setBasicAuthCredential()»
   END;
-  
+
   FUNCTION call_soap_http(
     p_url         IN VARCHAR2,
     p_action      IN VARCHAR2,
@@ -312,8 +310,6 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BasePackageName()» IS
     l_warning      INTEGER;
     l_blob_length  INTEGER;
 
-    v_basicAuthCredential  VARCHAR2(999);
-  
     v_http_request    UTL_HTTP.req;
     v_http_response   UTL_HTTP.resp;
     v_response        CLOB;
@@ -361,10 +357,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BasePackageName()» IS
     -- Response im Charset der Datenbank anfordern
     UTL_HTTP.set_header(v_http_request, 'Accept-Charset', g_charset);
     UTL_HTTP.set_header(v_http_request, 'SOAPAction', p_action);
-    v_basicAuthCredential := getBasicAuthCredential(p_url);
-    IF v_basicAuthCredential IS NOT NULL THEN
-      UTL_HTTP.set_header(v_http_request, 'Authorization', 'Basic ' || v_basicAuthCredential);
-    END IF;
+    setBasicAuthCredential(p_url, v_http_request);
 
     -- write_raw kann nur 32 K pro Aufruf schreiben, deshalb mehrmaliger
     -- Aufruf um auch groessere Datenmengen uebergeben zu koennen.
