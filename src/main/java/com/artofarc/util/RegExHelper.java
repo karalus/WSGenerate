@@ -19,8 +19,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
+import com.florianingerl.util.regex.Pattern;
 
 /**
  * This class helps to get the minLength and maxLength of a possible match to a regular expression.
@@ -39,9 +39,10 @@ public final class RegExHelper {
 	private final static Field TreeInfo$minLength;
 
 	static {
+		String PatternClassName = Pattern.class.getName();
 		try {
-			Class<?> Node = Class.forName("java.util.regex.Pattern$Node");
-			Class<?> TreeInfo = Class.forName("java.util.regex.Pattern$TreeInfo");
+			Class<?> Node = Class.forName(PatternClassName + "$Node");
+			Class<?> TreeInfo = Class.forName(PatternClassName + "$TreeInfo");
 			conTreeInfo = TreeInfo.getDeclaredConstructor();
 			conTreeInfo.setAccessible(true);
 			Node$study = Node.getDeclaredMethod("study", TreeInfo);
@@ -54,27 +55,24 @@ public final class RegExHelper {
 			TreeInfo$maxLength.setAccessible(true);
 			TreeInfo$minLength = TreeInfo.getDeclaredField("minLength");
 			TreeInfo$minLength.setAccessible(true);
-		} catch (RuntimeException e) {
-			throw e;
-		} catch (Exception e) {
-			throw new RuntimeException("Incompatible implementation of java.util.regex.Pattern");
+		} catch (ReflectiveOperationException e) {
+			throw new RuntimeException("Incompatible Pattern implementation " + PatternClassName);
 		}
 	}
 
 	private final Pattern pattern;
 	private final Object treeInfo;
 
-	public RegExHelper(Pattern pattern) {
-	   this.pattern = pattern;
+	private RegExHelper(String regex) {
+		// https://stackoverflow.com/questions/4304928/unicode-equivalents-for-w-and-b-in-java-regular-expressions/4307261#4307261
+		pattern = Pattern.compile(convertXMLSchemaRegEx(regex), Pattern.UNICODE_CHARACTER_CLASS);
 		try {
 			treeInfo = conTreeInfo.newInstance();
 			Node$study.invoke(Pattern$matchRoot.get(pattern), treeInfo);
-		} catch (InstantiationException e) {
-			throw new RuntimeException(e);
-		} catch (IllegalAccessException e) {
-			throw new RuntimeException(e);
 		} catch (InvocationTargetException e) {
 			throw new RuntimeException(e.getTargetException());
+		} catch (ReflectiveOperationException e) {
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -102,17 +100,12 @@ public final class RegExHelper {
 		}
 	}
 
-	public Pattern getPattern() {
-	   return pattern;
+	public boolean matches(String s) {
+		return pattern.matcher(s).matches();
 	}
 
-   public Matcher matcher(String s) {
-      return pattern.matcher(s);
-   }
-
 	public static RegExHelper newRegExHelper(String regex) {
-		// https://stackoverflow.com/questions/4304928/unicode-equivalents-for-w-and-b-in-java-regular-expressions/4307261#4307261
-		return new RegExHelper(Pattern.compile(convertXMLSchemaRegEx(regex), Pattern.UNICODE_CHARACTER_CLASS));
+		return new RegExHelper(regex);
 	}
 
 	private static final Pattern _I = Pattern.compile("(^|[^\\\\])\\\\I");
@@ -129,7 +122,7 @@ public final class RegExHelper {
 	 * @return regex
 	 * @see <a href="https://web.archive.org/web/20190305094825/http://www.xmlschemareference.com/regularExpression.html"/>XML schema regular expression</a>
 	 */
-	public static String convertXMLSchemaRegEx(String regex) {
+	private static String convertXMLSchemaRegEx(String regex) {
 		return _c.matcher(_i.matcher(_C.matcher(_I.matcher(regex).replaceAll($_I)).replaceAll($_C)).replaceAll($_i)).replaceAll($_c);
 	}
 

@@ -4,7 +4,7 @@ import javax::xml::namespace;
 
 import com::artofarc::wsimport;
 
-extension oaw::extensions::dom;
+extension oaw::extensions::dom reexport;
 
 // XML Schema model extensions
 QName createQName(String namespaceURI, String localPart) : JAVA com.artofarc.wsimport.ModelUtilities.createQName(java.lang.String, java.lang.String);
@@ -191,7 +191,7 @@ cached boolean isWithoutTimezone(QName this, List[Object] facets) : facets == nu
 		case "gYear" : patterns.matchesAll("2001")
 		default : true
 	});
-private boolean matchesAll(List[Pattern] patterns, String s) : patterns.forAll(e|newRegExHelper(e.value).matcher(s).matches());
+private boolean matchesAll(List[Pattern] patterns, String s) : patterns.forAll(e|newRegExHelper(e.value).matches(s));
 boolean isStringType(QName this) : localPart == "string" || localPart == "normalizedString" || localPart == "token" || localPart == "NMTOKEN";
 boolean isInt32Type(QName this) : isInt32TypeSigned() || localPart == "unsignedShort" || localPart == "unsignedByte";
 boolean isInt32TypeSigned(QName this) : localPart == "int" || localPart == "short" || localPart == "byte";
