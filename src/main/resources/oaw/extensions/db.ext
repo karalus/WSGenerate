@@ -145,6 +145,11 @@ String convertXSDBasicTypeOracle(QName this, List[Object] facets) :
 													(localPart == "anyType" ? "XMLTYPE" :
 														"Illegal XSD type: " + localPart))))))))))));
 
+String amendXSDBasicTypeOracle(QName this, List[Object] facets) :
+	isStringType() ? "(" + getMaxCharLength(facets) + " CHAR)" :
+		(localPart == "int" && getIntegerTypeTotalDigits(facets) == 10 ? "" :
+			(isInt32Type() || isIntegerType() ? (let td = getIntegerTypeTotalDigits(facets) : td != null ? "(" + td + ")" : "") : ""));
+
 private boolean hasNumberFormat(List[Object] facets) : facets != null && (getFacetTotalDigits(facets) != null || getFacetFractionDigits(facets) != null);
 private String getNumberFormat(List[Object] this) :
 	getFacetTotalDigits() != null ?	getFacetTotalDigits().value + (getFacetFractionDigits() != null ? "," + getFacetFractionDigits().value : "") :

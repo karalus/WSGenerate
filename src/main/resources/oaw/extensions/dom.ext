@@ -3,6 +3,16 @@ import org::w3c::dom;
 String getElementName(Element element) : element.localName;
 String getElementText(Element element) : element.textContent;
 
-String getAttributeValue(Element element, String name) : ((Attr) element.attributes.getNamedItem(name)).value;
-List[Element] getChildElements(Element element) : addToList(element.childNodes, 0, {}).typeSelect(Element);
+String getAttributeValue(Element this, String name) : ((Attr) attributes.getNamedItem(name)).value;
+List[Element] getChildElements(Element this) : getChilds().typeSelect(Element);
+private List[Node] getChilds(Element this) : addToList(childNodes, 0, {});
 private List[Node] addToList(NodeList this, int i, List[Node] result) : i < length ? (result.add(item(i)) -> addToList(i + 1, result)) : result;
+List[Attr] getAttrs(Element this) : addToList(attributes, 0, {});
+private List[Attr] addToList(NamedNodeMap this, int i, List[Attr] result) : i < length ? (result.add((Attr) item(i)) -> addToList(i + 1, result)) : result;
+
+String asString(Object this) : toString();
+String asString(Element this) : localName + asString(getAttrs().reject(a|a.name.startsWith("xmlns"))) +
+	(let c = getChilds() : let e = c.typeSelect(Element) : let o = c.without(e) : e.isEmpty ? (o.isEmpty ? "" : ": " + o.collect(n|n.textContent)) : ": " + e.collect(n|asString(n)));
+private String asString(List[Attr] this) : isEmpty ? "" : "(" + _asStringNonEmpty() + ")";
+private String _asStringNonEmpty(List[Attr] this) : let l = withoutFirst() : l.isEmpty ? _asString(first()) : _asString(first()) + ", " + _asStringNonEmpty(l);
+private String _asString(Attr this) : name + "=" + value;

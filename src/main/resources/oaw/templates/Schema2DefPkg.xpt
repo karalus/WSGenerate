@@ -84,12 +84,12 @@ END «XSD2PackageName()»;
 «FOREACH foreignTypes AS refType-»
 -- SUBTYPE TYPE FOR: «refType.name»
 «LET XSDType2Oracle(refType) AS oracleName-»
-«FOREACH getDocumentationContent(refType) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«FOREACH getDocumentationContent(refType) AS doc»«doc.asString().formatDocumentation("-- ")»«ENDFOREACH-»
 SUBTYPE «oracleName» IS «getPackagePrefix(refType.restriction.base)»«XSDType2Oracle(refType.restriction.base)»;
 
 TYPE «XSDType2Oracle(refType, true)» IS TABLE OF «oracleName»;
 «FOREACH getFacets(refType).getEnumerationFacets() AS enumeration-»
-«FOREACH getDocumentationContent(enumeration) AS doc»«doc.toString().formatDocumentation("  -- ")»«ENDFOREACH-»
+«FOREACH getDocumentationContent(enumeration) AS doc»«doc.asString().formatDocumentation("  -- ")»«ENDFOREACH-»
   «enumValue2OracleName(oracleName, enumeration)» CONSTANT «oracleName» := '«enumeration.value»';
 
 «ENDFOREACH-»
@@ -112,7 +112,7 @@ TYPE «XSDType2Oracle(refType, true)» IS TABLE OF «oracleName»;
 
 «FOREACH listTypes AS listType-»
 -- TABLE TYPE FOR: «listType.name»
-«FOREACH getDocumentationContent(listType) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«FOREACH getDocumentationContent(listType) AS doc»«doc.asString().formatDocumentation("-- ")»«ENDFOREACH-»
 «IF getBaseTypeForListType(listType) != null-»
 TYPE «XSDType2Oracle(listType)» IS TABLE OF «XSDType2Oracle(getBaseTypeForListType(listType))»;
 «ELSE-»
@@ -137,12 +137,12 @@ FUNCTION «XSDType2Oracle(listType, "2l")»(p_list IN «XSDType2Oracle(listType)») 
 «FOREACH refTypes AS refType-»
 -- SUBTYPE TYPE FOR: «refType.name»
 «LET XSDType2Oracle(refType) AS oracleName-»
-«FOREACH getDocumentationContent(refType) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«FOREACH getDocumentationContent(refType) AS doc»«doc.asString().formatDocumentation("-- ")»«ENDFOREACH-»
 SUBTYPE «oracleName» IS «XSDType2Oracle(refType.restriction.base)»;
 
 TYPE «XSDType2Oracle(refType, true)» IS TABLE OF «oracleName»;
 «FOREACH getFacets(refType).getEnumerationFacets() AS enumeration-»
-«FOREACH getDocumentationContent(enumeration) AS doc»«doc.toString().formatDocumentation("  -- ")»«ENDFOREACH-»
+«FOREACH getDocumentationContent(enumeration) AS doc»«doc.asString().formatDocumentation("  -- ")»«ENDFOREACH-»
   «enumValue2OracleName(oracleName, enumeration)» CONSTANT «oracleName» := '«enumeration.value»';
 
 «ENDFOREACH-»
@@ -156,7 +156,7 @@ TYPE «XSDType2Oracle(refType, true)» IS TABLE OF «oracleName»;
 
 «DEFINE XSDSchema(String typeName, SimpleType type) FOR ServiceNamespace-»
 «LET XSDType2Oracle(typeName, type) AS oracleName-»
-«FOREACH type.getDocumentationContent() AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«FOREACH type.getDocumentationContent() AS doc»«doc.asString().formatDocumentation("-- ")»«ENDFOREACH-»
 «FOREACH getFacets(type).getPatternFacets() AS pattern-»
 --   Pattern: «pattern.value»
 «ENDFOREACH-»
@@ -164,7 +164,7 @@ SUBTYPE «oracleName» IS «convertXSDBasicTypeOracle(type.restriction.base, getFac
 
 TYPE «XSDType2Oracle(typeName, type, true)» IS TABLE OF «oracleName»;
 «FOREACH getFacets(type).getEnumerationFacets() AS enumeration-»
-«FOREACH getDocumentationContent(enumeration) AS doc»«doc.toString().formatDocumentation("  -- ")»«ENDFOREACH-»
+«FOREACH getDocumentationContent(enumeration) AS doc»«doc.asString().formatDocumentation("  -- ")»«ENDFOREACH-»
   «enumValue2OracleName(oracleName, enumeration)» CONSTANT «oracleName» := '«enumeration.value»';
 
 «ENDFOREACH-»
@@ -263,7 +263,7 @@ TYPE «XSDType2Oracle(typeName, type, true)» IS TABLE OF «oracleName»;
 «EXPAND XSDSchema(anonymousTypeName(e, typeName), e.simpleType)-»
 «ELSE-»
 «FOREACH getFacets(e.simpleType).getEnumerationFacets() AS enumeration-»
-«FOREACH getDocumentationContent(enumeration) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«FOREACH getDocumentationContent(enumeration) AS doc»«doc.asString().formatDocumentation("-- ")»«ENDFOREACH-»
 «enumValue2OracleName(e.name + "T", enumeration)» CONSTANT «EXPAND XSDSchema_SimpleType(e, typeName, false)» := '«enumeration.value»';
 
 «ENDFOREACH-»
@@ -305,7 +305,7 @@ TYPE «XSDType2Oracle(typeName, type, true)» IS TABLE OF «oracleName»;
 
 «DEFINE XSDSchema(String name, ComplexType ct) FOR ServiceNamespace-»
 -- RECORD TYPE FOR: «name»
-«FOREACH getDocumentationContent(ct) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«FOREACH getDocumentationContent(ct) AS doc»«doc.asString().formatDocumentation("-- ")»«ENDFOREACH-»
 TYPE «XSDType2Oracle(name, ct)» IS RECORD (
   -- Nur zur internen Verwendung! Darf nur vom generierten Code benutzt werden.
   INTERN_isPresent  BOOLEAN«EXPAND XSDSchemaElements(name, this, ct)»
@@ -418,7 +418,7 @@ FUNCTION isNotEmpty(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct, tr
 
 «LET findUsedServiceNamespace(gr.ref.namespaceURI) AS ns-»
 «LET findGroup(ns, gr.ref.localPart) AS group-»
-«FOREACH getDocumentationContent(group) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«FOREACH getDocumentationContent(group) AS doc»«doc.asString().formatDocumentation("-- ")»«ENDFOREACH-»
 -- Group «gr.ref-»
 «EXPAND XSDSchemaElements(typeName, parentGroupType, parentGroup, particleType, ns, group)-»
 «ENDLET-»
@@ -438,7 +438,7 @@ FUNCTION isNotEmpty(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct, tr
 «DEFINE XSDSchemaElements(String typeName, String parentGroupType, Group parentGroup, String particleType, ServiceNamespace currentNS, Element e) FOR ServiceNamespace-»
 ,
 
-«FOREACH getDocumentationContent(e) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«FOREACH getDocumentationContent(e) AS doc»«doc.asString().formatDocumentation("-- ")»«ENDFOREACH-»
 «IF isMandatory(e, parentGroupType)-»
 --   NOT NULL
 «ENDIF-»
@@ -454,7 +454,7 @@ FUNCTION isNotEmpty(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct, tr
 «ELSEIF e.ref != null-»
 «LET currentNS.findUsedServiceNamespace(e.ref.namespaceURI) AS refNs-»
 «LET refNs.findElement(e.ref.localPart) AS refElement-»
-«FOREACH getDocumentationContent(refElement) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«FOREACH getDocumentationContent(refElement) AS doc»«doc.asString().formatDocumentation("-- ")»«ENDFOREACH-»
   «XSD2Oracle(refNs, refElement.name, refElement)» «ns.getOracleTypeForRefElement(refElement, isArrayElement(e), parentGroup)-»
 «ENDLET-»
 «ENDLET-»
@@ -471,7 +471,7 @@ FUNCTION isNotEmpty(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct, tr
 «DEFINE XSDSchemaElements(Attribute a) FOR ServiceNamespace-»
 ,
 
-«FOREACH getDocumentationContent(a) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«FOREACH getDocumentationContent(a) AS doc»«doc.asString().formatDocumentation("-- ")»«ENDFOREACH-»
 «IF a.use == "required"-»
 --   NOT NULL
 «ENDIF-»
@@ -486,7 +486,7 @@ FUNCTION isNotEmpty(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct, tr
 «ELSEIF a.ref != null-»
 «LET findUsedServiceNamespace(a.ref.namespaceURI) AS ns-»
 «LET ns.findAttribute(a.ref.localPart) AS refAttribute-»
-«FOREACH getDocumentationContent(refAttribute) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«FOREACH getDocumentationContent(refAttribute) AS doc»«doc.asString().formatDocumentation("-- ")»«ENDFOREACH-»
   «XSD2Oracle(ns, refAttribute.name, refAttribute)» «ns.getOracleTypeForRefAttribute(refAttribute)-»
 «ENDLET-»
 «ENDLET-»
@@ -502,7 +502,7 @@ FUNCTION isNotEmpty(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct, tr
 
 «LET findUsedServiceNamespace(agr.ref.namespaceURI) AS ns-»
 «LET ns.findAttributeGroup(agr.ref.localPart) AS attributeGroup-»
-«FOREACH getDocumentationContent(attributeGroup) AS doc»«doc.toString().formatDocumentation("-- ")»«ENDFOREACH-»
+«FOREACH getDocumentationContent(attributeGroup) AS doc»«doc.asString().formatDocumentation("-- ")»«ENDFOREACH-»
 -- AttributeGroup «agr.ref-»
 «EXPAND XSDSchemaElements(attributeGroup) FOR ns-»
 «ENDLET-»
@@ -531,7 +531,7 @@ FUNCTION isNotEmpty(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct, tr
 «IF isBuiltInType(baseType)-»
 «XSDType2Oracle(anonymousTypeName(e, typeName), e.simpleType, isArray)»
 «ELSE-»
-«getPackagePrefix(baseType)»«XSDType2Oracle(baseType, isArray)-»
+«getPackagePrefix(baseType)»«XSDType2Oracle(baseType, isArray)»«amendXSDBasicTypeOracle(getBuiltInType(e), getFacets(e.simpleType))-»
 «ENDIF-»
 «ENDIF-»
 «ENDLET-»
@@ -549,7 +549,7 @@ FUNCTION isNotEmpty(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct, tr
 «IF isBuiltInType(baseType)-»
 «XSDType2Oracle(anonymousTypeName(a, typeName), a.simpleType, isArray)»
 «ELSE-»
-«getPackagePrefix(baseType)»«XSDType2Oracle(baseType, isArray)-»
+«getPackagePrefix(baseType)»«XSDType2Oracle(baseType, isArray)»«amendXSDBasicTypeOracle(getBuiltInType(a), getFacets(a.simpleType))-»
 «ENDIF-»
 «ENDIF-»
 «ENDLET-»

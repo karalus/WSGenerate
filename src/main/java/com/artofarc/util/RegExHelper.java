@@ -76,14 +76,6 @@ public final class RegExHelper {
 		}
 	}
 
-	public boolean isMaxValid() {
-		try {
-			return TreeInfo$maxValid.getBoolean(treeInfo);
-		} catch (IllegalAccessException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
 	public int getMaxLength() {
 		try {
 			return TreeInfo$maxValid.getBoolean(treeInfo) ? TreeInfo$maxLength.getInt(treeInfo) : Integer.MAX_VALUE;
