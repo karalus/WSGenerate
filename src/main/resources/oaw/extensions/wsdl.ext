@@ -18,8 +18,8 @@ private String getTransportSOAP11(Binding this) : extensibilityElements.typeSele
 String getTransport(Binding this) : let t = getTransportSOAP11() : t != null ? t : getTransportSOAP12();
 boolean isHttpTransport(Binding this) : getTransport() == "http://schemas.xmlsoap.org/soap/http";
 boolean isJmsTransport(Binding this) : getTransport() == "http://www.w3.org/2010/soapjms/";
-private cached boolean isSOAP12(Binding this) : getTransportSOAP12() != null;	
-private cached boolean isSOAP11(Binding this) : getTransportSOAP11() != null;
+cached boolean isSOAP12(Binding this) : getTransportSOAP12() != null;	
+cached boolean isSOAP11(Binding this) : getTransportSOAP11() != null;
 Collection[Binding] getSOAPBindings(Definition this) : getBindings().select(b|b.isSOAP11() || b.isSOAP12());
 // prefer SOAP11
 cached Collection[Binding] getSOAPBindings(Definition this, PortType portType) : let sb = getBindings().select(b|b.portType == portType) : let transports = sb.getTransport().toSet() :

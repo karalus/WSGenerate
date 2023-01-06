@@ -64,7 +64,8 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«BasePackageName()» IS
   FUNCTION call_soap_http(p_url         IN VARCHAR2,
                           p_action      IN VARCHAR2,
                           p_timeout     IN INTEGER,
-                          p_request     IN CLOB) RETURN CLOB;
+                          p_request     IN CLOB,
+                          p_soap12      IN BOOLEAN DEFAULT FALSE) RETURN CLOB;
 
 
   /**
@@ -301,7 +302,8 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BasePackageName()» IS
     p_url         IN VARCHAR2,
     p_action      IN VARCHAR2,
     p_timeout     IN INTEGER,
-    p_request     IN CLOB)
+    p_request     IN CLOB,
+    p_soap12      IN BOOLEAN)
   RETURN CLOB AS
     l_blob         BLOB;
     l_dest_offset  INTEGER := 1;
@@ -352,11 +354,15 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BasePackageName()» IS
       UTL_HTTP.set_transfer_timeout(v_http_request, p_timeout / 1000);
     END IF;
     UTL_HTTP.set_response_error_check(v_http_request, FALSE);
-    UTL_HTTP.set_header(v_http_request, 'Content-Type', 'text/xml; charset=utf-8');
+    IF p_soap12 THEN
+      UTL_HTTP.set_header(v_http_request, 'Content-Type', 'application/soap+xml; charset=utf-8; action=' || p_action);
+    ELSE
+      UTL_HTTP.set_header(v_http_request, 'Content-Type', 'text/xml; charset=utf-8');
+      UTL_HTTP.set_header(v_http_request, 'SOAPAction', p_action);
+    END IF;
     UTL_HTTP.set_header(v_http_request, 'Content-Length', l_blob_length);
     -- Response im Charset der Datenbank anfordern
     UTL_HTTP.set_header(v_http_request, 'Accept-Charset', g_charset);
-    UTL_HTTP.set_header(v_http_request, 'SOAPAction', p_action);
     setBasicAuthCredential(p_url, v_http_request);
 
     -- write_raw kann nur 32 K pro Aufruf schreiben, deshalb mehrmaliger

@@ -137,9 +137,9 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, Artif
 
   -- Package-Name
   c_package_name CONSTANT «BasePackageName()».oraclename_t := '«WSDL2PackageName(portType, ArtifactKind::ClientStub)»';
-  c_SOAP_NS      CONSTANT VARCHAR2(99) := 'http://schemas.xmlsoap.org/soap/envelope/';
-
 «FOREACH definition.getSOAPBindings(portType) AS binding-»
+  c_SOAP_NS      CONSTANT VARCHAR2(99) := «IF binding.isSOAP12()»'http://www.w3.org/2003/05/soap-envelope'«ELSE»'http://schemas.xmlsoap.org/soap/envelope/'«ENDIF»;
+
   g_url          VARCHAR2(255) := '«bindingDefinition.getPortTypeProperty(portType, "addressLocation", definition.getPort(binding).getLocation())»';
 
 «FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
@@ -334,7 +334,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     DBMS_XMLDOM.freeDocument(outdomdoc);
 
     v_url := «BasePackageName()».getUrlForService(c_PortType_URI, '«binding.portType.QName.localPart»', g_url);
-    param_out := «BasePackageName()».call_soap_http(v_url, '"«bindingOperation.getSoapActionURI()»"', timeout, param_in);
+    param_out := «BasePackageName()».call_soap_http(v_url, '"«bindingOperation.getSoapActionURI()»"', timeout, param_in, «IF binding.isSOAP12()»TRUE«ELSE»FALSE«ENDIF»);
     DBMS_LOB.freeTemporary(param_in);
 
     myParser := DBMS_XMLPARSER.newParser;
