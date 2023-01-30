@@ -50,6 +50,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«BasePackageName()» IS
   FUNCTION DOUBLE_TO_CHAR(p_n IN BINARY_DOUBLE) RETURN VARCHAR2;
   FUNCTION CHAR_TO_DURATION(p_exp IN VARCHAR2) RETURN INTERVAL DAY TO SECOND;
   FUNCTION DURATION_TO_CHAR(p_n IN INTERVAL DAY TO SECOND) RETURN VARCHAR2;
+  FUNCTION DECIMAL_TO_CHAR(p_n IN NUMBER) RETURN VARCHAR2;
 
   /**
   * Ruft zum angebenen Service den entsprechenden Webservice auf.
@@ -277,7 +278,19 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BasePackageName()» IS
     END IF;
     RETURN v_str || 'P0Y0M' || extract(DAY FROM v_n) || 'DT' || extract(HOUR FROM v_n) || 'H' || extract(MINUTE FROM v_n) || 'M' || to_char(extract(SECOND FROM v_n), 'fm00.000') || 'S';
   END;
-  
+
+  FUNCTION DECIMAL_TO_CHAR(p_n IN NUMBER) RETURN VARCHAR2 IS
+    v_str  VARCHAR2(99);
+  BEGIN
+    v_str := TO_CHAR(p_n, 'TM9', 'NLS_NUMERIC_CHARACTERS=''.,''');
+    IF SUBSTR(v_str, 1, 1) = '.' THEN
+      v_str := '0' || v_str;
+    ELSIF SUBSTR(v_str, 1, 2) = '-.' THEN
+      v_str := '-0' || SUBSTR(v_str, 2);
+    END IF;
+    RETURN v_str;
+  END;
+
   /**
   * Gibt des Response-Code des zuletzt ausgeführten HTTP-Request zurück.
   *

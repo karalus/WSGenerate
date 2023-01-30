@@ -158,7 +158,7 @@ private String getNumberFormat(List[Object] this) :
 String convertOracle2XSDBasicType(ServiceNamespace owner, QName this, List[Object] facets, String param) : let bp = BasePackageName(owner.model) :
 	isStringType() ? param :
 		(isInt32Type() || isIntegerType() ? "to_char(" + param + ')' :
-			(localPart == "decimal" ? "to_char(" + param + ", 'TM9', 'nls_numeric_characters = ''.,''')" :
+			(localPart == "decimal" ? bp + ".DECIMAL_TO_CHAR(" + param + ')' :
 				(localPart == "dateTime" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "to_char(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF3')" : param) : "to_char(" + param + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF3TZH:TZM')") :
 					(localPart == "date" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "to_char(" + param + ", 'YYYY-MM-DD')" : param) : "to_char(" + param + ", 'YYYY-MM-DDTZH:TZM')") :
 						(localPart == "time" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "to_char(" + param + ", 'HH24:MI:SS')" : param) : "to_char(" + param + ", 'HH24:MI:SSTZH:TZM')") :
