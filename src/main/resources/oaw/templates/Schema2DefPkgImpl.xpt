@@ -43,7 +43,13 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«XSD2PackageName()» IS
 «LET baseType != null && !isSimpleTypeList(baseType) ? getFacets(baseType) : null AS facets-»
   FUNCTION «XSDType2Oracle(listType, "4l")»(p_str IN VARCHAR2) RETURN «XSDType2Oracle(listType)» AS
     v_result «XSDType2Oracle(listType)» := «XSDType2Oracle(listType)»();
-    v_part   «getPackagePrefix(listType.getBaseType())»«XSDType2Oracle(listType.getBaseType())»;
+«LET listType.getBaseType() AS baseTypeList-»
+«IF isBuiltInType(baseTypeList)-»
+    v_part   «convertXSDBasicTypeOracle(baseTypeList)»;
+«ELSE-»
+    v_part   «getPackagePrefix(baseTypeList)»«XSDType2Oracle(baseTypeList)»;
+«ENDIF-»
+«ENDLET-»
     i        BINARY_INTEGER := 1;
   BEGIN
     LOOP
