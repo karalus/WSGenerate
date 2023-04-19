@@ -105,7 +105,7 @@ public final class WsdlParser extends AbstractWorkflowComponent2 {
       } else {
           Element schemaElement = schema.getElement();
           String targetNamespace = schemaElement.getAttribute("targetNamespace");
-          if (targetNamespace.isEmpty() && !defaultNamespace.isEmpty()) {
+          if (targetNamespace.isEmpty() && defaultNamespace != null && !defaultNamespace.isEmpty()) {
              schemaElement.setAttribute("targetNamespace", defaultNamespace);
              schemaElement.setAttribute("xmlns", defaultNamespace);
              model.getServiceNamespace(defaultNamespace).addSchema(documentBaseURI, schemaElement, xsdUnmarshaller);
