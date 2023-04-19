@@ -109,10 +109,10 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 		int i = ns.length();
 		String v = "";
 		char c;
-		while (Character.isDigit((c = ns.charAt(--i)))) {
+		while (i > 0 && Character.isDigit((c = ns.charAt(--i)))) {
 			v = c + v;
 		}
-		int l = ns.charAt(i - 1) == '/' ? i : i + 1; // omit 'v'
+		int l = i == 0 || ns.charAt(i - 1) == '/' ? i : i + 1; // omit 'v'
 		return new String[] { ns.substring(0, l), v };
 	}
 
