@@ -254,8 +254,9 @@ private String makeOrExpression(List[String] expressions) : expressions.isEmpty 
 private String getIsNotNullExpression(Object this, ServiceNamespace owner, String parentParam, String parentGroupType, Group parentGroup, String particleType, boolean byPK) : null;
 
 private String getIsNotNullExpression(Element this, ServiceNamespace owner, String parentParam, String parentGroupType, Group parentGroup, String particleType, boolean byPK) :
-	!byPK || (minOccurs > 0 && !nillable) || isArray(parentGroup) ? getIsNotNullExpression(owner, this, parentParam, parentGroup) : null;
+	!byPK || (minOccurs > 0 && !nillable) ? getIsNotNullExpression(owner, this, parentParam, parentGroup) : null;
 
 String getIsNotNullExpression(ServiceNamespace owner, Element this, String parentParam, Group parentGroup) :
-	hasSimpleType(owner, this) || isArray(parentGroup) ? parentParam + '.' + getOracleName(owner, this) + " IS NOT NULL" :
-		XSD2PackageName(getTypeNamespace(owner, this)) + ".isNotNull(" + parentParam + '.' + getOracleName(owner, this) + ')';
+	hasSimpleType(owner, this) ? parentParam + '.' + getOracleName(owner, this) + " IS NOT NULL" :
+		(isArray(parentGroup) ? parentParam + '.' + getOracleName(owner, this) + " IS NOT NULL AND " + parentParam + '.' + getOracleName(owner, this) + ".count() > 0" :
+			XSD2PackageName(getTypeNamespace(owner, this)) + ".isNotNull(" + parentParam + '.' + getOracleName(owner, this) + ')');
