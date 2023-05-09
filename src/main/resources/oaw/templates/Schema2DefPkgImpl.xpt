@@ -65,11 +65,13 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«XSD2PackageName()» IS
   FUNCTION «XSDType2Oracle(listType, "2l")»(p_list IN «XSDType2Oracle(listType)») RETURN VARCHAR2 AS
     v_result VARCHAR2(32767);
   BEGIN
-    IF p_list IS NOT NULL AND p_list.count > 0 THEN
+    IF p_list.count > 0 THEN
       v_result := «convertOracle2XSDBasicType(getBuiltInType(listType), facets, "p_list(1)")»;
       FOR i IN 2..p_list.count LOOP
         v_result := v_result || ' ' || «convertOracle2XSDBasicType(getBuiltInType(listType), facets, "p_list(i)")»;
       END LOOP;
+    ELSE
+      v_result := '';
     END IF;
     return v_result;
   END;
