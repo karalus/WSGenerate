@@ -7,6 +7,9 @@ extension oaw::extensions::wsdl;
 
 context Model ERROR "dbSchema must be set (-B dbSchema=<dbSchema>)" : getDBSchema() != null;
 
+context Model ERROR "Filenames must be unique. Check mapping.properties!" :
+	serviceNamespaces.XSD2PackageName().toSet().size == serviceNamespaces.size;
+
 context Definition ERROR targetNamespace + ": Operation has no input element " + getSOAPBindings().collect(b|b.getOperations().selectFirst(o|getInputElementQName(b, o.name) == null).name) :
 	getSOAPBindings().forAll(b|b.getOperations().forAll(o|getInputElementQName(b, o.name) != null));
 	
