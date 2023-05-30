@@ -95,7 +95,7 @@ public class WSGenerate {
       options.addOption(OptionBuilder.withArgName("check").hasArgs().withValueSeparator(',').withDescription("whether to check the model").create("c"));
       options.addOption(OptionBuilder.withArgName("directory").hasArg().withDescription("where to place generated output files").create("d"));
       options.addOption(OptionBuilder.withArgName("encoding").hasArg().withDescription("code page for output files").create("encoding"));
-      options.addOption(OptionBuilder.withArgName("overwrite").hasArg().withDescription("overwrite output files").create("o"));
+      options.addOption(OptionBuilder.withArgName("false|true").hasArg().withDescription("overwrite output files").create("o"));
       options.addOption(OptionBuilder.withArgName("file").hasArg().withDescription("use file for mapping names").create("b"));
       options.addOption(OptionBuilder.withArgName("classname[=init param]").hasOptionalArgs().withValueSeparator()
                                      .withDescription("the class to perform name mapping").create("bc"));

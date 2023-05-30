@@ -250,7 +250,7 @@ END «XSD2PackageName()»;
     RETURN CASE p_«XSDType2Oracle(name, ct)».INTERN_isPresent WHEN FALSE THEN FALSE WHEN TRUE THEN TRUE ELSE «exp» END;
 «ELSE-»
     -- unentscheidbar, da leer
-    RETURN CASE p_«XSDType2Oracle(name, ct)».INTERN_isPresent WHEN FALSE THEN FALSE ELSE TRUE END;
+    RETURN CASE p_«XSDType2Oracle(name, ct)».INTERN_isPresent WHEN TRUE THEN TRUE ELSE FALSE END;
 «ENDIF-»
 «ENDLET-»
   END isNotNull;
