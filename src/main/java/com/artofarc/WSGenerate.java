@@ -1,12 +1,11 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * Copyright 2023 Andre Karalus
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -96,6 +95,7 @@ public class WSGenerate {
       options.addOption(OptionBuilder.withArgName("check").hasArgs().withValueSeparator(',').withDescription("whether to check the model").create("c"));
       options.addOption(OptionBuilder.withArgName("directory").hasArg().withDescription("where to place generated output files").create("d"));
       options.addOption(OptionBuilder.withArgName("encoding").hasArg().withDescription("code page for output files").create("encoding"));
+      options.addOption(OptionBuilder.withArgName("overwrite").hasArg().withDescription("overwrite output files").create("o"));
       options.addOption(OptionBuilder.withArgName("file").hasArg().withDescription("use file for mapping names").create("b"));
       options.addOption(OptionBuilder.withArgName("classname[=init param]").hasOptionalArgs().withValueSeparator()
                                      .withDescription("the class to perform name mapping").create("bc"));
@@ -171,6 +171,9 @@ public class WSGenerate {
       Outlet defaultOutlet = line.hasOption("d") ? new Outlet(line.getOptionValue("d")) : new Outlet();
       String fileEncoding = line.hasOption("encoding") ? line.getOptionValue("encoding") : ENCODING_ISO_8859_1;
       defaultOutlet.setFileEncoding(fileEncoding);
+      if (line.hasOption("o")) {
+    	  defaultOutlet.setOverwrite(Boolean.parseBoolean(line.getOptionValue("o")));
+      }
       generator.addOutlet(defaultOutlet);
       return invoke(ctx, generator, globalProperties);
    }
