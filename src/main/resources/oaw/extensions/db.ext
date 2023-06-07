@@ -261,8 +261,7 @@ private String getIsNotNullExpression(Element this, ServiceNamespace owner, Stri
 
 String getIsNotNullExpression(ServiceNamespace owner, Element this, String parentParam, Group parentGroup) :
 	hasSimpleType(owner, this) ? parentParam + '.' + getOracleName(owner, this) + " IS NOT NULL" :
-		(isArray(parentGroup) ? parentParam + '.' + getOracleName(owner, this) + " IS NOT NULL AND " + parentParam + '.' + getOracleName(owner, this) + ".count() > 0" :
-			XSD2PackageName(getTypeNamespace(owner, this)) + ".isNotNull(" + parentParam + '.' + getOracleName(owner, this) + ')');
+		getPackagePrefix(owner, getTypeNamespace(owner, this)) + (isArray(parentGroup) ? "isNotEmpty(" : "isNotNull(") + parentParam + '.' + getOracleName(owner, this) + ')';
 
 private String getIsNotNullExpressionAttributes(List[Annotated] attributeOrAttributeGroup, ServiceNamespace owner, String parentParam, boolean byPK) :
 	let expressions = attributeOrAttributeGroup.getIsNotNullExpression(owner, parentParam, byPK) :
