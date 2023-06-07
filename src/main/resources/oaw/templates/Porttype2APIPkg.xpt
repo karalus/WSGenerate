@@ -54,6 +54,9 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, Artif
   */
   PROCEDURE «getOracleName(definition.targetNamespace, operation)» (
       p_param_in               IN         «getParameterOracleFQN(getInputElementQName(binding, operation.name))»
+«IF rawMessageIn(portType)-»
+    , p_raw_in                 IN         CLOB
+«ENDIF-»
 «IF !binding.isJmsTransport()-»
     , p_param_out              OUT NOCOPY «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»
 «IF getFaultElementQName(binding, operation.name) != null-»

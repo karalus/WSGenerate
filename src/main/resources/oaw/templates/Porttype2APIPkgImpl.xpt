@@ -166,6 +166,9 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
   */
   PROCEDURE «operation.name» (
       p_param_in               IN         «getParameterOracleFQN(getInputElementQName(binding, operation.name))»
+«IF rawMessageIn(portType)-»
+    , p_raw_in                 IN         CLOB
+«ENDIF-»
 «IF !binding.isJmsTransport()-»
     , p_param_out              OUT NOCOPY «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»
 «IF getFaultElementQName(binding, operation.name) != null-»
@@ -195,7 +198,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     ---------------------------------------------------------------------------
 
 «IF bindingDefinition.getPortTypeProperty(portType, "delegate", null) != null-»
-	«bindingDefinition.getPortTypeProperty(portType, "delegate", null)».«operation.name»(p_param_in«IF !binding.isJmsTransport()», p_param_out«IF getFaultElementQName(binding, operation.name) != null», p_error_out«ENDIF»«ENDIF»);
+	«bindingDefinition.getPortTypeProperty(portType, "delegate", null)».«operation.name»(p_param_in«IF rawMessageIn(portType)», p_raw_in«ENDIF»«IF !binding.isJmsTransport()», p_param_out«IF getFaultElementQName(binding, operation.name) != null», p_error_out«ENDIF»«ENDIF»);
 «ELSE-»
     RAISE_APPLICATION_ERROR(-20004, 'Not implemented, yet');
 «ENDIF-»
@@ -246,7 +249,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 
     param_in := «getOracleFQN(getInputElementQName(binding, operation.name))»_4x(p_param_in);
 
-    «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)».«operation.name»(param_in, param_out«IF getFaultElementQName(binding, operation.name) != null», error_out«ENDIF»);
+    «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)».«operation.name»(param_in«IF rawMessageIn(portType)», p_param_in«ENDIF», param_out«IF getFaultElementQName(binding, operation.name) != null», error_out«ENDIF»);
 
 «IF getFaultElementQName(binding, operation.name) != null-»
     IF «getParameterPackagePrefix(getOutputElementQName(binding, operation.name))»isNotNull(param_out) THEN

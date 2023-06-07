@@ -13,6 +13,7 @@ Void introspect(List l) : JAVA com.artofarc.WSGenerateTest.introspect(java.util.
 
 boolean generateClient(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "generateClient", "true") == "true";
 boolean generateServer(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "generateServer", "true") == "true";
+boolean rawMessageIn(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "rawMessageIn", "false") == "true";
 String getDBSchema() : GLOBALVAR dbSchema;
 boolean isGenerateSmallXML(ServiceNamespace this) : false;
 String getGeneratorVersion() : GLOBALVAR WSGenerateVersion;
