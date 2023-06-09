@@ -314,23 +314,23 @@ TYPE «XSDType2Oracle(name, ct)» IS RECORD (
 FUNCTION «XSDType2Oracle(name, ct, "4x")»(p_node IN DBMS_XMLDOM.DOMNode) RETURN «XSDType2Oracle(name, ct)»;
 
 PROCEDURE «XSDType2Oracle(name, ct, "2x")» (
-  p_«XSDType2Oracle(name, ct)»	IN	 «XSDType2Oracle(name, ct)»
-, p_domdoc 				IN 	 DBMS_XMLDOM.DOMDocument
-, p_parent_node 		IN	 DBMS_XMLDOM.DOMNode
-, p_default_ns          IN   VARCHAR2
+  p_rec			IN	«XSDType2Oracle(name, ct)»
+, p_domdoc		IN	DBMS_XMLDOM.DOMDocument
+, p_parent_node	IN	DBMS_XMLDOM.DOMNode
+, p_default_ns	IN	VARCHAR2
 );
 
-FUNCTION isNotNull(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct)») RETURN BOOLEAN;
+FUNCTION isNotNull(p_rec IN «XSDType2Oracle(name, ct)») RETURN BOOLEAN;
 
 PROCEDURE setNotNull(
-  p_«XSDType2Oracle(name, ct)» IN OUT NOCOPY «XSDType2Oracle(name, ct)»
-, p_NotNull IN BOOLEAN
+  p_rec		IN OUT NOCOPY «XSDType2Oracle(name, ct)»
+, p_NotNull	IN BOOLEAN
 );
 
 -- Table type definition, falls dieser Typ in einem Element mit maxOccurs="unbounded" verwendet wird
 TYPE «XSDType2Oracle(name, ct, true)» IS TABLE OF «XSDType2Oracle(name, ct)»;
 
-FUNCTION isNotEmpty(p_«XSDType2Oracle(name, ct)» IN «XSDType2Oracle(name, ct, true)») RETURN BOOLEAN;
+FUNCTION isNotEmpty(p_table IN «XSDType2Oracle(name, ct, true)») RETURN BOOLEAN;
 
 «ENDDEFINE»
 

@@ -48,6 +48,9 @@ CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, Artif
 «operation.getDocumentation().formatDocumentation("  * ")-»
   *
   * @param   p_param_in             IN  eingehende Message des Service.
+«IF rawMessageIn(portType)-»
+  * @param   p_raw_in               IN  eingehende Message im Rohformat.
+«ENDIF-»
   * @param   p_param_out            OUT ausgehende Message des Service.
   * @param   p_error_out            OUT ausgehende Fault Message des Service.
   *
