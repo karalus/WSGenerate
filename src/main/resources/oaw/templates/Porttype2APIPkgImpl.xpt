@@ -17,8 +17,8 @@
 «ENDDEFINE»
 
 «DEFINE Provider(Definition definition, PortType portType) FOR Model»
-«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton) + ".PKB"-»
-CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)» IS
+«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton) + ".PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)» IS
   /**
   * <pre>
   *
@@ -72,8 +72,8 @@ END «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»;
 «REM»========================================================================«ENDREM»
 «LET definition.getSOAPBindings(portType).reject(e|e.isJmsTransport()) AS bindings»
 «IF bindings.size > 0»
-«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + ".PKB"-»
-CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
+«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + ".PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
   /**
   * <pre>
   *
@@ -113,8 +113,8 @@ END «WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»;
 «ENDDEFINE»
 
 «DEFINE Consumer(Definition definition, PortType portType) FOR Model»
-«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, ArtifactKind::ClientStub) + ".PKB"-»
-CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«WSDL2PackageName(portType, ArtifactKind::ClientStub)» IS
+«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ClientStub) + ".PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::ClientStub)» IS
   /**
   * <pre>
   *

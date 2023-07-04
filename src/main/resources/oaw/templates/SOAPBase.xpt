@@ -3,8 +3,8 @@
 «EXTENSION oaw::extensions::db»
 
 «DEFINE Root FOR Model»
-«FILE "plsql/" + getDBSchema() + "/" + BasePackageName() + ".PKS"-»
-CREATE OR REPLACE PACKAGE «getDBSchema()».«BasePackageName()» IS
+«FILE "plsql/" + getDBSchema("/") + BasePackageName() + ".PKS"-»
+CREATE OR REPLACE PACKAGE «getDBSchema(".")»«BasePackageName()» IS
 /**
 * <pre>
 *
@@ -173,8 +173,8 @@ END «BasePackageName()»;
 «ENDFILE»
 
 
-«FILE "plsql/" + getDBSchema() + "/" + BasePackageName() + ".PKB"-»
-CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«BasePackageName()» IS
+«FILE "plsql/" + getDBSchema("/") + BasePackageName() + ".PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
 /**
 * <pre>
 *

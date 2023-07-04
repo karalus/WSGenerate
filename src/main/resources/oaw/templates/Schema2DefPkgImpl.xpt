@@ -9,8 +9,8 @@
 
 
 «DEFINE Root FOR ServiceNamespace»
-«FILE "plsql/" + getDBSchema() + "/" + XSD2PackageName() + ".PKB"-»
-CREATE OR REPLACE PACKAGE BODY «getDBSchema()».«XSD2PackageName()» IS
+«FILE "plsql/" + getDBSchema("/") + XSD2PackageName() + ".PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«XSD2PackageName()» IS
   /**
   * <pre>
   *

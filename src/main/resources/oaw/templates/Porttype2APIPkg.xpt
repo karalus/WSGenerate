@@ -18,8 +18,8 @@
 «ENDDEFINE»
 
 «DEFINE Provider(Definition definition, PortType portType) FOR Model»
-«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton) + ".PKS"-»
-CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, ArtifactKind::ProviderSkeleton)» IS
+«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton) + ".PKS"-»
+CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, ArtifactKind::ProviderSkeleton)» IS
   /**
   * <pre>
   *
@@ -77,8 +77,8 @@ END «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»;
 «REM»========================================================================«ENDREM»
 «FOREACH definition.getSOAPBindings(portType) AS binding»
 «IF isHttpTransport(binding)»
-«FILE "plsql/" + getDBSchema() + "/" +  WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + ".PKS"-»
-CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
+«FILE "plsql/" + getDBSchema("/") +  WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + ".PKS"-»
+CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
   /**
   * <pre>
   *
@@ -120,8 +120,8 @@ END «WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»;
 «ENDIF»
 «REM»========================================================================«ENDREM»
 «IF isJmsTransport(binding)»
-«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + ".PKS"-»
-CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
+«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + ".PKS"-»
+CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
   /**
   * <pre>
   *
@@ -162,33 +162,33 @@ END «WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»;
 «ENDFILE»
 
 «LET getPort(definition, binding) AS port»
-«FILE "plsql/"+ getDBSchema() + "/" + WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + ".SQL"-»
+«FILE "plsql/"+ getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + ".SQL"-»
 DECLARE
   v_test integer;
 
   reginfo1 	sys.aq$_reg_info;
   reginfolist 	sys.aq$_reg_info_list;
 BEGIN
-  select count(*) into v_test from DBA_QUEUE_TABLES where QUEUE_TABLE = '«getAQQueueTable(port, false)»' AND owner = '«getDBSchema()»';
+  select count(*) into v_test from DBA_QUEUE_TABLES where QUEUE_TABLE = '«getAQQueueTable(port, false)»'«IF getDBSchema() != null» AND owner = '«getDBSchema()»'«ENDIF»;
   IF v_test = 0 THEN
     DBMS_AQADM.CREATE_QUEUE_TABLE(
-       Queue_table        => '«getDBSchema()».«getAQQueueTable(port, false)»'
+       Queue_table        => '«getDBSchema(".")»«getAQQueueTable(port, false)»'
       ,Queue_payload_type => 'SYS.AQ$_JMS_TEXT_MESSAGE'
       ,multiple_consumers => FALSE);
 
-    dbms_aqadm.start_queue('«getDBSchema()».«getAQDeadLetterQueueName(port, false)»', false, true);
+    dbms_aqadm.start_queue('«getDBSchema(".")»«getAQDeadLetterQueueName(port, false)»', false, true);
   END IF;
 
-  select count(*) into v_test from DBA_QUEUES where name = '«getAQQueueName(port)»' AND owner = '«getDBSchema()»';
+  select count(*) into v_test from DBA_QUEUES where name = '«getAQQueueName(port)»'«IF getDBSchema() != null» AND owner = '«getDBSchema()»'«ENDIF»;
   IF v_test = 0 THEN
     DBMS_AQADM.CREATE_QUEUE(
-     Queue_name          => '«getDBSchema()».«getAQQueueName(port)»',
-     Queue_table         => '«getDBSchema()».«getAQQueueTable(port, false)»');
+     Queue_name          => '«getDBSchema(".")»«getAQQueueName(port)»',
+     Queue_table         => '«getDBSchema(".")»«getAQQueueTable(port, false)»');
 
-    dbms_aqadm.start_queue( queue_name => '«getDBSchema()».«getAQQueueName(port)»' );
+    dbms_aqadm.start_queue( queue_name => '«getDBSchema(".")»«getAQQueueName(port)»' );
   END IF;
 
-  reginfo1 := sys.aq$_reg_info('«getDBSchema()».«getAQQueueName(port)»', DBMS_AQ.NAMESPACE_AQ, 'plsql://«getDBSchema()».«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)».handleMessage?PR=0', HEXTORAW('FF'));
+  reginfo1 := sys.aq$_reg_info('«getDBSchema(".")»«getAQQueueName(port)»', DBMS_AQ.NAMESPACE_AQ, 'plsql://«getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)».handleMessage?PR=0', HEXTORAW('FF'));
   reginfolist := sys.aq$_reg_info_list(reginfo1);
   sys.dbms_aq.register(reginfolist, 1);
 END;
@@ -201,8 +201,8 @@ END;
 «ENDDEFINE»
 
 «DEFINE Consumer(Definition definition, PortType portType) FOR Model»
-«FILE "plsql/" + getDBSchema() + "/" + WSDL2PackageName(portType, ArtifactKind::ClientStub) + ".PKS"-»
-CREATE OR REPLACE PACKAGE «getDBSchema()».«WSDL2PackageNameCheck(portType, ArtifactKind::ClientStub)» IS
+«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ClientStub) + ".PKS"-»
+CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, ArtifactKind::ClientStub)» IS
   /**
   * <pre>
   *
