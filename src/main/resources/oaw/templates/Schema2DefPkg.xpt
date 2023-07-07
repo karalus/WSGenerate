@@ -138,7 +138,7 @@ FUNCTION «XSDType2Oracle(listType, "2l")»(p_list IN «XSDType2Oracle(listType)») 
 -- SUBTYPE TYPE FOR: «refType.name»
 «LET XSDType2Oracle(refType) AS oracleName-»
 «FOREACH getDocumentationContent(refType) AS doc»«doc.asString().formatDocumentation("-- ")»«ENDFOREACH-»
-SUBTYPE «oracleName» IS «XSDType2Oracle(refType.restriction.base)»;
+SUBTYPE «oracleName» IS «XSDType2Oracle(refType.restriction.base)»«amendXSDBasicTypeOracle(getBuiltInType(refType), getFacets(refType))»;
 
 TYPE «XSDType2Oracle(refType, true)» IS TABLE OF «oracleName»;
 «FOREACH getFacets(refType).getEnumerationFacets() AS enumeration-»
