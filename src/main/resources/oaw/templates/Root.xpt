@@ -3,13 +3,17 @@
 «IMPORT javax::wsdl»
 «IMPORT javax::xml::namespace»
 
-«EXTENSION oaw::extensions::wsdl»
+«EXTENSION oaw::extensions::db»
 
 «DEFINE _Root FOR Model»
 «EXPAND SOAPBase::Root»
 «FOREACH serviceNamespaces.reject(e|e.URI == javax::xml::XMLConstants::W3C_XML_SCHEMA_NS_URI) AS serviceNamespace»
+«IF serviceNamespace.hasImplementation()»
 «EXPAND Schema2DefPkg::Root FOR serviceNamespace»
 «EXPAND Schema2DefPkgImpl::Root FOR serviceNamespace»
+«ELSEIF serviceNamespace.hasSpecification()»
+«EXPAND Schema2DefPkg::Root FOR serviceNamespace»
+«ENDIF»
 «FOREACH serviceNamespace.wsdls AS wsdl-»
 «EXPAND Porttype2APIPkg::Root(wsdl)»
 «EXPAND Porttype2APIPkgImpl::Root(wsdl)»

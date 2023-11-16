@@ -22,6 +22,11 @@ String getGeneratorBuildTime() : GLOBALVAR WSGenerateBuildTime;
 
 String lineSeparator() : "\r\n";
 
+boolean hasSpecification(ServiceNamespace this) :
+	!simpleTypes().isEmpty || !topLevelElementsWithAnonymousSimpleType().isEmpty || !namedGroupsWithAnonymousSimpleType().isEmpty;
+boolean hasImplementation(ServiceNamespace this) :
+	!complexTypesNotAbstract().isEmpty || !topLevelElements().select(e|getComplexType(e) != null).isEmpty || !namedGroupsWithAnonymousComplexType().isEmpty || simpleTypes().exists(e|e.list != null);
+
 //String repeat(String x, int n) : JAVA org.apache.commons.lang.StringUtils.repeat( java.lang.String, int);
 String repeat(String x, int n) : n > 0 ? x + repeat(x, n-1) : "";
 String chomp(String s, String suffix) : s.endsWith(suffix) ? s.subString(0, s.length - suffix.length) : s;
@@ -218,10 +223,10 @@ String getIsNotNullExpression(ServiceNamespace owner, ComplexType this, String p
 // if null is returned there might be an (more inefficient) expression (byPK == false) to find out
 private String getIsNotNullExpression(ComplexType this, ServiceNamespace owner, String parentParam, boolean byPK) :
 	complexContent != null ?
-		(complexContent.getExtension() != null ?
-			(let exp = getIsNotNullExpression(findReferencedComplexType(owner, complexContent.getExtension().base), owner, parentParam, byPK) : byPK ?
-				(exp != null ? exp : getIsNotNullExpression(complexContent.getExtension(), owner, parentParam, byPK)) :
-				makeOrExpression(exp, getIsNotNullExpression(complexContent.getExtension(), owner, parentParam, byPK))) :
+		(complexContent.^extension != null ?
+			(let exp = getIsNotNullExpression(findReferencedComplexType(owner, complexContent.^extension.base), owner, parentParam, byPK) : byPK ?
+				(exp != null ? exp : getIsNotNullExpression(complexContent.^extension, owner, parentParam, byPK)) :
+				makeOrExpression(exp, getIsNotNullExpression(complexContent.^extension, owner, parentParam, byPK))) :
 			(complexContent.restriction != null ? getIsNotNullExpression(complexContent.restriction, owner, parentParam, byPK) : null)) :
 		(let exp = group != null ? getIsNotNullExpression(group, owner, parentParam, null, null, "group", byPK) :
 			(all != null ? getIsNotNullExpression(all, owner, parentParam, null, null, "all", byPK) :

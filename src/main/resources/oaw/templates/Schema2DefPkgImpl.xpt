@@ -19,7 +19,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«XSD2PackageName()» IS
   *  <br/>
   *
   *  <b>Beschreibung:</b>
-  * «URI» consists of «getXSDModels().size» file(s):
+  * «URI» consists of «schemas.size» file(s):
 «FOREACH documentBaseURIs AS documentBaseURI-»
   * documentBaseURI: «documentBaseURI»
 «ENDFOREACH-»
@@ -436,7 +436,7 @@ END «XSD2PackageName()»;
 «DEFINE XML2Oracle(LocalElement e, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
 «LET getTypeNamespace(e) AS ns-»
 «LET parentParam + '.' + getOracleName(e) AS elementAccess-»
-         WHEN localName = '«e.ref != null ? e.ref.localPart : e.name»' AND namespace «IF getElementNamespace(e) != null»= '«getElementNamespace(e).URI»'«ELSE»IS NULL«ENDIF» THEN
+         WHEN localName = '«e.ref != null ? e.ref.localPart : e.name»' AND namespace «IF isElementFormQualified(e)»= '«getElementNamespace(e).URI»'«ELSE»IS NULL«ENDIF» THEN
 «IF isArray(e, parentGroup)-»
           «elementAccess».extend;
 «ENDIF-»

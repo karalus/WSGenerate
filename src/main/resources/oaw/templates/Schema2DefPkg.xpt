@@ -18,7 +18,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«XSD2PackageName()» IS
   *  <br/>
   *
   *  <b>Beschreibung:</b>
-  * «URI» consists of «getXSDModels().size» file(s):
+  * «URI» consists of «schemas.size» file(s):
 «FOREACH documentBaseURIs AS documentBaseURI-»
   * documentBaseURI: «documentBaseURI»
 «ENDFOREACH-»

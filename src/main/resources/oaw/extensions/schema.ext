@@ -8,15 +8,24 @@ extension oaw::extensions::dom reexport;
 
 // XML Schema model extensions
 QName createQName(String namespaceURI, String localPart) : JAVA com.artofarc.wsimport.ModelUtilities.createQName(java.lang.String, java.lang.String);
-cached List[Schema] getXSDModels(ServiceNamespace this) : schemas.toList();
 
-private cached boolean isElementFormDefaultQualified(ServiceNamespace this) : getXSDModels().first().elementFormDefault == FormChoice::QUALIFIED;
-//private cached boolean isAttributeFormDefaultQualified(ServiceNamespace this) : attributeFormDefault == "qualified";
+private Schema findSchema(ServiceNamespace this, LocalElement element) : schemas.selectFirst(e|e.containsLocalElement(element, this));
+private boolean containsLocalElement(Schema this, LocalElement element, ServiceNamespace ns) : simpleTypeOrComplexTypeOrGroup.exists(e|e.containsLocalElement(element, ns));
+private boolean containsLocalElement(Element this, LocalElement element, ServiceNamespace ns) : complexType != null ? complexType.containsLocalElement(element, ns) : false;
+private cached boolean containsLocalElement(ComplexType this, LocalElement element, ServiceNamespace ns) :
+	sequence != null ? sequence.containsLocalElement(element, ns) : (choice != null ? choice.containsLocalElement(element, ns) : (all != null ? all.containsLocalElement(element, ns) : (group != null ? group.containsLocalElement(element, ns) : false))) ||
+	(complexContent != null ? (complexContent.^extension != null ? complexContent.^extension.containsLocalElement(element, ns) : complexContent.restriction.containsLocalElement(element, ns)) : false);
+private boolean containsLocalElement(ExtensionType this, LocalElement element, ServiceNamespace ns) :
+	sequence != null ? sequence.containsLocalElement(element, ns) : (choice != null ? choice.containsLocalElement(element, ns) : (all != null ? all.containsLocalElement(element, ns) : (group != null ? group.containsLocalElement(element, ns) : false))) ||
+	containsLocalElement(findComplexType(ns.findUsedServiceNamespace(base.namespaceURI), base), element, ns);
+private boolean containsLocalElement(ComplexRestrictionType this, LocalElement element, ServiceNamespace ns) :
+	sequence != null ? sequence.containsLocalElement(element, ns) : (choice != null ? choice.containsLocalElement(element, ns) : (all != null ? all.containsLocalElement(element, ns) : (group != null ? group.containsLocalElement(element, ns) : false)));
+private boolean containsLocalElement(GroupRef this, LocalElement element, ServiceNamespace ns) : ns.findReferencedGroup(ref).containsLocalElement(element, ns);
+private boolean containsLocalElement(Group this, LocalElement element, ServiceNamespace ns) : let c = particle.typeSelect(JAXBElement).getValue() : c.contains(element) || c.exists(e|e.containsLocalElement(element, ns));
+private boolean containsLocalElement(Object this, LocalElement element, ServiceNamespace ns) : false;
 
 // Eclipse displays error when using value property because "T JAXBElement.getValue()" is not recognized by syntax highlighting
 Object getValue(JAXBElement this) : metaType.getProperty("value").get(this);
-// "extension" is a keyword, we need to get the property this way
-ExtensionType getExtension(ComplexContent this) : metaType.getProperty("extension").get(this);
 List[Object] getDocumentationContent(Annotated this) : annotation.appinfoOrDocumentation.typeSelect(Documentation).content;
 List[Object] getDocumentationContent(Schema this) : includeOrImportOrRedefine.typeSelect(Annotation).appinfoOrDocumentation.typeSelect(Documentation).content;
 List[Appinfo] appinfos(Annotated this) : annotation.appinfoOrDocumentation.typeSelect(Appinfo);
@@ -25,13 +34,13 @@ List[org::w3c::dom::Element] domElements(Appinfo appinfo) : appinfo.content.type
 cached List[TopLevelComplexType] complexTypes(ServiceNamespace ns) : removeDuplicates(_complexTypes(ns), {}, {}.toSet());
 private List[TopLevelComplexType] removeDuplicates(List[TopLevelComplexType] source, List[TopLevelComplexType] dest, Set[String] names) :
 	source.isEmpty ? dest : (let n = source.last() : removeDuplicates(source.withoutLast(), names.contains(n.name) ? dest : dest.add(n), (Set[String]) names.add(n.name)));
-private List[TopLevelComplexType] _complexTypes(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(TopLevelComplexType);
+private List[TopLevelComplexType] _complexTypes(ServiceNamespace ns) : ns.schemas.simpleTypeOrComplexTypeOrGroup.typeSelect(TopLevelComplexType);
 List[TopLevelComplexType] complexTypesNotAbstract(ServiceNamespace ns) : complexTypes(ns).reject(ct|ct.abstract);
-cached List[TopLevelSimpleType] simpleTypes(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(TopLevelSimpleType);
-cached List[TopLevelElement] topLevelElements(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(TopLevelElement);
-cached List[TopLevelAttribute] topLevelAttributes(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(TopLevelAttribute);
-cached List[NamedGroup] namedGroups(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(NamedGroup);
-cached List[NamedAttributeGroup] namedAttributeGroups(ServiceNamespace ns) : ns.getXSDModels().simpleTypeOrComplexTypeOrGroup.typeSelect(NamedAttributeGroup);
+cached List[TopLevelSimpleType] simpleTypes(ServiceNamespace ns) : ns.schemas.simpleTypeOrComplexTypeOrGroup.typeSelect(TopLevelSimpleType);
+cached List[TopLevelElement] topLevelElements(ServiceNamespace ns) : ns.schemas.simpleTypeOrComplexTypeOrGroup.typeSelect(TopLevelElement);
+cached List[TopLevelAttribute] topLevelAttributes(ServiceNamespace ns) : ns.schemas.simpleTypeOrComplexTypeOrGroup.typeSelect(TopLevelAttribute);
+cached List[NamedGroup] namedGroups(ServiceNamespace ns) : ns.schemas.simpleTypeOrComplexTypeOrGroup.typeSelect(NamedGroup);
+cached List[NamedAttributeGroup] namedAttributeGroups(ServiceNamespace ns) : ns.schemas.simpleTypeOrComplexTypeOrGroup.typeSelect(NamedAttributeGroup);
 
 private Facet getFirstFacetForName(List[Object] facets, String name) : facets.typeSelect(JAXBElement).selectFirst(e|e.name.localPart == name).getValue();
 private boolean isEnumerationFacet(Object this) : false;
@@ -124,7 +133,7 @@ cached ServiceNamespace getTypeNamespace(ServiceNamespace owner, Element this) :
 	type != null ? owner.findUsedServiceNamespace(type.namespaceURI) :
 		(ref != null ? (let ns = owner.findUsedServiceNamespace(ref.namespaceURI) : getTypeNamespace(ns, findElement(ns, ref.localPart))) : owner);
 
-boolean isElementFormQualified(ServiceNamespace owner, LocalElement this) : form == FormChoice::QUALIFIED || form == null && isElementFormDefaultQualified(owner);
+boolean isElementFormQualified(ServiceNamespace owner, LocalElement this) : form == FormChoice::QUALIFIED || form == null && findSchema(owner, this).elementFormDefault == FormChoice::QUALIFIED;
 
 cached ServiceNamespace getElementNamespace(ServiceNamespace owner, LocalElement this) :
 	ref != null ? owner.findUsedServiceNamespace(ref.namespaceURI) :
