@@ -284,6 +284,12 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
   * @param   p_error_out            OUT ausgehende Fault Message des Service.
 «ENDIF-»
 «ENDIF-»
+«IF rawMessageIn(portType)-»
+  * @param   p_raw_in               OUT eingehende Message im Rohformat.
+«ENDIF-»
+«IF rawMessageOut(portType)-»
+  * @param   p_raw_out              OUT ausgehende Message im Rohformat.
+«ENDIF-»
   *
   */
   PROCEDURE «operation.name» (
@@ -293,6 +299,12 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 «IF getFaultElementQName(binding, operation.name) != null-»
     , p_error_out              OUT    NOCOPY «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»
 «ENDIF-»
+«ENDIF-»
+«IF rawMessageIn(portType)-»
+    , p_raw_in                 OUT    NOCOPY CLOB
+«ENDIF-»
+«IF rawMessageOut(portType)-»
+    , p_raw_out                OUT    NOCOPY CLOB
 «ENDIF-»
   ) IS
 
@@ -338,10 +350,16 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     DBMS_LOB.createTemporary(param_in, TRUE, dbms_lob.call);
     DBMS_XMLDOM.writeToClob(outdocnode, param_in);
     DBMS_XMLDOM.freeDocument(outdomdoc);
+«IF rawMessageIn(portType)-»
+    p_raw_in := param_in;
+«ENDIF-»
 
     v_url := «BasePackageName()».getUrlForService(c_PortType_URI, '«binding.portType.QName.localPart»', g_url);
     param_out := «BasePackageName()».call_soap_http(v_url, '"«bindingOperation.getSoapActionURI()»"', timeout, param_in, «IF binding.isSOAP12()»TRUE«ELSE»FALSE«ENDIF»);
     DBMS_LOB.freeTemporary(param_in);
+«IF rawMessageOut(portType)-»
+    p_raw_out := param_out;
+«ENDIF-»
 
     myParser := DBMS_XMLPARSER.newParser;
     DBMS_XMLPARSER.parseClob(myParser, param_out);
