@@ -52,7 +52,9 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, Art
   * @param   p_raw_in               IN  eingehende Message im Rohformat.
 «ENDIF-»
   * @param   p_param_out            OUT ausgehende Message des Service.
-  * @param   p_error_out            OUT ausgehende Fault Message des Service.
+«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
+  * @param   p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»           OUT ausgehende Fault Message des Service.
+«ENDFOREACH-»
   *
   */
   PROCEDURE «getOracleName(definition.targetNamespace, operation)» (
@@ -62,9 +64,9 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, Art
 «ENDIF-»
 «IF !binding.isJmsTransport()-»
     , p_param_out              OUT NOCOPY «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»
-«IF getFaultElementQName(binding, operation.name) != null-»
-    , p_error_out              OUT NOCOPY «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»
-«ENDIF-»
+«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
+    , p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»             OUT NOCOPY «getParameterOracleFQN(qName)»
+«ENDFOREACH-»
 «ENDIF-»
   );
 «ENDLET-»
@@ -236,9 +238,9 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, Art
   * @param   p_param_in             IN  eingehende Message des Service.
 «IF !binding.isJmsTransport()-»
   * @param   p_param_out            OUT ausgehende Message des Service.
-«IF getFaultElementQName(binding, operation.name) != null-»
-  * @param   p_error_out            OUT ausgehende Fault Message des Service.
-«ENDIF-»
+«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
+  * @param   p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»           OUT ausgehende Fault Message des Service.
+«ENDFOREACH-»
 «ENDIF-»
 «IF rawMessageIn(portType)-»
   * @param   p_raw_in               OUT eingehende Message im Rohformat.
@@ -252,9 +254,9 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, Art
       p_param_in               IN OUT NOCOPY «getParameterOracleFQN(getInputElementQName(binding, operation.name))»
 «IF !binding.isJmsTransport()-»
     , p_param_out              OUT    NOCOPY «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»
-«IF getFaultElementQName(binding, operation.name) != null-»
-    , p_error_out              OUT    NOCOPY «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»
-«ENDIF-»
+«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
+    , p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»             OUT    NOCOPY «getParameterOracleFQN(qName)»
+«ENDFOREACH-»
 «ENDIF-»
 «IF rawMessageIn(portType)-»
     , p_raw_in                 OUT    NOCOPY CLOB

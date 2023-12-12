@@ -44,8 +44,8 @@ QName getOutputElementQName(Binding this, String operation) :
 private List[String] getOutputBodyParts(Binding this, String operation) : let bindingOutput = getBindingOperation(operation, null, null).bindingOutput :
 	isSOAP12() ? getSOAP12Body(bindingOutput).parts : getSOAPBody(bindingOutput).parts;
 
-QName getFaultElementQName(Binding this, String operation) :
-	portType.getOperation(operation, null, null).getFirstFault().message.getFirstPart().elementName;
+Collection[QName] getFaultElementQName(Binding this, String operation) :
+	portType.getOperation(operation, null, null).getFaults().message.getFirstPart().elementName;
 
 boolean hasInputHeaderParts(Binding this, String operation) : let bindingInput = getBindingOperation(operation, null, null).bindingInput :
 	isSOAP12() ? getSOAP12Headers(bindingInput).size > 0 : getSOAPHeaders(bindingInput).size > 0;
@@ -63,7 +63,7 @@ private Part getPart(SOAPHeader header, Definition def) : def.getMessage(header.
 
 private PortType getFirstPortType(Definition definition) : definition.portTypes.firstValue();
 private Part getFirstPart(Message message) : message.parts.firstValue();
-private Fault getFirstFault(Operation operation) : operation.faults.firstValue();
+private Collection[Fault] getFaults(Operation operation) : operation.faults.values();
 
 // Die Schemas der WSDL rekursiv (mit imports und includes) nach dem Element durchsuchen
 cached String getSchemaLocation(Definition definition, QName element) :

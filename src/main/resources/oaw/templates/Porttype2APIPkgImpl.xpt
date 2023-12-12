@@ -164,7 +164,9 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
   * @param   p_raw_in               IN  eingehende Message im Rohformat.
 «ENDIF-»
   * @param   p_param_out            OUT ausgehende Message des Service.
-  * @param   p_error_out            OUT ausgehende Fault Message des Service.
+«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
+  * @param   p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»           OUT ausgehende Fault Message des Service.
+«ENDFOREACH-»
   *
   */
   PROCEDURE «operation.name» (
@@ -174,9 +176,9 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 «ENDIF-»
 «IF !binding.isJmsTransport()-»
     , p_param_out              OUT NOCOPY «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»
-«IF getFaultElementQName(binding, operation.name) != null-»
-    , p_error_out              OUT NOCOPY «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»
-«ENDIF-»
+«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
+    , p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»             OUT NOCOPY «getParameterOracleFQN(qName)»
+«ENDFOREACH-»
 «ENDIF-»
   ) IS
     -- Komplexe Type-Variablen für Parameter der Geschäftslogik-Schicht (return, in, out und in/out) !!!! dies ist individuell anzupassen !!!! ---
@@ -201,7 +203,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     ---------------------------------------------------------------------------
 
 «IF bindingDefinition.getPortTypeProperty(portType, "delegate", null) != null-»
-	«bindingDefinition.getPortTypeProperty(portType, "delegate", null)».«operation.name»(p_param_in«IF rawMessageIn(portType)», p_raw_in«ENDIF»«IF !binding.isJmsTransport()», p_param_out«IF getFaultElementQName(binding, operation.name) != null», p_error_out«ENDIF»«ENDIF»);
+    «bindingDefinition.getPortTypeProperty(portType, "delegate", null)».«operation.name»(p_param_in«IF rawMessageIn(portType)», p_raw_in«ENDIF»«IF !binding.isJmsTransport()», p_param_out«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter», p_error_out«IF iter.counter0 > 0»«iter.counter0»«ENDIF»«ENDFOREACH»«ENDIF»);
 «ELSE-»
     RAISE_APPLICATION_ERROR(-20004, 'Not implemented, yet');
 «ENDIF-»
@@ -240,29 +242,33 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     , p_fault_out              OUT        NUMBER
   ) IS
 
-    c_routine           CONSTANT «BasePackageName()».oraclename_t       := '«operation.name»';
+    c_routine           CONSTANT «BasePackageName()».oraclename_t := '«operation.name»';
 
-    param_in               		 «getParameterOracleFQN(getInputElementQName(binding, operation.name))»;
+    param_in                     «getParameterOracleFQN(getInputElementQName(binding, operation.name))»;
     param_out                    «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»;
-«IF getFaultElementQName(binding, operation.name) != null-»
-    error_out              		 «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»;
-«ENDIF-»
+«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
+    error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»                   «getParameterOracleFQN(qName)»;
+«ENDFOREACH-»
 
   BEGIN
 
     param_in := «getOracleFQN(getInputElementQName(binding, operation.name))»_4x(p_param_in);
 
-    «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)».«operation.name»(param_in«IF rawMessageIn(portType)», p_param_in«ENDIF», param_out«IF getFaultElementQName(binding, operation.name) != null», error_out«ENDIF»);
+    «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)».«operation.name»(param_in«IF rawMessageIn(portType)», p_param_in«ENDIF», param_out«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter», error_out«IF iter.counter0 > 0»«iter.counter0»«ENDIF»«ENDFOREACH»);
 
-«IF getFaultElementQName(binding, operation.name) != null-»
+«IF !getFaultElementQName(binding, operation.name).isEmpty-»
     IF «getParameterPackagePrefix(getOutputElementQName(binding, operation.name))»isNotNull(param_out) THEN
 «ENDIF-»
       p_param_out := «getOracleFQN(getOutputElementQName(binding, operation.name))»_2x(param_out);
       p_fault_out := 0;
-«IF getFaultElementQName(binding, operation.name) != null-»
-    ELSE
-      p_param_out := «getOracleFQN(getFaultElementQName(binding, operation.name))»_2x(error_out);
+«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
+    ELSIF «getParameterPackagePrefix(qName)»isNotNull(error_out«IF iter.counter0 > 0»«iter.counter0»«ENDIF») THEN
+      p_param_out := «getOracleFQN(qName)»_2x(error_out«IF iter.counter0 > 0»«iter.counter0»«ENDIF»);
       p_fault_out := 1;
+«ENDFOREACH-»
+«IF !getFaultElementQName(binding, operation.name).isEmpty-»
+    ELSE
+      RAISE_APPLICATION_ERROR(-20005, 'No out-record');
     END IF;
 «ENDIF-»
 
@@ -280,9 +286,9 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
   * @param   p_param_in             IN  eingehende Message des Service.
 «IF !binding.isJmsTransport()-»
   * @param   p_param_out            OUT ausgehende Message des Service.
-«IF getFaultElementQName(binding, operation.name) != null-»
-  * @param   p_error_out            OUT ausgehende Fault Message des Service.
-«ENDIF-»
+«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
+  * @param   p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»           OUT ausgehende Fault Message des Service.
+«ENDFOREACH-»
 «ENDIF-»
 «IF rawMessageIn(portType)-»
   * @param   p_raw_in               OUT eingehende Message im Rohformat.
@@ -296,9 +302,9 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
       p_param_in               IN OUT NOCOPY «getParameterOracleFQN(getInputElementQName(binding, operation.name))»
 «IF !binding.isJmsTransport()-»
     , p_param_out              OUT    NOCOPY «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»
-«IF getFaultElementQName(binding, operation.name) != null-»
-    , p_error_out              OUT    NOCOPY «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»
-«ENDIF-»
+«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
+    , p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»             OUT    NOCOPY «getParameterOracleFQN(qName)»
+«ENDFOREACH-»
 «ENDIF-»
 «IF rawMessageIn(portType)-»
     , p_raw_in                 OUT    NOCOPY CLOB
@@ -388,11 +394,13 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
         END IF;
         IF DBMS_XMLDOM.getLocalName(inelmt) = 'detail' THEN
           innode := DBMS_XMLDOM.getFirstChild(innode);
-«IF getFaultElementQName(binding, operation.name) != null-»
+«IF !getFaultElementQName(binding, operation.name).isEmpty-»
           inelmt := DBMS_XMLDOM.makeElement(innode);
-          IF DBMS_XMLDOM.getNamespace(inelmt) = '«getFaultElementQName(binding, operation.name).namespaceURI»' AND DBMS_XMLDOM.getLocalName(inelmt) = '«getFaultElementQName(binding, operation.name).localPart»' THEN
-            p_error_out := «getParameterOracleFQN(getFaultElementQName(binding, operation.name))»4x(innode);
+«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
+          «IF iter.counter0 > 0»ELS«ENDIF»IF DBMS_XMLDOM.getNamespace(inelmt) = '«qName.namespaceURI»' AND DBMS_XMLDOM.getLocalName(inelmt) = '«qName.localPart»' THEN
+            p_error_out«IF iter.counter0 > 0»«iter.counter0»«ENDIF» := «getParameterOracleFQN(qName)»4x(innode);
             fault_mapped := TRUE;
+«ENDFOREACH-»
           ELSE
             text := DBMS_XMLDOM.getFirstChild(innode);
             fault_string := fault_string || DBMS_XMLDOM.getNodeValue(text);
