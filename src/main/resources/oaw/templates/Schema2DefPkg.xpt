@@ -30,7 +30,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«XSD2PackageName()» IS
   *  @headcom
   *  <pre>
   *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
-  *	 WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
+  *  WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
   *
   */
 

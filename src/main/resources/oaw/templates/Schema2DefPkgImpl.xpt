@@ -435,8 +435,9 @@ END «XSD2PackageName()»;
 
 «DEFINE XML2Oracle(LocalElement e, String parentParam, String typeName, String parentGroupType, Group parentGroup, String particleType) FOR ServiceNamespace-»
 «LET getTypeNamespace(e) AS ns-»
+«LET getElementNamespace(e) AS elemNs-»
 «LET parentParam + '.' + getOracleName(e) AS elementAccess-»
-         WHEN localName = '«e.ref != null ? e.ref.localPart : e.name»' AND namespace «IF isElementFormQualified(e)»= '«getElementNamespace(e).URI»'«ELSE»IS NULL«ENDIF» THEN
+         WHEN localName = '«e.ref != null ? e.ref.localPart : e.name»' AND namespace «IF elemNs != null»= '«elemNs.URI»'«ELSE»IS NULL«ENDIF» THEN
 «IF isArray(e, parentGroup)-»
           «elementAccess».extend;
 «ENDIF-»
@@ -474,6 +475,7 @@ END «XSD2PackageName()»;
 «IF e.nillable-»
           END IF;
 «ENDIF-»
+«ENDLET-»
 «ENDLET-»
 «ENDLET-»
 «ENDDEFINE»
@@ -591,7 +593,7 @@ END «XSD2PackageName()»;
 «ENDIF-»
       elmt := DBMS_XMLDOM.createElement(p_domdoc, '«e.ref != null ? e.ref.localPart : e.name»'«IF elemNs != null», '«elemNs.URI»'«ENDIF»);
       IF p_default_ns «IF elemNs != null»<> '«elemNs.URI»'«ELSE»IS NOT NULL«ENDIF» THEN
-        DBMS_XMLDOM.setAttribute(elmt, 'xmlns', '«elemNs.URI»');
+        DBMS_XMLDOM.setAttribute(elmt, 'xmlns', '«IF elemNs != null»«elemNs.URI»«ENDIF»');
       END IF;
       node := DBMS_XMLDOM.appendChild(p_parent_node, DBMS_XMLDOM.makeNode(elmt));
 «IF hasSimpleType(e)-»

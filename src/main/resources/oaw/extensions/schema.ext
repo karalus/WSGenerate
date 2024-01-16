@@ -133,11 +133,10 @@ cached ServiceNamespace getTypeNamespace(ServiceNamespace owner, Element this) :
 	type != null ? owner.findUsedServiceNamespace(type.namespaceURI) :
 		(ref != null ? (let ns = owner.findUsedServiceNamespace(ref.namespaceURI) : getTypeNamespace(ns, findElement(ns, ref.localPart))) : owner);
 
-boolean isElementFormQualified(ServiceNamespace owner, LocalElement this) : form == FormChoice::QUALIFIED || form == null && findSchema(owner, this).elementFormDefault == FormChoice::QUALIFIED;
+private boolean isElementFormQualified(ServiceNamespace owner, LocalElement this) : form == FormChoice::QUALIFIED || form == null && findSchema(owner, this).elementFormDefault == FormChoice::QUALIFIED;
 
 cached ServiceNamespace getElementNamespace(ServiceNamespace owner, LocalElement this) :
-	ref != null ? owner.findUsedServiceNamespace(ref.namespaceURI) :
-		(isElementFormQualified(owner, this) ? owner : (let ns = getTypeNamespace(owner, this) : ns == owner || isBuiltInType(type) ? null : ns));
+	ref != null ? owner.findUsedServiceNamespace(ref.namespaceURI) : (isElementFormQualified(owner, this) ? owner : null);
 
 cached ComplexType getComplexTypeWithinNamespace(ServiceNamespace owner, Element this) :
 	type != null && type.namespaceURI == owner.URI ? findComplexType(owner, type.localPart) :
