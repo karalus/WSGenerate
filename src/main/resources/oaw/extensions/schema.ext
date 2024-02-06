@@ -9,7 +9,7 @@ extension oaw::extensions::dom reexport;
 // XML Schema model extensions
 QName createQName(String namespaceURI, String localPart) : JAVA com.artofarc.wsimport.ModelUtilities.createQName(java.lang.String, java.lang.String);
 
-private Schema findSchema(ServiceNamespace this, LocalElement element) : schemas.selectFirst(e|e.containsLocalElement(element, this));
+private Schema findSchema(LocalElement element, ServiceNamespace this) : model.serviceNamespaces.schemas.selectFirst(e|e.containsLocalElement(element, this));
 private boolean containsLocalElement(Schema this, LocalElement element, ServiceNamespace ns) : simpleTypeOrComplexTypeOrGroup.exists(e|e.containsLocalElement(element, ns));
 private boolean containsLocalElement(Element this, LocalElement element, ServiceNamespace ns) : complexType != null ? complexType.containsLocalElement(element, ns) : false;
 private cached boolean containsLocalElement(ComplexType this, LocalElement element, ServiceNamespace ns) :
@@ -133,10 +133,10 @@ cached ServiceNamespace getTypeNamespace(ServiceNamespace owner, Element this) :
 	type != null ? owner.findUsedServiceNamespace(type.namespaceURI) :
 		(ref != null ? (let ns = owner.findUsedServiceNamespace(ref.namespaceURI) : getTypeNamespace(ns, findElement(ns, ref.localPart))) : owner);
 
-private boolean isElementFormQualified(ServiceNamespace owner, LocalElement this) : form == FormChoice::QUALIFIED || form == null && findSchema(owner, this).elementFormDefault == FormChoice::QUALIFIED;
+private boolean isElementFormQualified(LocalElement this, Schema schema) : form == FormChoice::QUALIFIED || form == null && schema.elementFormDefault == FormChoice::QUALIFIED;
 
 cached ServiceNamespace getElementNamespace(ServiceNamespace owner, LocalElement this) :
-	ref != null ? owner.findUsedServiceNamespace(ref.namespaceURI) : (isElementFormQualified(owner, this) ? owner : null);
+	ref != null ? owner.findUsedServiceNamespace(ref.namespaceURI) : (let schema = findSchema(owner) : isElementFormQualified(schema) ? owner.findUsedServiceNamespace(schema.targetNamespace) : null);
 
 cached ComplexType getComplexTypeWithinNamespace(ServiceNamespace owner, Element this) :
 	type != null && type.namespaceURI == owner.URI ? findComplexType(owner, type.localPart) :

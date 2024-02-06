@@ -375,7 +375,7 @@ END «XSD2PackageName()»;
 «IF ct.complexContent.extension != null-»
 «LET findUsedServiceNamespace(ct.complexContent.extension.base.namespaceURI) AS ns-»
 «LET findComplexType(ns, ct.complexContent.extension.base) AS tlct-»
-«EXPAND XML2Oracle(tlct, parentParam, tlct.name) FOR ns-»
+«EXPAND XML2Oracle(tlct, parentParam, tlct.name)-»
 «ENDLET-»
 «ENDLET-»
 «EXPAND XML2Oracle(ct.complexContent.extension, parentParam, name)-»
@@ -511,7 +511,7 @@ END «XSD2PackageName()»;
 «IF ct.complexContent.extension != null-»
 «LET findUsedServiceNamespace(ct.complexContent.extension.base.namespaceURI) AS ns-»
 «LET findComplexType(ns, ct.complexContent.extension.base) AS tlct-»
-«EXPAND Oracle2XML(tlct, parentParam, tlct.name) FOR ns-»
+«EXPAND Oracle2XML(tlct, parentParam, tlct.name)-»
 «ENDLET-»
 «ENDLET-»
 «EXPAND Oracle2XML(ct.complexContent.extension, parentParam, name)-»
@@ -604,7 +604,7 @@ END «XSD2PackageName()»;
       ELSE
 «ENDIF-»
 «IF isSimpleTypeList(e)-»
-      text := DBMS_XMLDOM.createTextNode(p_domdoc, «getPackagePrefix(ns)»«XSDType2Oracle(ns, (TopLevelSimpleType) getSimpleType(e), "2l")»(«elementAccess»));
+      text := DBMS_XMLDOM.createTextNode(p_domdoc, «getPackagePrefix(elemNs)»«XSDType2Oracle(ns, (TopLevelSimpleType) getSimpleType(e), "2l")»(«elementAccess»));
       node := DBMS_XMLDOM.appendChild(node, DBMS_XMLDOM.makeNode(text));
 «ELSE-»
 «LET convertOracle2XSDBasicType(getBuiltInType(e), getFacets(e), isArrayElement(e) ? elementAccess + "(i)" : elementAccess) AS expr-»
@@ -621,26 +621,26 @@ END «XSD2PackageName()»;
 «ENDIF-»
 «ELSE-»
 «IF e.nillable && isArray(e, parentGroup)-»
-      IF «getPackagePrefix(ns)»isNotNull(«elementAccess»(i)) THEN
+      IF «getPackagePrefix(elemNs)»isNotNull(«elementAccess»(i)) THEN
        DBMS_XMLDOM.setAttribute(elmt, 'xsi:nil', 'true');
        DBMS_XMLDOM.setAttribute(elmt, 'xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
       ELSE
 «ENDIF-»
 «LET getNonLocalComplexType(e) AS ct-»
 «IF e.complexType != null-»
-      «getPackagePrefix(ns)»«anonymousTypeName2Oracle(e, typeName)»2x(«elementAccess»«IF isArray(e, parentGroup)»(i)«ENDIF», p_domdoc, node, «getNsContextParam(elemNs)»);
+      «getPackagePrefix(elemNs)»«anonymousTypeName2Oracle(e, typeName)»2x(«elementAccess»«IF isArray(e, parentGroup)»(i)«ENDIF», p_domdoc, node, «getNsContextParam(elemNs)»);
 «ELSEIF e.ref != null-»
 «LET findReferencedElement(e.ref) AS refElement-»
 «IF refElement.complexType != null-»
-      «getPackagePrefix(ns)»«anonymousTypeName2Oracle(ns, refElement, "")»2x(«elementAccess»«IF isArray(e, parentGroup)»(i)«ENDIF», p_domdoc, node, «getNsContextParam(elemNs)»);
+      «getPackagePrefix(elemNs)»«anonymousTypeName2Oracle(ns, refElement, "")»2x(«elementAccess»«IF isArray(e, parentGroup)»(i)«ENDIF», p_domdoc, node, «getNsContextParam(elemNs)»);
 «ELSEIF ct != null-»
-      «getPackagePrefix(ns)»«XSDType2Oracle(ns, ct, "2x")»(«elementAccess»«IF isArray(e, parentGroup)»(i)«ENDIF», p_domdoc, node, «getNsContextParam(elemNs)»);
+      «getPackagePrefix(elemNs)»«XSDType2Oracle(ns, ct, "2x")»(«elementAccess»«IF isArray(e, parentGroup)»(i)«ENDIF», p_domdoc, node, «getNsContextParam(elemNs)»);
 «ELSE-»
 -- No Type found for «e.ref»
 «ENDIF-»
 «ENDLET-»
 «ELSEIF e.type != null-»
-      «getPackagePrefix(ns)»«XSDType2Oracle(ns, ct, "2x")»(«elementAccess»«IF isArray(e, parentGroup)»(i)«ENDIF», p_domdoc, node, «getNsContextParam(elemNs)»);
+      «getPackagePrefix(elemNs)»«XSDType2Oracle(ns, ct, "2x")»(«elementAccess»«IF isArray(e, parentGroup)»(i)«ENDIF», p_domdoc, node, «getNsContextParam(elemNs)»);
 «ELSE-»
 -- No Type found for «e.name»
 «ENDIF-»
