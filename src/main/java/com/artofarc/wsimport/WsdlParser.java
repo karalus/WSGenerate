@@ -16,8 +16,10 @@
 package com.artofarc.wsimport;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -38,17 +40,57 @@ import org.eclipse.emf.mwe.core.lib.AbstractWorkflowComponent2;
 import org.eclipse.emf.mwe.core.monitor.ProgressMonitor;
 import org.w3c.dom.Element;
 
+import com.ibm.wsdl.DefinitionImpl;
+import com.ibm.wsdl.OperationImpl;
+import com.ibm.wsdl.factory.WSDLFactoryImpl;
+
 public final class WsdlParser extends AbstractWorkflowComponent2 {
 
-   private final static WSDLFactory wsdlFactory;
+	public static class MyWSDLFactory extends WSDLFactoryImpl {
 
-   static {
-      try {
-         wsdlFactory = WSDLFactory.newInstance();
-      } catch (WSDLException e) {
-         throw new RuntimeException("Cannot initialize wsdl4j", e);
-      }
-   }
+		@Override
+		public Definition newDefinition() {
+			Definition def = new MyDefinitionImpl();
+			def.setExtensionRegistry(newPopulatedExtensionRegistry());
+			return def;
+		}
+	}
+
+	public static class MyDefinitionImpl extends DefinitionImpl {
+
+		private static final long serialVersionUID = 5498876057733539141L;
+		private static final Field fieldOperationImplFaults;
+
+		static {
+			try {
+				fieldOperationImplFaults = OperationImpl.class.getDeclaredField("faults");
+				fieldOperationImplFaults.setAccessible(true);
+			} catch (NoSuchFieldException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		@Override
+		public OperationImpl createOperation() {
+			OperationImpl operationImpl = new OperationImpl();
+			try {
+				fieldOperationImplFaults.set(operationImpl, new LinkedHashMap<>());
+			} catch (IllegalAccessException e) {
+				throw new RuntimeException(e);
+			}
+			return operationImpl;
+		}
+	}
+
+	private static final WSDLFactory wsdlFactory;
+
+	static {
+		try {
+			wsdlFactory = WSDLFactory.newInstance(MyWSDLFactory.class.getName());
+		} catch (WSDLException e) {
+			throw new RuntimeException("Cannot initialize wsdl4j", e);
+		}
+	}
 
    private final Unmarshaller xsdUnmarshaller;
    private final HashSet<String> _done = new HashSet<>();
@@ -79,6 +121,7 @@ public final class WsdlParser extends AbstractWorkflowComponent2 {
 
    private void parse(Model model) throws WSDLException, JAXBException {
       WSDLReader wsdlReader = wsdlFactory.newWSDLReader();
+      wsdlReader.setFactoryImplName(MyWSDLFactory.class.getName());
       wsdlReader.setFeature("javax.wsdl.verbose", verbose);
       for (String fileName : fileNames) {
          Definition definition = wsdlReader.readWSDL(fileName);
