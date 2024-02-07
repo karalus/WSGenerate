@@ -9,7 +9,9 @@ extension oaw::extensions::dom reexport;
 // XML Schema model extensions
 QName createQName(String namespaceURI, String localPart) : JAVA com.artofarc.wsimport.ModelUtilities.createQName(java.lang.String, java.lang.String);
 
-private Schema findSchema(LocalElement element, ServiceNamespace this) : model.serviceNamespaces.schemas.selectFirst(e|e.containsLocalElement(element, this));
+private Schema findSchema(LocalElement element, ServiceNamespace this) : let s = schemas.selectFirst(e|e.containsLocalElement(element, this)) : s != null ? s :
+	otherServiceNamespaces().schemas.selectFirst(e|e.containsLocalElement(element, this));
+private cached Set[ServiceNamespace] otherServiceNamespaces(ServiceNamespace this) : model.serviceNamespaces.toSet().remove(this);
 private boolean containsLocalElement(Schema this, LocalElement element, ServiceNamespace ns) : simpleTypeOrComplexTypeOrGroup.exists(e|e.containsLocalElement(element, ns));
 private boolean containsLocalElement(Element this, LocalElement element, ServiceNamespace ns) : complexType != null ? complexType.containsLocalElement(element, ns) : false;
 private cached boolean containsLocalElement(ComplexType this, LocalElement element, ServiceNamespace ns) :
