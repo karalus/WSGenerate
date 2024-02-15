@@ -22,7 +22,6 @@ private boolean containsLocalElement(ExtensionType this, LocalElement element, S
 	containsLocalElement(findComplexType(ns.findUsedServiceNamespace(base.namespaceURI), base), element, ns);
 private boolean containsLocalElement(ComplexRestrictionType this, LocalElement element, ServiceNamespace ns) :
 	sequence != null ? sequence.containsLocalElement(element, ns) : (choice != null ? choice.containsLocalElement(element, ns) : (all != null ? all.containsLocalElement(element, ns) : (group != null ? group.containsLocalElement(element, ns) : false)));
-private boolean containsLocalElement(GroupRef this, LocalElement element, ServiceNamespace ns) : ns.findReferencedGroup(ref).containsLocalElement(element, ns);
 private boolean containsLocalElement(Group this, LocalElement element, ServiceNamespace ns) : let c = particle.typeSelect(JAXBElement).getValue() : c.contains(element) || c.exists(e|e.containsLocalElement(element, ns));
 private boolean containsLocalElement(Object this, LocalElement element, ServiceNamespace ns) : false;
 

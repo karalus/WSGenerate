@@ -172,7 +172,7 @@ String convertOracle2XSDBasicType(ServiceNamespace owner, QName this, List[Objec
 						(localPart == "time" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "to_char(" + param + ", 'HH24:MI:SS')" : param) : "to_char(" + param + ", 'HH24:MI:SSTZH:TZM')") :
 							(localPart == "gYearMonth" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "to_char(" + param + ", 'YYYY-MM')" : param) : "to_char(" + param + ", 'YYYY-MMTZH:TZM')") :
 								(localPart == "gYear" ? (hasPatternFacets(facets) ? (isWithoutTimezone(facets) ? "to_char(" + param + ')' : param) : "to_char(" + param + ", 'YYYYTZH:TZM')") :
-									(localPart == "boolean" ? "CASE " + param + " WHEN TRUE THEN 'true' WHEN false THEN 'false' ELSE 'NULL' END" :
+									(localPart == "boolean" ? "CASE " + param + " WHEN TRUE THEN 'true' WHEN FALSE THEN 'false' ELSE NULL END" :
 										(localPart == "float" ? bp + ".FLOAT_TO_CHAR(" + param + ')' :
 											(localPart == "double" ? bp + ".DOUBLE_TO_CHAR(" + param + ')' :
 												(localPart == "base64Binary" ? "NULL" :
