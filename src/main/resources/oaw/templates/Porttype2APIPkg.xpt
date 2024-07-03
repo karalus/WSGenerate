@@ -118,6 +118,20 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageName(portType, Artifact
 
 END «WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»;
 /
+«FOREACH bindingDefinition.getGlobalPropertyAsList("dbConnectionUser") AS dbConnectionUser-»
+BEGIN
+  EXECUTE IMMEDIATE 'GRANT EXECUTE ON «getDBSchema(".")»«WSDL2PackageNameCheck(portType, ArtifactKind::XMLAdapter)» TO «dbConnectionUser»';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE = -1917 -- Benutzer ist nicht vorhanden
+    THEN
+      NULL;
+    ELSE
+      RAISE;
+    END IF;
+END;
+/
+«ENDFOREACH-»
 «ENDFILE»
 «ENDIF»
 «REM»========================================================================«ENDREM»

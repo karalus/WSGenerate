@@ -61,6 +61,10 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«XSD2PackageName()» IS
 «ENDFOREACH-»
 END «XSD2PackageName()»;
 /
+«FOREACH model.bindingDefinition.getGlobalPropertyAsList("dbInternalUser") AS dbInternalUser-»
+GRANT EXECUTE ON «getDBSchema(".")»«XSD2PackageName()» TO «dbInternalUser»
+/
+«ENDFOREACH-»
 «ENDFILE»
 «ENDDEFINE»
 
