@@ -16,8 +16,11 @@
  */
 package com.artofarc.wsimport;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Set;
 
 
@@ -25,6 +28,7 @@ public final class Model {
 
    private final BindingDefinition bindingDefinition;
    private final LinkedHashMap<String, ServiceNamespace> serviceNamespaces = new LinkedHashMap<>();
+   private List<ServiceNamespace> serviceNamespacesTopologicalSorted;
 
    public Model(BindingDefinition binding) {
       bindingDefinition = binding;
@@ -45,7 +49,7 @@ public final class Model {
    public ServiceNamespace findServiceNamespace(String targetNamespace) {
       return serviceNamespaces.get(targetNamespace);
    }
-   
+
    ServiceNamespace getServiceNamespace(String targetNamespace) {
       ServiceNamespace serviceNamespace = serviceNamespaces.get(targetNamespace);
       if (serviceNamespace == null) {
@@ -54,5 +58,26 @@ public final class Model {
       }
       return serviceNamespace;
    }
-   
+
+   public List<ServiceNamespace> getServiceNamespacesTopologicalSorted() {
+      if (serviceNamespacesTopologicalSorted == null) {
+         int size = getServiceNamespaces().size();
+         serviceNamespacesTopologicalSorted = new ArrayList<>(size);
+         for (boolean progress = false; serviceNamespacesTopologicalSorted.size() < size; progress = false) {
+            for (ServiceNamespace serviceNamespace : getServiceNamespaces()) {
+               if (serviceNamespace.predecessors == 0) {
+                  progress = serviceNamespacesTopologicalSorted.add(serviceNamespace);
+                  for (String referenced : serviceNamespace.getReferenced()) {
+                     --findServiceNamespace(referenced).predecessors;
+                  }
+                  serviceNamespace.predecessors = -1;
+               }
+            }
+            if (!progress) throw new IllegalStateException("cyclic dependency");	 
+         }
+         Collections.reverse(serviceNamespacesTopologicalSorted);
+      }
+      return serviceNamespacesTopologicalSorted;
+   }
+
 }

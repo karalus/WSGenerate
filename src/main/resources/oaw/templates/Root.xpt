@@ -7,6 +7,9 @@
 
 «DEFINE _Root FOR Model»
 «EXPAND SOAPBase::Root»
+«IF bindingDefinition.getGlobalProperty("createSpoolFiles", "true") == "true"»
+«EXPAND Spool::Root»
+«ENDIF»
 «FOREACH serviceNamespaces.reject(e|e.URI == javax::xml::XMLConstants::W3C_XML_SCHEMA_NS_URI) AS serviceNamespace»
 «IF serviceNamespace.hasImplementation()»
 «EXPAND Schema2DefPkg::Root FOR serviceNamespace»

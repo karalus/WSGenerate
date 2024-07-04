@@ -18,7 +18,7 @@ package com.artofarc.wsimport;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -93,7 +93,7 @@ public final class WsdlParser extends AbstractWorkflowComponent2 {
 	}
 
    private final Unmarshaller xsdUnmarshaller;
-   private final HashSet<String> _done = new HashSet<>();
+   private final HashMap<String, ServiceNamespace> _done = new HashMap<>();
    private String outputSlot;
    private boolean verbose;
    private final List<String> fileNames = new ArrayList<>();
@@ -129,8 +129,10 @@ public final class WsdlParser extends AbstractWorkflowComponent2 {
          model.getServiceNamespace(definition.getTargetNamespace()).getWsdls().add(definition);
       }
       // add well known namespaces
-      model.getServiceNamespace(XMLConstants.W3C_XML_SCHEMA_NS_URI).addSchema(XMLConstants.W3C_XML_SCHEMA_NS_URI,
-            getClass().getClassLoader().getResource("schema.xsd"), xsdUnmarshaller);
+      model.getServiceNamespacesTopologicalSorted();
+      ServiceNamespace serviceNamespace = model.getServiceNamespace(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+      serviceNamespace.addSchema(XMLConstants.W3C_XML_SCHEMA_NS_URI, getClass().getClassLoader().getResource("schema.xsd"), xsdUnmarshaller);
+      model.getServiceNamespacesTopologicalSorted().add(0, serviceNamespace);
    }
 
    private void parseTypes(Definition definition, Model model) throws JAXBException {
@@ -143,27 +145,33 @@ public final class WsdlParser extends AbstractWorkflowComponent2 {
 
    private void addSchema(Schema schema, String defaultNamespace, Model model, boolean checkDone) throws JAXBException {
       final String documentBaseURI = schema.getDocumentBaseURI();
-      if (checkDone && _done.contains(documentBaseURI)) {
-          if (verbose) System.out.println("Cache hit: " + documentBaseURI);
-      } else {
+      ServiceNamespace serviceNamespace = null;
+      if (checkDone) {
+          serviceNamespace = _done.get(documentBaseURI);
+          if (verbose && serviceNamespace != null) System.out.println("Cache hit: " + documentBaseURI);
+      }
+      if (serviceNamespace == null) {
           Element schemaElement = schema.getElement();
           String targetNamespace = schemaElement.getAttribute("targetNamespace");
           if (targetNamespace.isEmpty() && defaultNamespace != null && !defaultNamespace.isEmpty()) {
              schemaElement.setAttribute("targetNamespace", defaultNamespace);
              schemaElement.setAttribute("xmlns", defaultNamespace);
-             model.getServiceNamespace(defaultNamespace).addSchema(documentBaseURI, schemaElement, xsdUnmarshaller);
+             serviceNamespace = model.getServiceNamespace(defaultNamespace);
+             serviceNamespace.addSchema(documentBaseURI, schemaElement, xsdUnmarshaller);
              schemaElement.setAttribute("targetNamespace", targetNamespace);
              schemaElement.setAttribute("xmlns", targetNamespace);
              targetNamespace = defaultNamespace;
           } else {
-             model.getServiceNamespace(targetNamespace).addSchema(documentBaseURI, schemaElement, xsdUnmarshaller);
+             serviceNamespace = model.getServiceNamespace(targetNamespace);
+             serviceNamespace.addSchema(documentBaseURI, schemaElement, xsdUnmarshaller);
           }
-          _done.add(documentBaseURI);
+          _done.put(documentBaseURI, serviceNamespace);
           @SuppressWarnings("unchecked")
           final Map<String, List<SchemaImport>> imports = schema.getImports();
           for (Map.Entry<String, List<SchemaImport>> entry : imports.entrySet()) {
              for (SchemaImport schemaImport : entry.getValue()) {
                 addSchema(schemaImport.getReferencedSchema(), schemaImport.getNamespaceURI(), model, true);
+                serviceNamespace.getReferenced().add(schemaImport.getNamespaceURI());
              }
           }
           @SuppressWarnings("unchecked")
@@ -172,6 +180,7 @@ public final class WsdlParser extends AbstractWorkflowComponent2 {
              addSchema(schemaReference.getReferencedSchema(), targetNamespace, model, false);
           }
       }
+      if (checkDone) ++serviceNamespace.predecessors;
    }
 
    @Override

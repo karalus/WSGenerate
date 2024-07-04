@@ -47,6 +47,8 @@ public final class ServiceNamespace {
 	private final String URI;
 	private final List<Definition> wsdls = new ArrayList<>();
 	private final LinkedHashMap<String, Schema> schemas = new LinkedHashMap<>();
+	private final List<String> referenced = new ArrayList<>();
+	int predecessors;
 
 	ServiceNamespace(Model model, String uri) {
 		this.model = model;
@@ -73,6 +75,10 @@ public final class ServiceNamespace {
 
 	public Collection<Schema> getSchemas() {
 		return schemas.values();
+	}
+
+	public List<String> getReferenced() {
+		return referenced;
 	}
 
 	public Collection<String> getDocumentBaseURIs() {

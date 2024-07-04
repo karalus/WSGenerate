@@ -1,0 +1,63 @@
+«IMPORT com::artofarc::wsimport»
+
+«IMPORT javax::wsdl»
+«IMPORT javax::xml::namespace»
+
+«EXTENSION oaw::extensions::db»
+«EXTENSION oaw::extensions::wsdl»
+
+«DEFINE Root FOR Model»
+«FILE "plsql/" + getDBSchema("/") + "/_spool.SQL"-»
+spool s
+
+«LET "@\"" AS prefix-»
+«EXPAND Entry(prefix, false) FOREACH serviceNamespacesTopologicalSorted-»
+«EXPAND Entry(this, prefix, ".PKS") FOREACH serviceNamespaces.wsdls-»
+«EXPAND Entry(prefix, true) FOREACH serviceNamespacesTopologicalSorted-»
+«EXPAND Entry(this, prefix, ".PKB") FOREACH serviceNamespaces.wsdls-»
+«ENDLET-»
+spool off
+«ENDFILE»
+
+«FILE "plsql/" + getDBSchema("/") + "/_spool.txt"-»
+«getDBSchema()»/DB/
+«LET "\"" AS prefix-»
+«EXPAND Entry(prefix, false) FOREACH serviceNamespacesTopologicalSorted-»
+«EXPAND Entry(this, prefix, ".PKS") FOREACH serviceNamespaces.wsdls-»
+«EXPAND Entry(prefix, true) FOREACH serviceNamespacesTopologicalSorted-»
+«EXPAND Entry(this, prefix, ".PKB") FOREACH serviceNamespaces.wsdls-»
+«ENDLET-»
+«ENDFILE»
+«ENDDEFINE»
+
+«DEFINE Entry(Model model, String prefix, String suffix) FOR Definition-»
+«FOREACH getSOAPBindings().portType.toSet() AS portType-»
+«IF model.generateServer(portType)-»
+«EXPAND EntryProvider(portType, prefix, suffix) FOR model-»
+«ENDIF-»
+«IF model.generateClient(portType)-»
+«EXPAND EntryClient(portType, prefix, suffix) FOR model-»
+«ENDIF-»
+«ENDFOREACH-»
+«ENDDEFINE»
+
+«DEFINE EntryClient(PortType portType, String prefix, String suffix) FOR Model-»
+«prefix»«WSDL2PackageName(portType, ArtifactKind::ClientStub)»«suffix»"
+«ENDDEFINE»
+
+«DEFINE EntryProvider(PortType portType, String prefix, String suffix) FOR Model-»
+«prefix»«WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»«suffix»"
+«prefix»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»«suffix»"
+«ENDDEFINE»
+
+«DEFINE Entry(String prefix, boolean body) FOR ServiceNamespace-»
+«IF hasImplementation()-»
+«IF body-»
+«prefix»«XSD2PackageName()».PKB"
+«ELSE-»
+«prefix»«XSD2PackageName()».PKS"
+«ENDIF-»
+«ELSEIF !body && hasSpecification()-»
+«prefix»«XSD2PackageName()».PKS"
+«ENDIF-»
+«ENDDEFINE»
