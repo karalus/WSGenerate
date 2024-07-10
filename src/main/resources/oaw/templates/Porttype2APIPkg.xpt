@@ -22,6 +22,9 @@
 CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, ArtifactKind::ProviderSkeleton)» IS
   /**
   * <pre>
+«IF bindingDefinition.getGlobalProperty("vcsHeader", null) != null-»
+«bindingDefinition.getGlobalProperty("vcsHeader", null)»
+«ENDIF-»
   *
   *  <br/>
   *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
@@ -75,6 +78,9 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, Art
 
 END «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»;
 /
+«IF bindingDefinition.getGlobalProperty("footer", null) != null-»
+«bindingDefinition.getGlobalProperty("footer", null)»
+«ENDIF-»
 «ENDFILE»
 «REM»========================================================================«ENDREM»
 «FOREACH definition.getSOAPBindings(portType) AS binding»
@@ -83,6 +89,9 @@ END «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»;
 CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
   /**
   * <pre>
+«IF bindingDefinition.getGlobalProperty("vcsHeader", null) != null-»
+«bindingDefinition.getGlobalProperty("vcsHeader", null)»
+«ENDIF-»
   *
   *  <br/>
   *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
@@ -132,6 +141,9 @@ EXCEPTION
 END;
 /
 «ENDFOREACH-»
+«IF bindingDefinition.getGlobalProperty("footer", null) != null-»
+«bindingDefinition.getGlobalProperty("footer", null)»
+«ENDIF-»
 «ENDFILE»
 «ENDIF»
 «REM»========================================================================«ENDREM»
@@ -140,6 +152,9 @@ END;
 CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
   /**
   * <pre>
+«IF bindingDefinition.getGlobalProperty("vcsHeader", null) != null-»
+«bindingDefinition.getGlobalProperty("vcsHeader", null)»
+«ENDIF-»
   *
   *  <br/>
   *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
@@ -175,6 +190,9 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageName(portType, Artifact
 
 END «WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»;
 /
+«IF bindingDefinition.getGlobalProperty("footer", null) != null-»
+«bindingDefinition.getGlobalProperty("footer", null)»
+«ENDIF-»
 «ENDFILE»
 
 «LET getPort(definition, binding) AS port»
@@ -209,6 +227,9 @@ BEGIN
   sys.dbms_aq.register(reginfolist, 1);
 END;
 /
+«IF bindingDefinition.getGlobalProperty("footer", null) != null-»
+«bindingDefinition.getGlobalProperty("footer", null)»
+«ENDIF-»
 «ENDFILE»
 «ENDLET»
 
@@ -221,6 +242,9 @@ END;
 CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, ArtifactKind::ClientStub)» IS
   /**
   * <pre>
+«IF bindingDefinition.getGlobalProperty("vcsHeader", null) != null-»
+«bindingDefinition.getGlobalProperty("vcsHeader", null)»
+«ENDIF-»
   *
   *  <br/>
   *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
@@ -234,6 +258,9 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, Art
   *  </pre>
   *  @headcom
   *  <pre>
+«IF bindingDefinition.getGlobalProperty("vcsHeader", null) != null-»
+«bindingDefinition.getGlobalProperty("vcsHeader", null)»
+«ENDIF-»
   *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
   *	 WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
   *
@@ -284,5 +311,12 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, Art
 «ENDFOREACH»
 END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 /
+«FOREACH bindingDefinition.getGlobalPropertyAsList("dbInternalUser") AS dbInternalUser-»
+GRANT EXECUTE ON «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::ClientStub)» TO «dbInternalUser»
+/
+«ENDFOREACH-»
+«IF bindingDefinition.getGlobalProperty("footer", null) != null-»
+«bindingDefinition.getGlobalProperty("footer", null)»
+«ENDIF-»
 «ENDFILE»
 «ENDDEFINE»

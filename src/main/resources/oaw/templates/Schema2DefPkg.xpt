@@ -12,6 +12,9 @@
 CREATE OR REPLACE PACKAGE «getDBSchema(".")»«XSD2PackageName()» IS
   /**
   * <pre>
+«IF model.bindingDefinition.getGlobalProperty("vcsHeader", null) != null-»
+«model.bindingDefinition.getGlobalProperty("vcsHeader", null)»
+«ENDIF-»
   *
   *  <br/>
   *  XSD-Referenz:        «URI»
@@ -33,9 +36,13 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«XSD2PackageName()» IS
   *  WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
   *
   */
+«IF hasImplementation()-»
+  FUNCTION c_URI 
+    RETURN VARCHAR2 
+  DETERMINISTIC;
 
-  c_URI CONSTANT VARCHAR(1024) := '«URI»';
-  
+«ENDIF-»
+
 «EXPAND XSDSchema(simpleTypes().toList())-»
 «FOREACH topLevelElements().select(e|e.simpleType != null) AS topLevelElementWithAnonymousSimpleType-»
 -- SimpleType for top-level element with name: «topLevelElementWithAnonymousSimpleType.name»
@@ -65,6 +72,9 @@ END «XSD2PackageName()»;
 GRANT EXECUTE ON «getDBSchema(".")»«XSD2PackageName()» TO «dbInternalUser»
 /
 «ENDFOREACH-»
+«IF model.bindingDefinition.getGlobalProperty("footer", null) != null-»
+«model.bindingDefinition.getGlobalProperty("footer", null)»
+«ENDIF-»
 «ENDFILE»
 «ENDDEFINE»
 

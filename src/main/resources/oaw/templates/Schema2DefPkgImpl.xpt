@@ -13,6 +13,9 @@
 CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«XSD2PackageName()» IS
   /**
   * <pre>
+«IF model.bindingDefinition.getGlobalProperty("vcsHeader", null) != null-»
+«model.bindingDefinition.getGlobalProperty("vcsHeader", null)»
+«ENDIF-»
   *
   *  <br/>
   *  XSD-Referenz:        «URI»
@@ -34,6 +37,14 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«XSD2PackageName()» IS
   *  WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
   *
   */
+
+  FUNCTION c_URI 
+    RETURN VARCHAR2 
+  DETERMINISTIC 
+  IS 
+  BEGIN 
+    RETURN '«URI»'; 
+  END c_URI;
 
   /*
   * xml_to_record(4x) und record_to_xml(2x) Routinen für die einzelnen Typen
@@ -95,6 +106,9 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«XSD2PackageName()» IS
 «ENDFOREACH-»
 END «XSD2PackageName()»;
 /
+«IF model.bindingDefinition.getGlobalProperty("footer", null) != null-»
+«model.bindingDefinition.getGlobalProperty("footer", null)»
+«ENDIF-»
 «ENDFILE»
 «ENDDEFINE»
 

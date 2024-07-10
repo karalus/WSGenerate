@@ -112,6 +112,9 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 		while (i > 0 && Character.isDigit((c = ns.charAt(--i)))) {
 			v = c + v;
 		}
+		if (v.length() > 2) {
+			return new String[] { ns, "" };
+		}
 		int l = i == 0 || ns.charAt(i - 1) == '/' ? i : i + 1; // omit 'v'
 		return new String[] { ns.substring(0, l), v };
 	}

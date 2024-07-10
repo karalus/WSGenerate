@@ -21,6 +21,9 @@
 CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)» IS
   /**
   * <pre>
+«IF bindingDefinition.getGlobalProperty("vcsHeader", null) != null-»
+«bindingDefinition.getGlobalProperty("vcsHeader", null)»
+«ENDIF-»
   *
   *  <br/>
   *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
@@ -68,6 +71,9 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, Art
 
 END «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»;
 /
+«IF bindingDefinition.getGlobalProperty("footer", null) != null-»
+«bindingDefinition.getGlobalProperty("footer", null)»
+«ENDIF-»
 «ENDFILE»
 «REM»========================================================================«ENDREM»
 «LET definition.getSOAPBindings(portType).reject(e|e.isJmsTransport()) AS bindings»
@@ -76,6 +82,9 @@ END «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»;
 CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
   /**
   * <pre>
+«IF bindingDefinition.getGlobalProperty("vcsHeader", null) != null-»
+«bindingDefinition.getGlobalProperty("vcsHeader", null)»
+«ENDIF-»
   *
   *  <br/>
   *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
@@ -106,6 +115,9 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, Art
 
 END «WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»;
 /
+«IF bindingDefinition.getGlobalProperty("footer", null) != null-»
+«bindingDefinition.getGlobalProperty("footer", null)»
+«ENDIF-»
 «ENDFILE»
 «ENDIF»
 «ENDLET»
@@ -117,6 +129,9 @@ END «WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»;
 CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::ClientStub)» IS
   /**
   * <pre>
+«IF bindingDefinition.getGlobalProperty("vcsHeader", null) != null-»
+«bindingDefinition.getGlobalProperty("vcsHeader", null)»
+«ENDIF-»
   *
   *  <br/>
   *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
@@ -149,6 +164,9 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, Art
 
 END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 /
+«IF bindingDefinition.getGlobalProperty("footer", null) != null-»
+«bindingDefinition.getGlobalProperty("footer", null)»
+«ENDIF-»
 «ENDFILE»
 «ENDDEFINE»
 
