@@ -15,6 +15,7 @@ boolean generateClient(Model this, PortType portType) : bindingDefinition.getPor
 boolean generateServer(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "generateServer", "true") == "true";
 boolean rawMessageIn(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "rawMessageIn", "false") == "true";
 boolean rawMessageOut(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "rawMessageOut", "false") == "true";
+boolean oracleAQ(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "oracleAQ", "false") == "true";
 cached String getDBSchema() : GLOBALVAR dbSchema;
 String getDBSchema(String suffix) : let p = getDBSchema() : p != null && p.length > 0 ? p + suffix : "";
 boolean isGenerateSmallXML(ServiceNamespace this) : false;
@@ -59,6 +60,7 @@ String WSDL2PackageNameCheck(Model model, PortType portType, ArtifactKind kind) 
 	let s = WSDL2PackageName(model, portType, kind) : s.length > 128 ? "!!!Too long: " + portType.QName + " mapped to " + s : s;
 cached String WSDL2PackageName(Model model, PortType portType, ArtifactKind kind) : 
 	model.bindingDefinition.getMappingForPortType(portType.QName.namespaceURI, portType.QName.localPart, kind);
+String getSoapNamespace(Model this, Binding binding) : BasePackageName() + '.' + (binding.isSOAP12() ? 'c_SOAP12_NS' : 'c_SOAP11_NS');
 
 String getOracleName(Model model, String ns, Operation this) : checkLen(_getOracleName(model, ns, this), ns, name);
 private cached String _getOracleName(Model model, String ns, Operation this) : model.bindingDefinition.getMappingForName(ns, name, null);

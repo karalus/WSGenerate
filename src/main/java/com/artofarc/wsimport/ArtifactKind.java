@@ -17,5 +17,5 @@
 package com.artofarc.wsimport;
 
 public enum ArtifactKind {
-	Schema, ClientStub, ProviderSkeleton, XMLAdapter
+	Schema, ClientStub, ProviderSkeleton, XMLAdapter, ListenerAQ
 }

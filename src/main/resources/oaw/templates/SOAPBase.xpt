@@ -40,6 +40,9 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«BasePackageName()» IS
   TYPE int_CT IS TABLE OF INT;
   TYPE any_CT IS TABLE OF XMLTYPE;
 
+  c_SOAP11_NS CONSTANT VARCHAR2(99) := 'http://schemas.xmlsoap.org/soap/envelope/';
+  c_SOAP12_NS CONSTANT VARCHAR2(99) := 'http://www.w3.org/2003/05/soap-envelope';
+
   ------------------------------------------------------------------------------
   -- Prozeduren/Funktionen
   ------------------------------------------------------------------------------
@@ -195,9 +198,6 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
   ------------------------------------------------------------------------------
   -- öffentliche Konstanten
   ------------------------------------------------------------------------------
-
-  -- Package-Name
-  c_PACKAGE_NAME        CONSTANT oraclename_t := '«BasePackageName()»';
 
   ------------------------------------------------------------------------------
   -- öffentliche Typen und Variablen

@@ -44,9 +44,6 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, Art
   *  R1.0      heute     WSGenerate       Generierung des Packages
   */
 
-  -- Package-Name
-  c_package_name CONSTANT «BasePackageName()».oraclename_t := '«WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»';
-
   ------------------------------------------------------------------------------
   -- öffentliche Typen und Variablen
   ------------------------------------------------------------------------------
@@ -76,7 +73,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»;
 «ENDIF-»
 «ENDFILE»
 «REM»========================================================================«ENDREM»
-«LET definition.getSOAPBindings(portType).reject(e|e.isJmsTransport()) AS bindings»
+«LET definition.getSOAPBindings(portType).reject(e|isJmsTransport(e) || oracleAQ(portType)) AS bindings»
 «IF bindings.size > 0»
 «FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + ".PKB"-»
 CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
@@ -103,9 +100,6 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, Art
   *	 WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
   *
   */
-
-  -- Package-Name
-  c_package_name CONSTANT «BasePackageName()».oraclename_t := '«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»';
 
 «FOREACH definition.getSOAPBindings(portType) AS binding-»
 «FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
@@ -150,11 +144,15 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, Art
   *
   */
 
-  -- Package-Name
-  c_package_name CONSTANT «BasePackageName()».oraclename_t := '«WSDL2PackageName(portType, ArtifactKind::ClientStub)»';
-«FOREACH definition.getSOAPBindings(portType) AS binding-»
-  c_SOAP_NS      CONSTANT VARCHAR2(99) := «IF binding.isSOAP12()»'http://www.w3.org/2003/05/soap-envelope'«ELSE»'http://schemas.xmlsoap.org/soap/envelope/'«ENDIF»;
+  FUNCTION c_PortType_URI 
+    RETURN VARCHAR2 
+  DETERMINISTIC 
+  IS 
+  BEGIN 
+    RETURN '«definition.targetNamespace»';
+  END c_PortType_URI;
 
+«FOREACH definition.getSOAPBindings(portType) AS binding-»
   g_url          VARCHAR2(255) := '«bindingDefinition.getPortTypeProperty(portType, "addressLocation", definition.getPort(binding).getLocation())»';
 
 «FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
@@ -192,7 +190,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 «IF rawMessageIn(portType)-»
     , p_raw_in                 IN         CLOB
 «ENDIF-»
-«IF !binding.isJmsTransport()-»
+«IF !(isJmsTransport(binding) || oracleAQ(portType))-»
     , p_param_out              OUT NOCOPY «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»
 «FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
     , p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»             OUT NOCOPY «getParameterOracleFQN(qName)»
@@ -221,7 +219,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     ---------------------------------------------------------------------------
 
 «IF bindingDefinition.getPortTypeProperty(portType, "delegate", null) != null-»
-    «bindingDefinition.getPortTypeProperty(portType, "delegate", null)».«operation.name»(p_param_in«IF rawMessageIn(portType)», p_raw_in«ENDIF»«IF !binding.isJmsTransport()», p_param_out«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter», p_error_out«IF iter.counter0 > 0»«iter.counter0»«ENDIF»«ENDFOREACH»«ENDIF»);
+    «bindingDefinition.getPortTypeProperty(portType, "delegate", null)».«operation.name»(p_param_in«IF rawMessageIn(portType)», p_raw_in«ENDIF»«IF !(isJmsTransport(binding) || oracleAQ(portType))», p_param_out«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter», p_error_out«IF iter.counter0 > 0»«iter.counter0»«ENDIF»«ENDFOREACH»«ENDIF»);
 «ELSE-»
     RAISE_APPLICATION_ERROR(-20004, 'Not implemented, yet');
 «ENDIF-»
@@ -302,7 +300,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 «operation.getDocumentation().formatDocumentation("  * ")-»
   *
   * @param   p_param_in             IN  eingehende Message des Service.
-«IF !binding.isJmsTransport()-»
+«IF !(isJmsTransport(binding) || oracleAQ(portType))-»
   * @param   p_param_out            OUT ausgehende Message des Service.
 «FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
   * @param   p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»           OUT ausgehende Fault Message des Service.
@@ -318,7 +316,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
   */
   PROCEDURE «operation.name» (
       p_param_in               IN OUT NOCOPY «getParameterOracleFQN(getInputElementQName(binding, operation.name))»
-«IF !binding.isJmsTransport()-»
+«IF !(isJmsTransport(binding) || oracleAQ(portType))-»
     , p_param_out              OUT    NOCOPY «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»
 «FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
     , p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»             OUT    NOCOPY «getParameterOracleFQN(qName)»
@@ -359,11 +357,11 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     outdomdoc := DBMS_XMLDOM.newDOMDocument;
     outdocnode := DBMS_XMLDOM.makeNode(outdomdoc);
 
-    outelmt := DBMS_XMLDOM.createElement(outdomdoc, 'soapenv:Envelope', c_SOAP_NS);
-    DBMS_XMLDOM.setAttribute(outelmt, 'xmlns:soapenv', c_SOAP_NS);
+    outelmt := DBMS_XMLDOM.createElement(outdomdoc, 'soapenv:Envelope', «getSoapNamespace(binding)»);
+    DBMS_XMLDOM.setAttribute(outelmt, 'xmlns:soapenv', «getSoapNamespace(binding)»);
     outnode := DBMS_XMLDOM.appendChild(outdocnode, DBMS_XMLDOM.makeNode(outelmt));
 
-    outelmt := DBMS_XMLDOM.createElement(outdomdoc, 'soapenv:Body', c_SOAP_NS);
+    outelmt := DBMS_XMLDOM.createElement(outdomdoc, 'soapenv:Body', «getSoapNamespace(binding)»);
     outnode := DBMS_XMLDOM.appendChild(outnode, DBMS_XMLDOM.makeNode(outelmt));
 
     outelmt := DBMS_XMLDOM.createElement(outdomdoc, '«getInputElementQName(binding, operation.name).localPart»', '«getInputElementQName(binding, operation.name).namespaceURI»');
@@ -396,7 +394,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     innode := DBMS_XMLDOM.getLastChild(innode);
     innode := DBMS_XMLDOM.getFirstChild(innode);
     inelmt := DBMS_XMLDOM.makeElement(innode);
-    IF DBMS_XMLDOM.getNamespace(inelmt) = c_SOAP_NS AND DBMS_XMLDOM.getLocalName(inelmt) = 'Fault' THEN
+    IF DBMS_XMLDOM.getNamespace(inelmt) = «getSoapNamespace(binding)» AND DBMS_XMLDOM.getLocalName(inelmt) = 'Fault' THEN
       innode := DBMS_XMLDOM.getFirstChild(innode); -- faultcode
       innode := DBMS_XMLDOM.getNextSibling(innode); -- faultstring
       text := DBMS_XMLDOM.getFirstChild(innode);
