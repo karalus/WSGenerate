@@ -184,7 +184,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageName(portType, Artifact
   );
 
 
-END «WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»;
+END «WSDL2PackageName(portType, ArtifactKind::ListenerAQ)»;
 /
 «IF bindingDefinition.getGlobalProperty("footer", null) != null-»
 «bindingDefinition.getGlobalProperty("footer", null)»

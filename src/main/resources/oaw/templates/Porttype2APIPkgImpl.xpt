@@ -116,6 +116,115 @@ END «WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»;
 «ENDIF»
 «ENDLET»
 «REM»========================================================================«ENDREM»
+«IF oracleAQ(portType)»
+«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ListenerAQ) + ".PKB"-»
+CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
+  /**
+  * <pre>
+«IF bindingDefinition.getGlobalProperty("vcsHeader", null) != null-»
+«bindingDefinition.getGlobalProperty("vcsHeader", null)»
+«ENDIF-»
+  *
+  *  <br/>
+  *  WebService:          «portType.QName.localPart» in «portType.QName.namespaceURI»
+  *  documentBaseURI:     «definition.documentBaseURI»
+  *  <br/>
+  *
+  *  <b>Beschreibung:</b>
+  *
+«definition.getDocumentation().formatDocumentation("  * ")-»
+  *
+  *  </pre>
+  *  @headcom
+  *  <pre>
+  *  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+  *	 WSGenerate Version «getGeneratorVersion()» Build Time «getGeneratorBuildTime()»
+  *
+  */
+
+«FOREACH definition.getSOAPBindings(portType) AS binding-»
+«FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
+«EXPAND OperationContentL(portType, binding, bindingOperation)»
+«ENDFOREACH»
+«ENDFOREACH»
+
+  /**
+  * Queue Listener
+  */
+  PROCEDURE handleMessage (
+      context           RAW
+    , reginfo           sys.aq$_reg_info
+    , descr             sys.aq$_descriptor
+    , payload           RAW
+    , payloadl          NUMBER
+  ) IS
+
+    c_routine           CONSTANT SOA_API_DEFAULT.oraclename_t := 'handleMessage';
+
+    dequeue_options   	DBMS_AQ.dequeue_options_t;
+    message_prop      	DBMS_AQ.message_properties_t;
+    message_hdl       	raw(16);
+    v_payload         	SYS.AQ$_JMS_TEXT_MESSAGE;
+    v_param_in          CLOB;
+
+    myparser            DBMS_XMLPARSER.parser;
+
+    indomdoc            DBMS_XMLDOM.DOMDocument;
+    inelmt              DBMS_XMLDOM.DOMElement;
+    innode              DBMS_XMLDOM.DOMNode;
+    localName           VARCHAR2(255);
+    namespace           VARCHAR2(999);
+
+  BEGIN
+
+    dequeue_options.msgid := descr.msg_id;
+   	dequeue_options.consumer_name := descr.consumer_name;
+
+   	dbms_aq.dequeue(descr.queue_name, dequeue_options, message_prop, v_payload, message_hdl);
+
+    v_payload.get_text(v_param_in);
+
+    myParser := DBMS_XMLPARSER.newParser;
+    DBMS_XMLPARSER.parseClob(myParser, v_param_in);
+    indomdoc := DBMS_XMLPARSER.getDocument(myParser);
+    DBMS_XMLPARSER.freeParser(myParser);
+    inelmt := DBMS_XMLDOM.getDocumentElement(indomdoc);
+    localName := DBMS_XMLDOM.getLocalName(inelmt);
+    innode := DBMS_XMLDOM.makeNode(inelmt);
+    -- Der ESB verpackt die Nachrichten in Envelope und Body (SOAP JMSBinding)
+    IF localName = 'Envelope' THEN
+     -- Last Child ist immer Body, auch wenn ein Header da ist
+     innode := DBMS_XMLDOM.getLastChild(innode);
+     innode := DBMS_XMLDOM.getFirstChild(innode);
+     inelmt := DBMS_XMLDOM.makeElement(innode);
+     localName := DBMS_XMLDOM.getLocalName(inelmt);
+    END IF;
+    namespace := DBMS_XMLDOM.getNamespace(inelmt);
+
+    CASE
+«FOREACH definition.getSOAPBindings(portType) AS binding-»
+«FOREACH ((List[BindingOperation]) binding.bindingOperations).operation AS operation»
+     WHEN localName = '«operation.name»' AND namespace = c_PortType_URI THEN
+      «getOracleName(definition.targetNamespace, operation)»(innode, «IF rawMessageIn(portType)»v_param_in, «ENDIF»message_prop.EXPIRATION * 1000, NULL);
+«ENDFOREACH»
+«ENDFOREACH»
+     ELSE
+      DBMS_XMLDOM.freeDocument(indomdoc);
+    END CASE;
+
+   	COMMIT;
+
+  END handleMessage;
+
+END «WSDL2PackageName(portType, ArtifactKind::ListenerAQ)»;
+/
+«IF bindingDefinition.getGlobalProperty("footer", null) != null-»
+«bindingDefinition.getGlobalProperty("footer", null)»
+«ENDIF-»
+«ENDFILE»
+
+«ENDIF»
+«REM»========================================================================«ENDREM»
 «ENDDEFINE»
 
 «DEFINE Consumer(Definition definition, PortType portType) FOR Model»
@@ -288,6 +397,38 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     END IF;
 «ENDIF-»
 
+  END «operation.name»;
+«ENDLET-»
+«ENDDEFINE»
+
+«DEFINE OperationContentL(PortType portType, Binding binding, BindingOperation bindingOperation) FOR Model-»
+«LET portType.getOperation(bindingOperation.name, null, null) AS operation-»
+  /**
+  * Queue Listener Delegate für «operation.name»
+  */
+  PROCEDURE «operation.name» (innode IN DBMS_XMLDOM.DOMNode, «IF rawMessageIn(portType)»param_in_raw IN CLOB, «ENDIF»expectedResponseTimeInMillis IN NUMBER, mandant IN CHAR) IS
+    PRAGMA AUTONOMOUS_TRANSACTION;
+
+    c_routine           CONSTANT «BasePackageName()».oraclename_T := '«operation.name»';
+
+    param_in            «getParameterOracleFQN(getInputElementQName(binding, operation.name))»;
+
+  BEGIN
+
+    SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_INFO, $$PLSQL_UNIT, c_routine, 'Start');
+
+    param_in := «getOracleFQN(getInputElementQName(binding, operation.name))»_4x(p_param_in);
+    DBMS_XMLDOM.freeDocument(DBMS_XMLDOM.getOwnerDocument(innode));
+
+    BEGIN
+      «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)».«operation.name»(param_in«IF rawMessageIn(portType)», param_in_raw«ENDIF»);
+
+    EXCEPTION WHEN OTHERS THEN
+      NULL;
+    END;
+
+  EXCEPTION WHEN OTHERS THEN
+    NULL;
   END «operation.name»;
 «ENDLET-»
 «ENDDEFINE»
