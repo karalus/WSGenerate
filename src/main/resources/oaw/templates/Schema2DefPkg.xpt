@@ -8,6 +8,7 @@
 «EXTENSION oaw::extensions::db»
 
 «DEFINE Root FOR ServiceNamespace»
+«IF XSD2PackageName() != null»
 «FILE "plsql/" + getDBSchema("/") + XSD2PackageName() + ".PKS"-»
 CREATE OR REPLACE PACKAGE «getDBSchema(".")»«XSD2PackageName()» IS
   /**
@@ -76,6 +77,7 @@ GRANT EXECUTE ON «getDBSchema(".")»«XSD2PackageName()» TO «dbInternalUser»
 «model.bindingDefinition.getGlobalProperty("footer", null)»
 «ENDIF-»
 «ENDFILE»
+«ENDIF»
 «ENDDEFINE»
 
 «DEFINE XSDSchema(List[TopLevelSimpleType] simpleTypes) FOR ServiceNamespace-»

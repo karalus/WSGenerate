@@ -9,6 +9,7 @@
 
 
 «DEFINE Root FOR ServiceNamespace»
+«IF XSD2PackageName() != null»
 «FILE "plsql/" + getDBSchema("/") + XSD2PackageName() + ".PKB"-»
 CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«XSD2PackageName()» IS
   /**
@@ -110,6 +111,7 @@ END «XSD2PackageName()»;
 «model.bindingDefinition.getGlobalProperty("footer", null)»
 «ENDIF-»
 «ENDFILE»
+«ENDIF»
 «ENDDEFINE»
 
 «REM»Navigate in ComplexType«ENDREM»

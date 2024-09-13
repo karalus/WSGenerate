@@ -66,6 +66,9 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 		} else {
 			mapping = _propertiesExpansion.getProperty(ns, ns);
 		}
+		if (mapping.isEmpty()) {
+			return null;
+		}
 		String[] split = extractVersionForNamespace(mapping);
 		String uri = split[0].replaceAll("/", "");
 		String uriDots = UriHelper.convertUri(ns, ".", false);

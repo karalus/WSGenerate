@@ -51,6 +51,7 @@ spool off
 «ENDDEFINE»
 
 «DEFINE Entry(String prefix, boolean body) FOR ServiceNamespace-»
+«IF XSD2PackageName() != null-»
 «IF hasImplementation()-»
 «IF body-»
 «prefix»«XSD2PackageName()».PKB"
@@ -59,5 +60,6 @@ spool off
 «ENDIF-»
 «ELSEIF !body && hasSpecification()-»
 «prefix»«XSD2PackageName()».PKS"
+«ENDIF-»
 «ENDIF-»
 «ENDDEFINE»
