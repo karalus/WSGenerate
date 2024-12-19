@@ -313,7 +313,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
   BEGIN
 
 «IF bindingDefinition.getPortTypeProperty(portType, "impl." + operation.name, null) != null-»
-	«bindingDefinition.getPortTypeProperty(portType, "impl." + operation.name, null)»
+«bindingDefinition.getPortTypeProperty(portType, "impl." + operation.name, null)»
 «ELSE-»
     ---------------------------------------------------------------------------
     -- !!!! BEGIN Implementierung individueller Teil der Operation         !!!!

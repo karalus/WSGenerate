@@ -119,11 +119,11 @@ cached boolean isSimpleTypeList(ServiceNamespace owner, SimpleType this) :
 	restriction.base != null && !isBuiltInType(restriction.base) && (let ns = owner.findUsedServiceNamespace(restriction.base.namespaceURI) : ns.isSimpleTypeList(findSimpleType(ns, restriction.base))) ||
 	restriction.simpleType != null && isSimpleTypeList(owner, restriction.simpleType) ;
 
-TopLevelSimpleType getBaseTypeForListType(ServiceNamespace owner, SimpleType this) :
-	restriction.base != null ? (let ns = owner.findUsedServiceNamespace(restriction.base.namespaceURI) : ns.getBaseTypeForListType(findSimpleType(ns, restriction.base))) :
+TopLevelSimpleType getBaseTypeForListType(ServiceNamespace owner, SimpleType this) : union != null ? findReferencedSimpleType(owner, createQName(javax::xml::XMLConstants::W3C_XML_SCHEMA_NS_URI, "string")) :
+	(restriction.base != null ? (let ns = owner.findUsedServiceNamespace(restriction.base.namespaceURI) : ns.getBaseTypeForListType(findSimpleType(ns, restriction.base))) :
 		(restriction.simpleType != null ? owner.getBaseTypeForListType(restriction.simpleType) :
 			(list.itemType != null ? (isBuiltInType(list.itemType) ? null : findReferencedSimpleType(owner, list.itemType)) :
-				null)); //(list.simpleType != null ? list.simpleType : null)));
+				null))); //(list.simpleType != null ? list.simpleType : null)));
 
 ComplexType getComplexType(ServiceNamespace owner, Element this) : complexType != null ? complexType : getNonLocalComplexType(owner, this);
 cached TopLevelComplexType getNonLocalComplexType(ServiceNamespace owner, Element this) :

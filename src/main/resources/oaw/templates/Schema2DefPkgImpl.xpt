@@ -462,7 +462,7 @@ END «XSD2PackageName()»;
 «ENDIF-»
 «IF hasSimpleType(e)-»
           text := DBMS_XMLDOM.getFirstChild(node);
-«IF isSimpleTypeList(e)-»
+«IF isSimpleTypeList(e) && e.simpleType.union == null-»
           «elementAccess»«IF isArrayElement(e)»(«elementAccess».last)«ENDIF» := «getPackagePrefix(ns)»«XSDType2Oracle(ns, (TopLevelSimpleType) getSimpleType(e), "4l")»(DBMS_XMLDOM.getNodeValue(text));
 «ELSE-»
           «elementAccess»«IF isArrayElement(e)»(«elementAccess».last)«ENDIF» := «convertXSDBasicType2Oracle(getBuiltInType(e), getFacets(e), "DBMS_XMLDOM.getNodeValue(text)", "text")»;
@@ -619,7 +619,7 @@ END «XSD2PackageName()»;
        DBMS_XMLDOM.setAttribute(elmt, 'xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
       ELSE
 «ENDIF-»
-«IF isSimpleTypeList(e)-»
+«IF isSimpleTypeList(e) && e.simpleType.union == null-»
       text := DBMS_XMLDOM.createTextNode(p_domdoc, «getPackagePrefix(ns)»«XSDType2Oracle(ns, (TopLevelSimpleType) getSimpleType(e), "2l")»(«elementAccess»));
       node := DBMS_XMLDOM.appendChild(node, DBMS_XMLDOM.makeNode(text));
 «ELSE-»
