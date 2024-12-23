@@ -100,7 +100,7 @@ public final class WsdlParser extends AbstractWorkflowComponent2 {
    private BindingDefinition bindingDefinition;
 
    public WsdlParser() throws JAXBException {
-      xsdUnmarshaller = ServiceNamespace.jaxbContext.createUnmarshaller();
+      xsdUnmarshaller = ServiceNamespace.createUnmarshaller();
    }
 
    public void setOutputSlot(String slot) {

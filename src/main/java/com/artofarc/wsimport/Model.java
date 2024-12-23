@@ -73,7 +73,11 @@ public final class Model {
                   serviceNamespace.predecessors = -1;
                }
             }
-            if (!progress) throw new IllegalStateException("cyclic dependency");	 
+            if (!progress) {
+            	ArrayList<ServiceNamespace> list = new ArrayList<>(getServiceNamespaces());
+            	list.removeAll(serviceNamespacesTopologicalSorted);
+				throw new IllegalStateException("cyclic dependency" + list);	 
+            }
          }
          Collections.reverse(serviceNamespacesTopologicalSorted);
       }

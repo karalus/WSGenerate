@@ -16,6 +16,8 @@
  */
 package com.artofarc.wsimport;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -23,17 +25,23 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 import javax.wsdl.Definition;
+import javax.xml.XMLConstants;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
+import javax.xml.transform.Source;
+import javax.xml.transform.stream.StreamSource;
+import javax.xml.validation.SchemaFactory;
 
 import org.w3._2001.xmlschema.Annotated;
 import org.w3._2001.xmlschema.Schema;
 import org.w3c.dom.Element;
+import org.xml.sax.SAXException;
 
 public final class ServiceNamespace {
 
 	final static JAXBContext jaxbContext;
+	final static javax.xml.validation.Schema schema;
 
 	static {
 		try {
@@ -41,6 +49,20 @@ public final class ServiceNamespace {
 		} catch (JAXBException e) {
 			throw new RuntimeException("Cannot initialize JAXBContext", e);
 		}
+		SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+		try (InputStream isSchema = ServiceNamespace.class.getClassLoader().getResourceAsStream("schema.xsd");
+				InputStream isXml = ServiceNamespace.class.getClassLoader().getResourceAsStream("xml.xsd")) {
+
+			schema = factory.newSchema(new Source[] { new StreamSource(isXml), new StreamSource(isSchema) });
+		} catch (SAXException | IOException e) {
+			throw new RuntimeException("Cannot parse schema.xsd", e);
+		}
+	}
+
+	static Unmarshaller createUnmarshaller() throws JAXBException {
+		Unmarshaller xsdUnmarshaller = jaxbContext.createUnmarshaller();
+		xsdUnmarshaller.setSchema(schema);
+		return xsdUnmarshaller;
 	}
 
 	private final Model model;
