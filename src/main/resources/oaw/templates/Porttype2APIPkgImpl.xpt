@@ -253,6 +253,8 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, Art
   *
   */
 
+  g_url CONSTANT VARCHAR2(255) := '«bindingDefinition.getPortTypeProperty(portType, "addressLocation", definition.getPort(definition.getSOAPBindings(portType).selectFirst(b|b.isSOAP11())).getLocation())»';
+
   FUNCTION c_PortType_URI 
     RETURN VARCHAR2 
   DETERMINISTIC 
@@ -262,8 +264,6 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, Art
   END c_PortType_URI;
 
 «FOREACH definition.getSOAPBindings(portType) AS binding-»
-  g_url          VARCHAR2(255) := '«bindingDefinition.getPortTypeProperty(portType, "addressLocation", definition.getPort(binding).getLocation())»';
-
 «FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
 «EXPAND OperationContentC(portType, binding, bindingOperation)»
 «ENDFOREACH»
