@@ -275,7 +275,7 @@ TYPE «XSDType2Oracle(typeName, type, true)» IS TABLE OF «oracleName»;
 «DEFINE XSDSchemaComplexTypes(Set[ComplexType] done, String typeName, Group parentGroup, Element e) FOR ServiceNamespace-»
 «IF e.simpleType != null-»
 -- Anonymous SimpleType for element with name: «e.name» = «anonymousTypeName(e, typeName)»
-«IF isArray(e, parentGroup) || isSimpleTypeList(e.simpleType)-»
+«IF isArray(e, parentGroup) || isSimpleTypeList(e.simpleType) && e.simpleType.union == null-»
 «EXPAND XSDSchema(anonymousTypeName(e, typeName), e.simpleType)-»
 «ELSE-»
 «FOREACH getFacets(e.simpleType).getEnumerationFacets() AS enumeration-»
