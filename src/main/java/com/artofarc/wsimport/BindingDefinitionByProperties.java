@@ -1,12 +1,11 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * Copyright 2025 Andre Karalus
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +17,10 @@ package com.artofarc.wsimport;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.wsdl.PortType;
 import javax.xml.XMLConstants;
@@ -30,6 +33,8 @@ import com.artofarc.util.UriHelper;
 public class BindingDefinitionByProperties implements BindingDefinition {
 
 	protected final PropertiesExpansion _propertiesExpansion = new PropertiesExpansion();
+	private List<Map.Entry<String, String>> globalReplaces;
+	private List<Map.Entry<String, String>> replacePackagePrefixes;
 
 	public BindingDefinitionByProperties() {
 	}
@@ -38,10 +43,19 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 		addPropertyFile(fileName);
 	}
 
+	private static List<Map.Entry<String, String>> extractPropertiesForPrefix(PropertiesExpansion propertiesExpansion, String prefix) {
+		@SuppressWarnings({ "unchecked", "rawtypes" })
+		Map<String, String> replaces = (Map) propertiesExpansion.getPropertiesForPrefix(prefix);
+		return replaces.isEmpty() ? Collections.emptyList()
+			: replaces.entrySet().stream().sorted((e1, e2) -> e2.getKey().length() - e1.getKey().length()).collect(Collectors.toList());
+	}
+
 	public void addPropertyFile(String fileName) throws IOException {
-		FileInputStream fis = new FileInputStream(fileName);
-		_propertiesExpansion.load(fis);
-		fis.close();
+		try (FileInputStream fis = new FileInputStream(fileName)) {
+			_propertiesExpansion.load(fis);
+		}
+		globalReplaces = extractPropertiesForPrefix(_propertiesExpansion, "replace");
+		replacePackagePrefixes = extractPropertiesForPrefix(_propertiesExpansion, "replacePackagePrefix");
 	}
 
 	@Override
@@ -71,6 +85,14 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 		}
 		String[] split = extractVersionForNamespace(mapping);
 		String uri = split[0].replaceAll("/", "");
+		if (mapping == ns) {
+			for (Map.Entry<String,String> entry : replacePackagePrefixes) {
+				if (uri.startsWith(entry.getKey())) {
+					uri = entry.getValue() + uri.substring(entry.getKey().length());
+					break;
+				}
+			}
+		}
 		String uriDots = UriHelper.convertUri(ns, ".", false);
 		Integer version = split[1].isEmpty() ? 0 : new Integer(split[1]);
 		return String.format(formatPattern, uri, version, uriDots);
@@ -78,7 +100,19 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 
 	@Override
 	public String getMappingForName(String ns, String name, Annotated annotated) {
-		return _propertiesExpansion.getPropertyFromSection(ns, name, name);
+		String mappedName = _propertiesExpansion.getPropertyFromSection(ns, name, name);
+		if (mappedName == name) {
+			Object property = _propertiesExpansion.get(ns);
+			if (property instanceof PropertiesExpansion) {
+				for (Map.Entry<String, String> entry : extractPropertiesForPrefix((PropertiesExpansion) property, "replace")) {
+					mappedName = mappedName.replaceAll(entry.getKey(), entry.getValue());
+				}
+			}
+			for (Map.Entry<String, String> entry : globalReplaces) {
+				mappedName = mappedName.replaceAll(entry.getKey(), entry.getValue());
+			}
+		}
+		return mappedName;
 	}
 
 	@Override
