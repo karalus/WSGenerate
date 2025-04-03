@@ -85,7 +85,7 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 		}
 		String[] split = extractVersionForNamespace(mapping);
 		String uri = split[0].replaceAll("/", "");
-		if (mapping == ns) {
+		if (mapping == ns && replacePackagePrefixes != null) {
 			for (Map.Entry<String,String> entry : replacePackagePrefixes) {
 				if (uri.startsWith(entry.getKey())) {
 					uri = entry.getValue() + uri.substring(entry.getKey().length());
@@ -108,8 +108,10 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 					mappedName = mappedName.replaceAll(entry.getKey(), entry.getValue());
 				}
 			}
-			for (Map.Entry<String, String> entry : globalReplaces) {
-				mappedName = mappedName.replaceAll(entry.getKey(), entry.getValue());
+			if (globalReplaces != null) {
+				for (Map.Entry<String, String> entry : globalReplaces) {
+					mappedName = mappedName.replaceAll(entry.getKey(), entry.getValue());
+				}
 			}
 		}
 		return mappedName;
