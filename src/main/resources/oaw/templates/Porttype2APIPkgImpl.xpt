@@ -415,8 +415,6 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 
   BEGIN
 
-    SOA_API_CUSTOM.log(SOA_API_CUSTOM.Level_INFO, $$PLSQL_UNIT, c_routine, 'Start');
-
     param_in := «getOracleFQN(getInputElementQName(binding, operation.name))»_4x(p_param_in);
     DBMS_XMLDOM.freeDocument(DBMS_XMLDOM.getOwnerDocument(innode));
 

@@ -1,8 +1,259 @@
 «IMPORT com::artofarc::wsimport»
 
 «EXTENSION oaw::extensions::db»
+«EXTENSION oaw::extensions::wsdl»
 
 «DEFINE Root FOR Model»
+
+«IF mtomSupport()» 
+«FILE "plsql/" + getDBSchema("/") + "Base64EncodeUtil.java"-»
+create or replace and compile java source named «getDBSchema(".")»Base64EncodeUtil as
+import java.util.Base64;
+import java.sql.Blob;
+import java.sql.Clob;
+import java.sql.Connection;
+import java.sql.SQLException;
+import oracle.jdbc.OracleDriver;
+
+/**
+ * This class provides methods to encode/decode from base64 to binary.
+ */
+public class Base64EncodeUtil {
+
+  public static Clob encode(final Blob input, final int lineSize, final String lineSep) throws SQLException {
+    // Get default connection
+    final Clob result = new OracleDriver().defaultConnection().createClob();
+    result.setString(1, Base64.getMimeEncoder(lineSize, lineSep.getBytes()).encodeToString(input.getBytes(1, (int) input.length())));
+    return result;
+  }
+
+  public static Blob decode(final Clob input) throws SQLException {
+    // Get default connection
+    final Blob result = new OracleDriver().defaultConnection().createBlob();
+    result.setBytes(1, Base64.getMimeDecoder().decode(input.getSubString(1, (int) input.length())));
+    return result;
+  }
+
+}
+/
+«ENDFILE»
+
+«FILE "plsql/" + getDBSchema("/") + "ATTACHMENT_T.TYP"-»
+CREATE OR REPLACE TYPE «getDBSchema(".")»ATTACHMENT_T AS OBJECT (
+  content 	    BLOB,
+  contentId     VARCHAR2(256),
+  contentType   VARCHAR2(256),
+  fileName      VARCHAR2(256)
+)
+/
+
+«FOREACH bindingDefinition.getGlobalPropertyAsList("dbInternalUser") AS dbInternalUser-»
+GRANT EXECUTE ON «getDBSchema(".")»ATTACHMENT_T TO «dbInternalUser»
+/
+«ENDFOREACH-»
+«ENDFILE»
+
+«FILE "plsql/" + getDBSchema("/") +"ATTACHMENT_CT.TYP"-»
+CREATE OR REPLACE TYPE «getDBSchema(".")»ATTACHMENT_CT AS TABLE OF «getDBSchema(".")»ATTACHMENT_T
+/
+
+«FOREACH bindingDefinition.getGlobalPropertyAsList("dbInternalUser") AS dbInternalUser-»
+GRANT EXECUTE ON «getDBSchema(".")»ATTACHMENT_CT TO «dbInternalUser»
+/
+«ENDFOREACH-»
+«ENDFILE»
+
+«FILE "plsql/" + getDBSchema("/") +"SOAP_MESSAGE_T.TYP"-»
+CREATE OR REPLACE TYPE «getDBSchema(".")»SOAP_MESSAGE_T AS OBJECT (
+  attachments ATTACHMENT_CT
+)
+/
+
+«FOREACH bindingDefinition.getGlobalPropertyAsList("dbInternalUser") AS dbInternalUser-»
+GRANT EXECUTE ON «getDBSchema(".")»SOAP_MESSAGE_T TO «dbInternalUser»
+/
+«ENDFOREACH-»
+«ENDFILE»
+
+«FILE "plsql/" + getDBSchema("/") + "SOAP_ATTACHMENT_KONTEXT.PKS"-»
+CREATE OR REPLACE PACKAGE «getDBSchema(".")»SOAP_ATTACHMENT_KONTEXT
+/**
+* <pre>
+*
+*  <br/>
+*  Softwarekomponente:  api           -   Querschnittsfunktionalitäten für die API (Application Programming Interface)
+*  <br/>
+*
+*  <b>Beschreibung:</b>
+*  Dieses Package enthält Funktionalität, um Attachments zu verwalten, die als Binärdaten innerhalb von Soap-Requests übertragen werden.
+*  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+*
+*  </pre>
+*  @headcom
+*  @CHECK  XXXX-XXXX  -- Checkprogramm für diese Komponente ausschalten
+*
+*  Änderungs-Historie:   (neue Einträge immer oben anfügen)
+*  ========================================================
+*  Revision  Wann      Wer              Was (Request und ASB / Störfall vermerken)
+*  --------  --------  ---------------  ----------------------------------------
+*  R1.0      27.09.19  M. Kiel          Neuerstellung des Packages
+*/
+IS
+
+  ------------------------------------------------------------------------------
+  -- öffentliche globale Variablen
+  ------------------------------------------------------------------------------
+  
+  -- Package-Variable, in der die Attachments gespeichert werden
+  g_attachment_obj soap_message_t;
+
+  ------------------------------------------------------------------------------
+  -- Prozeduren/Funktionen
+  ------------------------------------------------------------------------------
+  
+  /**
+  * Fügt der intern gespeicherten Liste ein Attachachment hinzu.
+  *
+  * @param   p_attachment_in             IN  Daten des Attachment als BLOB
+  * @param   p_mime_type_in              IN  Mime-Type des Attachment (z.B. application/pdf)
+  * @param   p_attachment_id_io          IN/OUT ID unter der das Attachments gepeichert wird
+  * @param   p_filename_in               IN  Dateiname zum Attachment
+  */
+  PROCEDURE add_attachment (p_attachment_in IN BLOB
+                           ,p_mime_type_in IN VARCHAR2
+                           ,p_filename_in IN VARCHAR
+                           ,p_attachment_id_io IN OUT NOCOPY VARCHAR2);
+  
+  /**
+  * Gibt das Attachment zurück, das intern unter der angegebenen ID gespeicert ist.
+  *
+  * @param   f_attachment_id_in          IN  ID des Attachments
+  *
+  * @return  Daten zum Attachments als BLOB
+  */
+  FUNCTION get_attachment (f_attachment_id_in IN VARCHAR2)
+    RETURN BLOB;
+    
+  /**
+  * Löscht die intern gespeicherten Attachments.
+  *
+  */
+  PROCEDURE reset_attachments;
+  
+  /**
+  * Setzt das interen Flag, das steuert, ob MTOM verwendet wird.
+  *
+  * @param   p_flag_in                   IN  Boolean-Wert zum Ein- bzw. Ausschalten von MTOM
+  */
+  PROCEDURE set_mtom_flag (p_flag_in IN BOOLEAN);
+  
+  /**
+  * Gibt das Flag für MTOM zurück.
+  *
+  */
+  FUNCTION get_mtom_flag RETURN BOOLEAN;
+  
+END SOAP_ATTACHMENT_KONTEXT;
+/
+«ENDFILE»
+
+«FILE "plsql/" + getDBSchema("/") + "SOAP_ATTACHMENT_KONTEXT.PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»SOAP_ATTACHMENT_KONTEXT
+/**
+* <pre>
+*
+*  <br/>
+*  Softwarekomponente:  api           -   Querschnittsfunktionalitäten für die API (Application Programming Interface)
+*  <br/>
+*
+*  <b>Beschreibung:</b>
+*  Dieses Package enthält Funktionalität, um Attachments zu verwalten, die als Binärdaten innerhalb von Soap-Requests übertragen werden.
+*  !!! A C H T U N G  -- Modul ist generiert -- bitte nicht ändern !!!!
+*
+*  </pre>
+*  @headcom
+*  @CHECK  XXXX-XXXX  -- Checkprogramm für diese Komponente ausschalten
+*
+*  Änderungs-Historie:   (neue Einträge immer oben anfügen)
+*  ========================================================
+*  Revision  Wann      Wer              Was (Request und ASB / Störfall vermerken)
+*  --------  --------  ---------------  ----------------------------------------
+*  R1.0      27.09.19  M. Kiel          Neuerstellung des Packages
+*/
+IS
+  
+  -- Flag, ob MTOM für den aktuellen Service-Call verwendet werden soll
+  g_use_mtom BOOLEAN DEFAULT FALSE;
+
+  PROCEDURE add_attachment (p_attachment_in IN BLOB
+                           ,p_mime_type_in IN VARCHAR2
+                           ,p_filename_in IN VARCHAR
+                           ,p_attachment_id_io IN OUT NOCOPY VARCHAR2)
+  IS
+     c_id_template CONSTANT VARCHAR2(18) := 'urn:ATTACHMENT_ID_';
+     l_index                PLS_INTEGER;
+  BEGIN
+    g_attachment_obj.attachments.extend();
+    l_index := g_attachment_obj.attachments.last;
+    
+    IF p_attachment_id_io IS NULL
+    THEN
+      p_attachment_id_io := c_id_template || to_char(l_index, 'fm0999999');
+    END IF;
+    
+    g_attachment_obj.attachments(l_index) := NEW attachment_t (p_attachment_in, p_attachment_id_io, p_mime_type_in, p_filename_in);
+  END add_attachment;
+  
+  FUNCTION get_attachment (f_attachment_id_in IN VARCHAR2)
+    RETURN BLOB
+  IS
+    l_index PLS_INTEGER;
+  BEGIN
+    l_index := g_attachment_obj.attachments.first;
+    <<suche_attachment>>
+    WHILE l_index IS NOT NULL
+    LOOP
+      IF g_attachment_obj.attachments(l_index).contentId = f_attachment_id_in
+      THEN
+        EXIT suche_attachment;
+      END IF;
+      
+      l_index := g_attachment_obj.attachments.next(l_index);
+    END LOOP suche_attachment;
+    
+    IF l_index IS NOT NULL
+    THEN
+      RETURN g_attachment_obj.attachments(l_index).content;
+    ELSE
+      RETURN NULL;
+    END IF;
+  END get_attachment;
+    
+  PROCEDURE reset_attachments
+  IS
+  BEGIN
+    g_attachment_obj := NEW soap_message_t (NEW attachment_ct());
+  END reset_attachments;
+  
+  PROCEDURE set_mtom_flag (p_flag_in IN BOOLEAN)
+  IS
+  BEGIN
+    g_use_mtom := p_flag_in;
+  END set_mtom_flag;
+  
+  FUNCTION get_mtom_flag RETURN BOOLEAN
+  IS
+  BEGIN
+    RETURN g_use_mtom;
+  END get_mtom_flag;
+
+
+END SOAP_ATTACHMENT_KONTEXT;
+/
+«ENDFILE»
+
+«ENDIF»
+
 «FILE "plsql/" + getDBSchema("/") + BasePackageName() + ".PKS"-»
 CREATE OR REPLACE PACKAGE «getDBSchema(".")»«BasePackageName()» IS
 /**
@@ -169,7 +420,57 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«BasePackageName()» IS
   PROCEDURE fehler_pflichtelement_fehlt (
       p_element         IN VARCHAR2
   );
+«IF mtomSupport()-»
 
+  /**
+  * Ruft zum angebenen Service den entsprechenden Webservice auf. Der Request wird dabei gemäß XOP-Spezifikation aufbereitet.
+  *
+  * @param   p_service         <IN>    der definierte CEISeR FQN des Senders
+  * @param   p_action          <IN>    die SOAPAction
+  * @param   p_timeout         <IN>    der timeout in ms
+  * @param   p_request         <IN>    die Daten fuer den SOAP Request im XML Format als CLOB
+  * @param   p_attachments     <IN>    die Attachments, die binär übertragen werden sollen
+  *
+  * @return  der SOAP Response im XML Format als CLOB
+  */  
+  FUNCTION call_soap_http_mtom (
+    p_url         IN VARCHAR2,
+    p_action      IN VARCHAR2,
+    p_timeout     IN INTEGER,
+    p_request     IN CLOB,
+    p_attachments IN soap_message_t
+  )
+    RETURN CLOB;
+  
+  /**
+  * Fügt den Binär-Inhalt als Referenz ein. Dazu wird ein neues Element xop:Include mit dem Namespace
+  * xmlns:xop="http://www.w3.org/2004/08/xop/include" erzeugt. In dessen href-Attribut wird die ID des Attachments gespeichert. Der BLOB selbst
+  * wird unter dieser ID durch das Package SOAP_ATTACHMENT_KONTEXT in einer globalen Variablen
+  * vorgehalten.
+  *
+  * @param   p_domdoc           IN  Dom-Document
+  * @param   p_node             IN  Dom-Node, unter der die Referenz gespeichert werden soll
+  * @param   p_blob             IN  Binär-Daten als BLOB
+  * @param   p_content_type     IN  Content-Type der Binärdaten
+  * @param   p_filename         IN  Dateiname zum Attachment (optional)
+  *
+  */
+  PROCEDURE appendBinaryContentAsRef (p_domdoc       IN DBMS_XMLDOM.DOMDocument
+                                     ,p_node         IN DBMS_XMLDOM.DOMNode
+                                     ,p_blob         IN BLOB
+                                     ,p_content_type IN VARCHAR2
+                                     ,p_filename     IN VARCHAR2 DEFAULT NULL);
+                                     
+  /**
+  * Diese Funktion gibt die Binärdaten zurück, deren Referenz in der übergebenen Node gespeichert sind.
+  *
+  * @param   p_node             IN  Dom-Node, unter der die Referenz gespeichert ist
+  *
+  * @return  Binärdaten zur Referenz als BLOB
+  */
+  FUNCTION getBlobFromNodeWithRef (p_node IN DBMS_XMLDOM.DOMNode) 
+    RETURN BLOB;
+«ENDIF-»
 
 END «BasePackageName()»;
 /
@@ -209,6 +510,15 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
   
   -- Namespace für die Referenzierung von Binärinhalten als Attachment
   c_ns_xop_include     CONSTANT VARCHAR2(37) := 'http://www.w3.org/2004/08/xop/include';
+
+  -- Content-Type für Multipart-Messages
+  c_content_type_multipart CONSTANT VARCHAR2(17) := 'multipart/related';
+
+  -- Content-Type für XOP
+  c_content_type_xop       CONSTANT VARCHAR2(19) := 'application/xop+xml';
+
+  -- Zeilenwechsel
+  c_crlf CONSTANT VARCHAR2(2) := chr(13) || chr(10);
 
   ------------------------------------------------------------------------------
   -- globale Exceptions
@@ -303,6 +613,37 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
     RETURN g_http_response_code;
   END get_last_http_resp_code;
 
+  /**
+  * Ermittelt den Content-Type der Response und prüft auf eine MTOM-Nachricht. Als MTOM-Nachricht werden Responses erkannt,
+  * die als Content-Type "multipart/related" und zusätzlich type="applicatiion/xop+xml" haben.
+  *
+  * @param   p_resp_io          <IN OUT>    HTTP-Response, aus der die Daten gelesen werden
+  * @param   p_content_type_out <OUT>       HTTP-Header "Content-Type" aus der Response
+  * @param   p_is_multipart_out <OUT>       Flag für MTOM-Nachricht
+  *
+  * @return  der SOAP Response im XML Format als CLOB
+  */
+  PROCEDURE get_response_content_type (p_resp_io          IN OUT NOCOPY utl_http.resp
+                                      ,p_content_type_out OUT VARCHAR2
+                                      ,p_is_multipart_out OUT BOOLEAN
+  )
+  IS
+  BEGIN
+    p_is_multipart_out := FALSE;
+
+    utl_http.get_header_by_name (r     => p_resp_io,
+                                 name  => 'Content-Type',
+                                 value => p_content_type_out,
+                                 n     => 1);
+
+    IF p_content_type_out IS NOT NULL
+      AND p_content_type_out LIKE c_content_type_multipart || '%'
+      AND instr (p_content_type_out, 'type="' || c_content_type_xop || '"') > 0
+    THEN
+      p_is_multipart_out := TRUE;
+    END IF;
+  END get_response_content_type;
+
   PROCEDURE setBasicAuthCredential(
     p_url IN VARCHAR2,
     p_http_request IN OUT NOCOPY UTL_HTTP.req
@@ -331,9 +672,17 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
 
     v_response_line   VARCHAR2(32767);
     v_zaehler         INTEGER := 1;
+    v_content_type    VARCHAR2(1000);
+    v_is_mtom         BOOLEAN;
   BEGIN
     -- Variable für Response-Code zurücksetzen
     g_http_response_code := NULL;
+«IF mtomSupport()-»
+
+    -- Flag für MTOM auf FALSE zurücksetzen
+    soa_api_attachment_kontext.set_mtom_flag(FALSE);
+
+«ENDIF-»
 
     IF g_charset IS NULL THEN
       SELECT VALUE INTO g_charset FROM NLS_DATABASE_PARAMETERS WHERE PARAMETER = 'NLS_CHARACTERSET';
@@ -398,23 +747,35 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
       RAISE_APPLICATION_ERROR(-20001, 'Fehler ' || v_http_response.status_code || ' ' || v_http_response.reason_phrase || ' beim Http Request');
     END IF;
 
+    -- Content-Type der Response ermitteln und auf MTOM prüfen
+    get_response_content_type (v_http_response, v_content_type, v_is_mtom);
+
     -- Initialisierung des CLOB.
     DBMS_LOB.createTemporary(v_response, TRUE, dbms_lob.call);
-    -- Das Ergebnis wird in einer Schleife ausgelesen
-    -- Es werden immer 32K grosse Teile der Antwort ausgelesen.
-    -- In der Exception wird, wenn die Antwort ausgelesen wurde, der Response geschlossen
-    BEGIN
-      LOOP
-        UTL_HTTP.read_text(v_http_response, v_response_line);
-        DBMS_LOB.writeappend(v_response, LENGTH(v_response_line), v_response_line);
-      END LOOP;
-    EXCEPTION
-      WHEN UTL_HTTP.end_of_body THEN
-        UTL_HTTP.end_response(v_http_response);
-      WHEN OTHERS THEN
-        UTL_HTTP.end_response(v_http_response);
-        RAISE;
-     END;
+
+    IF v_is_mtom
+    THEN
+«IF mtomSupport()-»
+      decode_mtom_response (v_http_response, v_content_type, v_response);
+      soa_api_attachment_kontext.set_mtom_flag(TRUE);
+«ELSE-»
+      -- MTOM wird nicht benötigt
+      NULL;
+«ENDIF-»
+    ELSE
+      -- Das Ergebnis wird in einer Schleife ausgelesen
+      -- Es werden immer 32K grosse Teile der Antwort ausgelesen.
+      -- In der Exception wird, wenn die Antwort ausgelesen wurde, der Response geschlossen
+      BEGIN
+        LOOP
+          UTL_HTTP.read_text(v_http_response, v_response_line);
+          DBMS_LOB.writeappend(v_response, LENGTH(v_response_line), v_response_line);
+        END LOOP;
+      EXCEPTION
+        WHEN UTL_HTTP.end_of_body THEN
+          UTL_HTTP.end_response(v_http_response);
+      END;
+    END IF;
 
     return v_response;
 
@@ -616,6 +977,454 @@ BEGIN
   -- Wallet mit Zertifikaten für HTTPS setzen
   -- UTL_HTTP.set_wallet('file:/u01/app/oracle/admin/wallet');
   «BasePackage_getPackageInitializer()»
+«IF mtomSupport()-»
+
+  /**
+  * Decodiert die Response im MTOM/XOP-Format und gibt die XML-Nachricht zurück. Falls binäre Attachments
+  * enthalten sind werden diese an das Package SOAP_ATTACHMENT_KONTEXT übergeben.
+  *
+  * @param   p_resp_io         <IN OUT>    HTTP-Response, aus der die Daten gelesen werden
+  * @param   p_content_type_in <IN>        HTTP-Header "Content-Type" aus der Response
+  * @param   p_xml_msg_io      <IN OUT>    Extrahierte XML-Nachricht
+  *
+  * @return  der SOAP Response im XML Format als CLOB
+  */
+  PROCEDURE decode_mtom_response (p_resp_io          IN OUT NOCOPY utl_http.resp
+                                 ,p_content_type_in  IN VARCHAR2
+                                 ,p_xml_msg_io       IN OUT NOCOPY CLOB)
+  IS
+    l_chunk    RAW(32767);
+    l_raw_resp BLOB;
+    l_boundary VARCHAR2(1000);
+    l_boundary_raw RAW(1000);
+    l_pos      INTEGER;
+    l_pos2     INTEGER;
+    l_pos3     INTEGER;
+
+    c_double_crlf CONSTANT RAW(4) := utl_raw.cast_to_raw (c_crlf || c_crlf);
+
+    l_header_part VARCHAR2(4000);
+    l_encoding    VARCHAR2(20);
+    l_csid        PLS_INTEGER;
+    l_lang_ctx    PLS_INTEGER := 0;
+    l_warn        VARCHAR2(4000);
+    l_dest_offset INTEGER := 1;
+    l_src_offset  INTEGER;
+    l_pos_ende    INTEGER;
+    l_content_type VARCHAR2(255);
+    l_att_id       VARCHAR2(1000);
+    l_attachment   BLOB;
+    c_routine CONSTANT oraclename_t := 'decode_mtom_response';
+  BEGIN
+    -- Gesamte Response-Nachricht in einen BLOB einlesen
+    dbms_lob.createtemporary (l_raw_resp, TRUE, dbms_lob.call);
+    BEGIN
+      LOOP
+        utl_http.read_raw (p_resp_io, l_chunk);
+        dbms_lob.writeappend(l_raw_resp, utl_raw.length(l_chunk), l_chunk);
+      END LOOP;
+    EXCEPTION
+      WHEN utl_http.end_of_body
+      THEN
+        NULL;
+    END;
+
+    -- Boundary-String aus Content-Type ermitteln
+    l_boundary := regexp_substr (srcstr => p_content_type_in, pattern => 'boundary="([^"]+)"',subexpression => 1);
+
+    IF l_boundary IS NULL
+    THEN
+      RAISE_APPLICATION_ERROR(-20004, 'Ungültiger Content Type Header - boundary nicht gefunden.');
+    END IF;
+
+    -- Suchmuster für Boundary erzeugen: in der Nachricht wird der Boundary-String mit vorangestelltem "--" verwendet
+    l_boundary_raw := utl_raw.cast_to_raw('--' || l_boundary);
+
+    -- Erste Position des Boundaries ermitteln
+    l_pos := dbms_lob.instr (l_raw_resp, l_boundary_raw);
+
+    IF l_pos = 0
+    THEN
+      RAISE_APPLICATION_ERROR(-20005, 'Fehler beim Parsen der Nachricht [1]: boundary wurde in der Nachricht nicht gefunden.');
+    END IF;
+
+    -- Position des doppelten Zeilenwechsels nach dem ersten Boundary -> markiert Ende des Headers des ersten Teils und somit den Anfang
+    -- der Daten des ersten Teils
+    l_pos2 := dbms_lob.instr(lob_loc => l_raw_resp,
+                             pattern => c_double_crlf,
+                             offset  => l_pos + 1,
+                             nth     => 1);
+
+    IF l_pos2 = 0
+    THEN
+      RAISE_APPLICATION_ERROR(-20006, 'Fehler beim Parsen der Nachricht [2]: Nachrichten-Header muss mit doppeltem CRLF abgeschlossen werden.');
+    END IF;
+
+    -- Header des ersten Teils extrahieren
+    l_header_part := utl_raw.cast_to_varchar2 (dbms_lob.substr (l_raw_resp,l_pos2 - l_pos - 1,l_pos + 1));
+
+    -- Encoding aus Header ermitteln
+    l_encoding := regexp_substr (srcstr => l_header_part,pattern => '^Content-Type: .*charset=([A-Za-z0-9\-]+)',modifier => 'm',subexpression => 1);
+
+    IF l_encoding IS NULL
+    THEN
+      RAISE_APPLICATION_ERROR(-20007, 'Fehler beim Parsen der Nachricht [3]: Angabe zu charset wurde in erstem Nachrichten-Teil nicht geunden');
+    END IF;
+
+    -- bei den nächsten Boundaries wird zusätzlich auf einen vorangestellten Zeilenwechsel geprüft
+    l_boundary_raw := utl_raw.cast_to_raw(chr(10) || '--' || l_boundary);
+
+    -- Nächst folge Boundary ermitteln
+    l_pos3 := dbms_lob.instr (lob_loc => l_raw_resp,
+                              pattern => l_boundary_raw,
+                              offset  => l_pos2 + 4,
+                              nth     => 1);
+    IF l_pos3 = 0
+    THEN
+      RAISE_APPLICATION_ERROR(-20005, 'Fehler beim Parsen der Nachricht [4]: boundary wurde in der Nachricht nicht gefunden.');
+    END IF;
+
+    -- interne Charset-ID zum Encoding des ersten Nachrichten-Teils ermitteln
+    l_csid := nls_charset_id (CASE upper (l_encoding)
+                               WHEN 'UTF-8' THEN 'AL32UTF8'
+                               WHEN 'WINDOWS-1252' THEN 'WE8MSWIN1252'
+                               WHEN 'ISO-8859-15' THEN 'WE8ISO8859P15'
+                               WHEN 'ISO-8859-1' THEN 'WE8ISO8859P1'
+                              END);
+
+    IF l_csid IS NULL
+    THEN
+      RAISE_APPLICATION_ERROR(-20008, 'Fehler beim Parsen der Nachricht [5]: Nicht unterstützter Zeichensatz ' || l_encoding);
+    END IF;
+
+    -- Beginn ist die Position des doppelten Zeilenwechsels + 4 Bytes, die der doppelte Zeilenwechsel einnimmt
+    l_src_offset := l_pos2 + 4;
+    -- XML-Nachricht in CLOB extrahieren
+    dbms_lob.convertToClob (dest_lob     => p_xml_msg_io,
+                            src_blob     => l_raw_resp,
+                            amount       => l_pos3 - l_pos2 - 5,
+                            dest_offset  => l_dest_offset,
+                            src_offset   => l_src_offset,
+                            blob_csid    => l_csid,
+                            lang_context => l_lang_ctx,
+                            warning      => l_warn);
+
+    -- Position der End-Boundary ermitteln
+    l_pos_ende := dbms_lob.instr(lob_loc => l_raw_resp,
+                                 pattern => utl_raw.cast_to_raw(chr(10) || '--' || l_boundary || '--'),
+                                 offset  => l_pos2 + 4,
+                                 nth     => 1);
+
+    IF l_pos_ende = 0
+    THEN
+      RAISE_APPLICATION_ERROR(-20009, 'Fehler beim Parsen der Nachricht [6]: Ende-Kennzeichen wurde in der Nachricht nicht gefunden.');
+    END IF;
+
+    dbms_lob.createtemporary (l_attachment, TRUE, dbms_lob.call);
+
+    soa_api_attachment_kontext.reset_attachments;
+
+    -- Attachments extrahieren
+    <<extract_attachments>>
+    LOOP
+      -- Schleife beenden, wenn die Position des End-Boundaries gefunden wurde
+      EXIT extract_attachments WHEN l_pos3 = l_pos_ende;
+
+      l_pos := l_pos3;
+      -- Doppelter Zeilenwechsel nach dem Boundary
+      l_pos2 := dbms_lob.instr(lob_loc => l_raw_resp,
+                               pattern => c_double_crlf,
+                               offset  => l_pos + 1,
+                               nth     => 1);
+      IF l_pos2 = 0
+      THEN
+        RAISE_APPLICATION_ERROR(-20006, 'Fehler beim Parsen der Nachricht [7]: Nachrichten-Header muss mit doppeltem CRLF abgeschlossen werden.');
+      END IF;
+
+      -- Headeer extrahieren
+      l_header_part := utl_raw.cast_to_varchar2 (dbms_lob.substr (l_raw_resp,l_pos2 - l_pos - 1,l_pos + 1));
+
+      -- Content-Type aus Header extrahieren
+      l_content_type := regexp_substr (srcstr => l_header_part, pattern => '^Content-Type: (\S+)',modifier => 'm',subexpression => 1);
+
+      -- Content-ID aus Header extrahieren
+      l_att_id := regexp_substr (srcstr => l_header_part, pattern => '^Content-ID: <(\S+)>',modifier => 'm',subexpression => 1);
+
+      IF l_att_id IS NULL
+      THEN
+        RAISE_APPLICATION_ERROR(-20010, 'Fehler beim Parsen der Nachricht [8]: Content-ID wurde in Header nicht gefunden.');
+      END IF;
+
+      -- Nächste Boundary ermitteln
+      l_pos3 := dbms_lob.instr (lob_loc => l_raw_resp,
+                                pattern => l_boundary_raw,
+                                offset  => l_pos2,
+                                nth     => 1);
+
+      IF l_pos3 = 0
+      THEN
+        RAISE_APPLICATION_ERROR(-20005, 'Fehler beim Parsen der Nachricht [9]: boundary wurde in der Nachricht nicht gefunden.');
+      END IF;
+
+      l_dest_offset := 1;
+      l_src_offset := l_pos2 + 4;
+
+      -- Attachment in BLOB kopieren
+      dbms_lob.copy(dest_lob    => l_attachment,
+                    src_lob     => l_raw_resp,
+                    amount      => l_pos3 - l_pos2 - 5,
+                    dest_offset => l_dest_offset,
+                    src_offset  => l_src_offset);
+
+      -- Attachment speichern
+      soa_api_attachment_kontext.add_attachment(p_attachment_in    => l_attachment,
+                                                p_mime_type_in     => l_content_type,
+                                                p_filename_in      => NULL,
+                                                p_attachment_id_io => l_att_id);
+    END LOOP;
+
+    dbms_lob.freetemporary (l_raw_resp);
+  END decode_mtom_response;
+
+  /**
+  * Ruft zum angebenen Service den entsprechenden Webservice auf. Der Request wird dabei gemäß XOP-Spezifikation aufbereitet.
+  *
+  * @param   p_service         <IN>    der definierte CEISeR FQN des Senders
+  * @param   p_action          <IN>    die SOAPAction
+  * @param   p_timeout         <IN>    der timeout in ms
+  * @param   p_request         <IN>    die Daten fuer den SOAP Request im XML Format als CLOB
+  * @param   p_attachments     <IN>    die Attachments, die binär übertragen werden sollen
+  *
+  * @return  der SOAP Response im XML Format als CLOB
+  */
+  FUNCTION call_soap_http_mtom (
+    p_url              IN VARCHAR2,
+    p_action           IN VARCHAR2,
+    p_timeout          IN INTEGER,
+    p_request          IN CLOB,
+    p_attachments      IN soap_message_t
+  )
+  RETURN CLOB AS
+    c_routine CONSTANT oraclename_t := 'call_soap_http_mtom';
+
+    l_blob         BLOB;
+    l_dest_offset  INTEGER := 1;
+    l_src_offset   INTEGER := 1;
+    l_lang_context INTEGER := 0;
+    l_warning      INTEGER;
+    l_blob_length  INTEGER;
+
+    v_http_request    UTL_HTTP.req;
+    v_http_response   UTL_HTTP.resp;
+    v_response        CLOB;
+
+    v_response_line   VARCHAR2(32767);
+    v_zaehler         INTEGER := 1;
+
+    -- Konstanten für den Aufbau der XOP-Message
+    --
+    -- Trenner zwischen den Parts
+    c_boundary               CONSTANT VARCHAR2(255) := '----=_Part_941_406332184.1567595604772';
+
+    -- Content-Type für XML
+    c_type_xml               CONSTANT VARCHAR2(8) := 'text/xml';
+
+    -- Header des ersten XOP-Parts
+    -- ------=_Part_941_406332184.1567595604772
+    -- Content-Type: application/xop+xml; type=text/xml; charset=UTF-8
+    c_begin_part CONSTANT VARCHAR2(255) :=
+                 '--' ||
+                 c_boundary ||
+                 c_crlf ||
+                 'Content-Type: ' ||
+                 c_content_type_xop ||
+                 '; type=' || c_type_xml || '; charset=UTF-8'||
+                 c_crlf ||
+                 c_crlf;
+
+     l_begin_part RAW(255);
+     l_begin_binary_part VARCHAR2(255);
+     l_attachment_index PLS_INTEGER;
+
+     v_content_type    VARCHAR2(1000);
+     v_is_mtom         BOOLEAN;
+     v_req_context     utl_http.request_context_key;
+  BEGIN
+    -- Variable für Response-Code zurücksetzen
+    g_http_response_code := NULL;
+
+    -- Flag für MTOM auf FALSE zurücksetzen
+    soa_api_attachment_kontext.set_mtom_flag(FALSE);
+
+    IF g_charset IS NULL THEN
+      SELECT VALUE INTO g_charset FROM NLS_DATABASE_PARAMETERS WHERE PARAMETER = 'NLS_CHARACTERSET';
+      CASE
+        WHEN g_charset = 'WE8ISO8859P1'  THEN g_charset := 'iso-8859-1';
+        WHEN g_charset = 'WE8ISO8859P15' THEN g_charset := 'iso-8859-15';
+        WHEN g_charset = 'WE8MSWIN1252'  THEN g_charset := 'windows-1252';
+        WHEN g_charset IN ('AL32UTF8','UTF8') THEN g_charset := 'utf-8'; --R4.11
+        ELSE RAISE_APPLICATION_ERROR(-20003, 'Database charset not supported: ' || g_charset);
+      END CASE;
+    END IF;
+
+    IF p_url IS NULL OR p_url NOT LIKE 'http%' THEN
+      RAISE_APPLICATION_ERROR(-20002, 'Fehler keine korrekte URL: ' || p_url);
+    END IF;
+
+    dbms_lob.createTemporary(l_blob, TRUE, dbms_lob.call);
+
+    l_begin_part := utl_raw.cast_to_raw (c_begin_part);
+
+    -- Header des ersten XOP-Parts vor dem eigentlichen Request einfügen
+    dbms_lob.writeappend (lob_loc => l_blob
+                         ,amount => utl_raw.length (l_begin_part)
+                         ,buffer => l_begin_part);
+
+    l_dest_offset := dbms_lob.getlength (l_blob) + 1;
+
+    -- SOAP-Request in Blob konvertieren und in den Ziel-Blob schreiben
+    dbms_lob.convertToBlob(dest_lob     => l_blob,
+                           src_clob     => p_request,
+                           amount       => dbms_lob.lobmaxsize,
+                           dest_offset  => l_dest_offset,
+                           src_offset   => l_src_offset,
+                           blob_csid    => nls_charset_id('AL32UTF8'),
+                           lang_context => l_lang_context,
+                           warning      => l_warning);
+
+    -- Attachments verarbeiten
+    IF p_attachments IS NOT NULL
+    THEN
+      l_attachment_index := p_attachments.attachments.first;
+
+      WHILE l_attachment_index IS NOT NULL
+      LOOP
+        -- Heander für Attachment erzeugen
+        l_begin_binary_part := c_crlf ||
+         '--' || c_boundary || c_crlf ||
+         'Content-Type: ' || p_attachments.attachments(l_attachment_index).contentType || c_crlf ||
+         'Content-Transfer-Encoding: binary' || c_crlf ||
+         'Content-ID: ' || '<' || p_attachments.attachments(l_attachment_index).contentId || '>' || c_crlf || c_crlf;
+
+        l_begin_part := utl_raw.cast_to_raw (l_begin_binary_part);
+
+        -- Header in den Blob schreiben
+        dbms_lob.writeappend (lob_loc => l_blob
+                             ,amount => utl_raw.length (l_begin_part)
+                             ,buffer => l_begin_part);
+
+        l_dest_offset := dbms_lob.getlength (l_blob) + 1;
+        l_src_offset := 1;
+
+        -- Attachment in den Blob kopieren
+        dbms_lob.copy (dest_lob => l_blob
+                      ,src_lob => p_attachments.attachments(l_attachment_index).content
+                      ,amount => dbms_lob.lobmaxsize
+                      ,dest_offset => l_dest_offset
+                      ,src_offset => l_src_offset);
+
+        l_attachment_index := p_attachments.attachments.next (l_attachment_index);
+      END LOOP;
+    END IF;
+
+    -- Ende-Kennzeichnung hat 2 Minus-Zeichen am Anfang und 2 am Ende
+    l_begin_binary_part := c_crlf ||
+       '--' || c_boundary || '--' || c_crlf;
+
+    l_begin_part := utl_raw.cast_to_raw (l_begin_binary_part);
+
+    -- Ende-Kennzeichnung schreiben
+    dbms_lob.writeappend (lob_loc => l_blob
+                         ,amount => utl_raw.length (l_begin_part)
+                         ,buffer => l_begin_part);
+
+    l_blob_length := dbms_lob.getlength(l_blob);
+
+    IF p_url LIKE 'https://%'
+    THEN
+      -- Bei Verwendung von HTTPS Request-Context mit dem Wallet-Pfad erzeugen
+      -- und Request mit dem Context erzeugen
+      v_req_context := utl_http.create_request_context(wallet_path          => 'file:' || soa_api_custom.getWalletPath(),
+                                                       wallet_password      => NULL,
+                                                       enable_cookies       => FALSE,
+                                                       max_cookies          => 0,
+                                                       max_cookies_per_site => 0);
+      v_http_request := UTL_HTTP.begin_request(url             => p_url,
+                                               method          => 'POST',
+                                               http_version    => 'HTTP/1.1',
+                                               request_context => v_req_context);
+    ELSE
+      v_http_request := UTL_HTTP.begin_request(p_url, 'POST', 'HTTP/1.1');  
+    END IF;
+
+    IF p_timeout IS NOT NULL THEN
+      UTL_HTTP.set_transfer_timeout(v_http_request, p_timeout / 1000);
+    END IF;
+    UTL_HTTP.set_response_error_check(v_http_request, FALSE);
+
+    -- Header Content-Type wird folgendermassen gesetzt:
+    -- Content-Type: multipart/related; type="application/xop+xml"; boundary="----=_Part_941_406332184.1567595604772"
+    UTL_HTTP.set_header(v_http_request, 'Content-Type', c_content_type_multipart || '; type="' || c_content_type_xop || '"; boundary="' || c_boundary || '"');
+    UTL_HTTP.set_header(v_http_request, 'Content-Length', l_blob_length);
+    -- Response im Charset der Datenbank anfordern
+    UTL_HTTP.set_header(v_http_request, 'Accept-Charset', g_charset); -- R4.10
+    UTL_HTTP.set_header(v_http_request, 'SOAPAction', p_action);
+    -- write_raw kann nur 32 K pro Aufruf schreiben, deshalb mehrmaliger
+    -- Aufruf um auch groessere Datenmengen uebergeben zu koennen.
+    WHILE v_zaehler <= l_blob_length
+    LOOP
+      UTL_HTTP.write_raw(v_http_request, DBMS_LOB.SUBSTR(l_blob, 32767, v_zaehler));
+      v_zaehler := v_zaehler + 32767;
+    END LOOP;
+
+    dbms_lob.freeTemporary(l_blob);
+
+    v_http_response := UTL_HTTP.get_response(v_http_request);
+
+    -- Response-Code in interner Variable speichern
+    g_http_response_code := v_http_response.status_code;
+
+    -- Pruefen auf ReturnCode
+    IF v_http_response.status_code != UTL_HTTP.HTTP_OK AND v_http_response.status_code != 500 THEN
+      UTL_HTTP.read_text(v_http_response, v_response_line);
+      UTL_HTTP.end_response(v_http_response);
+      RAISE_APPLICATION_ERROR(-20001, 'Fehler ' || v_http_response.status_code || ' ' || v_http_response.reason_phrase || ' beim Http Request');
+    END IF;
+
+    -- Content-Type der Response ermitteln und auf MTOM prüfen
+    get_response_content_type (v_http_response, v_content_type, v_is_mtom);
+
+    -- Initialisierung des CLOB.
+    DBMS_LOB.createTemporary(v_response, TRUE, dbms_lob.call);
+
+    IF v_is_mtom
+    THEN
+      decode_mtom_response (v_http_response, v_content_type, v_response);
+      soa_api_attachment_kontext.set_mtom_flag(TRUE);
+    ELSE
+      -- Das Ergebnis wird in einer Schleife ausgelesen
+      -- Es werden immer 32K grosse Teile der Antwort ausgelesen.
+      -- In der Exception wird, wenn die Antwort ausgelesen wurde, der Response geschlossen
+      BEGIN
+        LOOP
+          UTL_HTTP.read_text(v_http_response, v_response_line);
+          DBMS_LOB.writeappend(v_response, LENGTH(v_response_line), v_response_line);
+        END LOOP;
+      EXCEPTION
+        WHEN UTL_HTTP.end_of_body THEN
+          UTL_HTTP.end_response(v_http_response);
+      END;
+    END IF;
+    
+    IF p_url LIKE 'https://%'
+    THEN
+      utl_http.destroy_request_context(v_req_context); 
+    END IF;
+
+    return v_response;
+
+  END call_soap_http_mtom;
+«ENDIF-»
 
 END «BasePackageName()»;
 /

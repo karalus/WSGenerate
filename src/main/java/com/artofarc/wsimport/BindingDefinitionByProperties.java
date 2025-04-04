@@ -54,7 +54,7 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 		try (FileInputStream fis = new FileInputStream(fileName)) {
 			_propertiesExpansion.load(fis);
 		}
-		globalReplaces = extractPropertiesForPrefix(_propertiesExpansion, "replace");
+		globalReplaces = extractPropertiesForPrefix(_propertiesExpansion, "replaceRegExp");
 		replacePackagePrefixes = extractPropertiesForPrefix(_propertiesExpansion, "replacePackagePrefix");
 	}
 
@@ -104,7 +104,7 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 		if (mappedName == name) {
 			Object property = _propertiesExpansion.get(ns);
 			if (property instanceof PropertiesExpansion) {
-				for (Map.Entry<String, String> entry : extractPropertiesForPrefix((PropertiesExpansion) property, "replace")) {
+				for (Map.Entry<String, String> entry : extractPropertiesForPrefix((PropertiesExpansion) property, "replaceRegExp")) {
 					mappedName = mappedName.replaceAll(entry.getKey(), entry.getValue());
 				}
 			}

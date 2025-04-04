@@ -16,6 +16,8 @@ boolean generateServer(Model this, PortType portType) : bindingDefinition.getPor
 boolean rawMessageIn(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "rawMessageIn", "false") == "true";
 boolean rawMessageOut(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "rawMessageOut", "false") == "true";
 boolean oracleAQ(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "oracleAQ", "false") == "true";
+boolean mtomSupport(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "mtomSupport", "false") == "true";
+cached boolean mtomSupport(Model this) : serviceNamespaces.wsdls.getSOAPBindings().portType.exists(pt|mtomSupport(pt));
 cached String getDBSchema() : GLOBALVAR dbSchema;
 String getDBSchema(String suffix) : let p = getDBSchema() : p != null && p.length > 0 ? p + suffix : "";
 boolean isGenerateSmallXML(ServiceNamespace this) : false;
