@@ -964,19 +964,6 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
   BEGIN
      RAISE_APPLICATION_ERROR(-20001, 'Pflichtelement <' || p_element || '> fehlt in der OUT-Struktur.');
   END;
-
-BEGIN
-  -- Sessionweite Initialisierungen für UTL_HTTP
-  
-  -- Detailierte Exceptions aktivieren
-  UTL_HTTP.set_detailed_excp_support(TRUE);
-      
-  -- Persistent Connections aktivieren
-  utl_http.set_persistent_conn_support (enable => TRUE, max_conns => 10);
-
-  -- Wallet mit Zertifikaten für HTTPS setzen
-  -- UTL_HTTP.set_wallet('file:/u01/app/oracle/admin/wallet');
-  «BasePackage_getPackageInitializer()»
 «IF mtomSupport()-»
 
   /**
@@ -1425,6 +1412,19 @@ BEGIN
 
   END call_soap_http_mtom;
 «ENDIF-»
+
+BEGIN
+  -- Sessionweite Initialisierungen für UTL_HTTP
+  
+  -- Detailierte Exceptions aktivieren
+  UTL_HTTP.set_detailed_excp_support(TRUE);
+      
+  -- Persistent Connections aktivieren
+  utl_http.set_persistent_conn_support (enable => TRUE, max_conns => 10);
+
+  -- Wallet mit Zertifikaten für HTTPS setzen
+  -- UTL_HTTP.set_wallet('file:/u01/app/oracle/admin/wallet');
+  «BasePackage_getPackageInitializer()»
 
 END «BasePackageName()»;
 /

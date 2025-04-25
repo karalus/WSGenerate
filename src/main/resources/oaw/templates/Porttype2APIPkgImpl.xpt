@@ -73,7 +73,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»;
 «ENDIF-»
 «ENDFILE»
 «REM»========================================================================«ENDREM»
-«LET definition.getSOAPBindings(portType).reject(e|isJmsTransport(e) || oracleAQ(portType)) AS bindings»
+«LET definition.getSOAPBindings(portType).reject(e|isJmsTransport(e) || oracleAQ(portType).size > 0) AS bindings»
 «IF bindings.size > 0»
 «FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + ".PKB"-»
 CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
@@ -116,7 +116,7 @@ END «WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»;
 «ENDIF»
 «ENDLET»
 «REM»========================================================================«ENDREM»
-«IF oracleAQ(portType)»
+«IF oracleAQ(portType).size > 0»
 «FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ListenerAQ) + ".PKB"-»
 CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
   /**
@@ -265,7 +265,11 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, Art
 
 «FOREACH definition.getSOAPBindings(portType) AS binding-»
 «FOREACH (List[BindingOperation]) binding.bindingOperations AS bindingOperation»
+«IF oracleAQ(portType).contains(bindingOperation.name)-»
+«EXPAND OperationContentC_AQ(portType, binding, bindingOperation)»
+«ELSE-»
 «EXPAND OperationContentC(portType, binding, bindingOperation)»
+«ENDIF-»
 «ENDFOREACH»
 «ENDFOREACH»
 
@@ -299,7 +303,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 «IF rawMessageIn(portType)-»
     , p_raw_in                 IN         CLOB
 «ENDIF-»
-«IF !(isJmsTransport(binding) || oracleAQ(portType))-»
+«IF !(isJmsTransport(binding) || oracleAQ(portType).contains(operation.name))-»
     , p_param_out              OUT NOCOPY «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»
 «FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
     , p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»             OUT NOCOPY «getParameterOracleFQN(qName)»
@@ -328,7 +332,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     ---------------------------------------------------------------------------
 
 «IF bindingDefinition.getPortTypeProperty(portType, "delegate", null) != null-»
-    «bindingDefinition.getPortTypeProperty(portType, "delegate", null)».«operation.name»(p_param_in«IF rawMessageIn(portType)», p_raw_in«ENDIF»«IF !(isJmsTransport(binding) || oracleAQ(portType))», p_param_out«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter», p_error_out«IF iter.counter0 > 0»«iter.counter0»«ENDIF»«ENDFOREACH»«ENDIF»);
+    «bindingDefinition.getPortTypeProperty(portType, "delegate", null)».«operation.name»(p_param_in«IF rawMessageIn(portType)», p_raw_in«ENDIF»«IF !(isJmsTransport(binding) || oracleAQ(portType).contains(operation.name))», p_param_out«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter», p_error_out«IF iter.counter0 > 0»«iter.counter0»«ENDIF»«ENDFOREACH»«ENDIF»);
 «ELSE-»
     RAISE_APPLICATION_ERROR(-20004, 'Not implemented, yet');
 «ENDIF-»
@@ -376,7 +380,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 «ENDFOREACH-»
 
   BEGIN
-
+    «beginSection(portType)»
     param_in := «getOracleFQN(getInputElementQName(binding, operation.name))»_4x(p_param_in);
 
     «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)».«operation.name»(param_in«IF rawMessageIn(portType)», p_param_in«ENDIF», param_out«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter», error_out«IF iter.counter0 > 0»«iter.counter0»«ENDIF»«ENDFOREACH»);
@@ -396,6 +400,10 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
       RAISE_APPLICATION_ERROR(-20005, 'No out-record');
     END IF;
 «ENDIF-»
+    «endSection(portType)»
+  EXCEPTION WHEN OTHERS THEN
+    «endSectionWithError(portType)»
+    RAISE;
 
   END «operation.name»;
 «ENDLET-»
@@ -414,7 +422,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     param_in            «getParameterOracleFQN(getInputElementQName(binding, operation.name))»;
 
   BEGIN
-
+    «beginSection(portType)»
     param_in := «getOracleFQN(getInputElementQName(binding, operation.name))»_4x(p_param_in);
     DBMS_XMLDOM.freeDocument(DBMS_XMLDOM.getOwnerDocument(innode));
 
@@ -425,7 +433,9 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
       NULL;
     END;
 
+    «endSection(portType)»
   EXCEPTION WHEN OTHERS THEN
+    «endSectionWithError(portType)»
     NULL;
   END «operation.name»;
 «ENDLET-»
@@ -439,7 +449,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 «operation.getDocumentation().formatDocumentation("  * ")-»
   *
   * @param   p_param_in             IN  eingehende Message des Service.
-«IF !(isJmsTransport(binding) || oracleAQ(portType))-»
+«IF !(isJmsTransport(binding) || oracleAQ(portType).contains(operation.name))-»
   * @param   p_param_out            OUT ausgehende Message des Service.
 «FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
   * @param   p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»           OUT ausgehende Fault Message des Service.
@@ -455,7 +465,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
   */
   PROCEDURE «operation.name» (
       p_param_in               IN OUT NOCOPY «getParameterOracleFQN(getInputElementQName(binding, operation.name))»
-«IF !(isJmsTransport(binding) || oracleAQ(portType))-»
+«IF !(isJmsTransport(binding) || oracleAQ(portType).contains(operation.name))-»
     , p_param_out              OUT    NOCOPY «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»
 «FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
     , p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»             OUT    NOCOPY «getParameterOracleFQN(qName)»
@@ -492,7 +502,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     v_url                        VARCHAR2(255);
 
   BEGIN
-
+    «beginSection(portType)»
     outdomdoc := DBMS_XMLDOM.newDOMDocument;
     outdocnode := DBMS_XMLDOM.makeNode(outdomdoc);
 
@@ -574,6 +584,87 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
       p_param_out := «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»4x(innode);
     END IF;
     DBMS_XMLDOM.freeDocument(indomdoc);
+    «endSection(portType)»
+  EXCEPTION WHEN OTHERS THEN
+    «endSectionWithError(portType)»
+    RAISE;
+
+  END «operation.name»;
+«ENDLET-»
+«ENDDEFINE»
+
+«DEFINE OperationContentC_AQ(PortType portType, Binding binding, BindingOperation bindingOperation) FOR Model-»
+«LET portType.getOperation(bindingOperation.name, null, null) AS operation-»
+  /**
+  * WSDL Operation: «operation.name»
+  *
+«operation.getDocumentation().formatDocumentation("  * ")-»
+  *
+  * @param   p_param_in             IN  eingehende Message des Service.
+«IF rawMessageIn(portType)-»
+  * @param   p_raw_in               OUT eingehende Message im Rohformat.
+«ENDIF-»
+  *
+  */
+  PROCEDURE «operation.name» (
+      p_param_in               IN OUT NOCOPY «getParameterOracleFQN(getInputElementQName(binding, operation.name))»
+«IF rawMessageIn(portType)-»
+    , p_raw_in                 OUT    NOCOPY CLOB
+«ENDIF-»
+  ) IS
+
+    c_routine           CONSTANT «BasePackageName()».oraclename_T := '«operation.name»';
+
+    param_in				     CLOB;
+
+    outdomdoc          DBMS_XMLDOM.DOMDocument;
+    outdocnode         DBMS_XMLDOM.DOMNode;
+    outnode            DBMS_XMLDOM.DOMNode;
+    outelmt            DBMS_XMLDOM.DOMElement;
+
+    v_payload          SYS.AQ$_JMS_TEXT_MESSAGE;
+    enqueue_options    dbms_aq.enqueue_options_t;
+    message_properties dbms_aq.message_properties_t;
+    msgid              raw(16);
+
+  BEGIN
+    «beginSection(portType)»
+    outdomdoc := DBMS_XMLDOM.newDOMDocument;
+    outdocnode := DBMS_XMLDOM.makeNode(outdomdoc);
+
+    outelmt := DBMS_XMLDOM.createElement(outdomdoc, 'soapenv:Envelope', «getSoapNamespace(binding)»);
+    DBMS_XMLDOM.setAttribute(outelmt, 'xmlns:soapenv', «getSoapNamespace(binding)»);
+    outnode := DBMS_XMLDOM.appendChild(outdocnode, DBMS_XMLDOM.makeNode(outelmt));
+
+    outelmt := DBMS_XMLDOM.createElement(outdomdoc, 'soapenv:Body', «getSoapNamespace(binding)»);
+    outnode := DBMS_XMLDOM.appendChild(outnode, DBMS_XMLDOM.makeNode(outelmt));
+
+    outelmt := DBMS_XMLDOM.createElement(outdomdoc, '«getInputElementQName(binding, operation.name).localPart»', '«getInputElementQName(binding, operation.name).namespaceURI»');
+    DBMS_XMLDOM.setAttribute(outelmt, 'xmlns', '«getInputElementQName(binding, operation.name).namespaceURI»');
+    outnode := DBMS_XMLDOM.appendChild(outnode, DBMS_XMLDOM.makeNode(outelmt));
+    «getParameterOracleFQN(getInputElementQName(binding, operation.name))»2x(p_param_in, outdomdoc, outnode, '«getInputElementQName(binding, operation.name).namespaceURI»');
+
+    DBMS_LOB.createTemporary(param_in, TRUE, dbms_lob.call);
+    DBMS_XMLDOM.writeToClob(outdocnode, param_in);
+    DBMS_XMLDOM.freeDocument(outdomdoc);
+«IF rawMessageIn(portType)-»
+    p_raw_in := param_in;
+«ENDIF-»
+
+    v_payload := SYS.AQ$_JMS_TEXT_MESSAGE.construct;
+    v_payload.set_text(param_in);
+
+    dbms_aq.enqueue(queue_name => '«getDBSchema()».«bindingDefinition.getPortTypeProperty(portType, "QueueName", "")»',
+                    enqueue_options => enqueue_options,
+                    message_properties => message_properties,
+                    payload => v_payload,
+                    msgid => msgid);
+
+    DBMS_LOB.freeTemporary(param_in);
+    «endSection(portType)»
+  EXCEPTION WHEN OTHERS THEN
+    «endSectionWithError(portType)»
+    RAISE;
 
   END «operation.name»;
 «ENDLET-»

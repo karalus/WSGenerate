@@ -15,8 +15,12 @@ boolean generateClient(Model this, PortType portType) : bindingDefinition.getPor
 boolean generateServer(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "generateServer", "true") == "true";
 boolean rawMessageIn(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "rawMessageIn", "false") == "true";
 boolean rawMessageOut(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "rawMessageOut", "false") == "true";
-boolean oracleAQ(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "oracleAQ", "false") == "true";
+Set[String] oracleAQ(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "oracleAQ", "").split(",").toSet();
 boolean mtomSupport(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "mtomSupport", "false") == "true";
+Set[String] usedOperations(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "usedOperations", "").split(",").toSet();
+String beginSection(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "beginSection", "");
+String endSection(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "endSection", "");
+String endSectionWithError(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "endSectionWithError", "");
 cached boolean mtomSupport(Model this) : serviceNamespaces.wsdls.getSOAPBindings().portType.exists(pt|mtomSupport(pt));
 cached String getDBSchema() : GLOBALVAR dbSchema;
 String getDBSchema(String suffix) : let p = getDBSchema() : p != null && p.length > 0 ? p + suffix : "";
@@ -44,9 +48,9 @@ private java::net::URI createURI(String uri) :
 	JAVA com.artofarc.util.UriHelper.createURI(java.lang.String);
 private String getQueryParam(String uri, String key) : createURI(uri).query.split("&").selectFirst(p|p.startsWith(key + "=")).split("=").get(1);
 
-String getAQQueueName(Port this) : getLocation().getQueryParam("QueueName");
-String getAQQueueTable(Port this, boolean multipleConsumers) : getLocation().getQueryParam("QueueTable");
-String getAQDeadLetterQueueName(Port this, boolean multipleConsumers) : "AQ$_" + getAQQueueTable(multipleConsumers) + "_E";
+String getAQQueueName(Model this, Port port) : bindingDefinition.getPortTypeProperty(port.binding.portType, "QueueName", getLocation(port).getQueryParam("QueueName"));
+String getAQQueueTable(Model this, Port port, boolean multipleConsumers) : bindingDefinition.getPortTypeProperty(port.binding.portType, "QueueTable", getLocation(port).getQueryParam("QueueTable"));
+String getAQDeadLetterQueueName(Model this, Port port, boolean multipleConsumers) : "AQ$_" + getAQQueueTable(port, multipleConsumers) + "_E";
 
 cached String XSD2PackageName(ServiceNamespace this) : mappingForNamespace;
 String getNsContextParam(ServiceNamespace this, ServiceNamespace elemNs) : isGenerateSmallXML() ? "p_nsContext" : (elemNs != null ? "'" + elemNs.URI + "'" : "NULL");

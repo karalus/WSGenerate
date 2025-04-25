@@ -65,7 +65,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, Art
 «IF rawMessageIn(portType)-»
     , p_raw_in                 IN         CLOB
 «ENDIF-»
-«IF !(isJmsTransport(binding) || oracleAQ(portType))-»
+«IF !(isJmsTransport(binding) || oracleAQ(portType).contains(operation.name))-»
     , p_param_out              OUT NOCOPY «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»
 «FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
     , p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»             OUT NOCOPY «getParameterOracleFQN(qName)»
@@ -145,7 +145,7 @@ END;
 «ENDFILE»
 «ENDIF»
 «REM»========================================================================«ENDREM»
-«IF isJmsTransport(binding) || oracleAQ(portType)»
+«IF isJmsTransport(binding) || oracleAQ(portType).size > 0»
 «FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ListenerAQ) + ".PKS"-»
 CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
   /**
@@ -271,7 +271,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, Art
 «operation.getDocumentation().formatDocumentation("  * ")-»
   *
   * @param   p_param_in             IN  eingehende Message des Service.
-«IF !(isJmsTransport(binding) || oracleAQ(portType))-»
+«IF !(isJmsTransport(binding) || oracleAQ(portType).contains(operation.name))-»
   * @param   p_param_out            OUT ausgehende Message des Service.
 «FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
   * @param   p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»           OUT ausgehende Fault Message des Service.
@@ -287,7 +287,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, Art
   */
   PROCEDURE «getOracleName(definition.targetNamespace, operation)» (
       p_param_in               IN OUT NOCOPY «getParameterOracleFQN(getInputElementQName(binding, operation.name))»
-«IF !(isJmsTransport(binding) || oracleAQ(portType))-»
+«IF !(isJmsTransport(binding) || oracleAQ(portType).contains(operation.name))-»
     , p_param_out              OUT    NOCOPY «getParameterOracleFQN(getOutputElementQName(binding, operation.name))»
 «FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
     , p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»             OUT    NOCOPY «getParameterOracleFQN(qName)»
