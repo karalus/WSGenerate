@@ -680,7 +680,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
 «IF mtomSupport()-»
 
     -- Flag für MTOM auf FALSE zurücksetzen
-    soa_api_attachment_kontext.set_mtom_flag(FALSE);
+    soap_attachment_kontext.set_mtom_flag(FALSE);
 
 «ENDIF-»
 
@@ -757,7 +757,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
     THEN
 «IF mtomSupport()-»
       decode_mtom_response (v_http_response, v_content_type, v_response);
-      soa_api_attachment_kontext.set_mtom_flag(TRUE);
+      soap_attachment_kontext.set_mtom_flag(TRUE);
 «ELSE-»
       -- MTOM wird nicht benötigt
       NULL;
@@ -967,6 +967,78 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
 «IF mtomSupport()-»
 
   /**
+  * Fügt den Binär-Inhalt als Referenz ein. Dazu wird ein neues Element xop:Include mit dem Namespace
+  * xmlns:xop="http://www.w3.org/2004/08/xop/include" erzeugt. In dessen href-Attribut wird die ID des Attachments gespeichert. Der BLOB selbst
+  * wird unter dieser ID durch das Package SOAP_ATTACHMENT_KONTEXT in einer globalen Variablen
+  * vorgehalten.
+  *
+  * @param   p_domdoc           IN  Dom-Document
+  * @param   p_node             IN  Dom-Node, unter der die Referenz gespeichert werden soll
+  * @param   p_blob             IN  Binär-Daten als BLOB
+  * @param   p_filename         IN  Dateiname zum Attachment (optional)
+  *
+  */
+  PROCEDURE appendBinaryContentAsRef (p_domdoc       IN DBMS_XMLDOM.DOMDocument
+                                     ,p_node         IN DBMS_XMLDOM.DOMNode
+                                     ,p_blob         IN BLOB
+                                     ,p_content_type IN VARCHAR2
+                                     ,p_filename     IN VARCHAR2 DEFAULT NULL)
+  IS
+    l_id VARCHAR2(255);
+    l_element DBMS_XMLDOM.DOMElement;
+    l_node DBMS_XMLDOM.DOMNode;
+  BEGIN
+    -- Binary Content in SOAP_ATTACHMENT_KONTEXT speichern und ID generieren
+    SOAP_ATTACHMENT_KONTEXT.add_attachment(p_attachment_in => p_blob
+                                             ,p_mime_type_in => p_content_type
+                                             ,p_filename_in => p_filename
+                                             ,p_attachment_id_io => l_id);
+
+    -- Element anlegen, unter der die ID als Attribut gespeichert wird
+    l_element := DBMS_XMLDOM.createElement(p_domdoc, 'xop:Include', c_ns_xop_include);
+    DBMS_XMLDOM.setAttribute(l_element, 'xmlns:xop', c_ns_xop_include);
+    DBMS_XMLDOM.setAttribute(l_element, 'href', 'cid:' || l_id); -- R4.17
+    -- Element zur übergebenen Node hinzufügen
+    l_node := DBMS_XMLDOM.appendChild(p_node, DBMS_XMLDOM.makeNode(l_element));
+
+  END appendBinaryContentAsRef;
+
+
+  /**
+  * Diese Funktion gibt die Binärdaten zurück, deren Referenz in der übergebenen Node gespeichert sind.
+  *
+  * @param   p_node             IN  Dom-Node, unter der die Referenz gespeichert ist
+  *
+  * @return  Binärdaten zur Referenz als BLOB
+  */
+  FUNCTION getBlobFromNodeWithRef (p_node IN DBMS_XMLDOM.DOMNode)
+  RETURN BLOB
+  IS
+    l_id VARCHAR2(255);
+    l_element DBMS_XMLDOM.DOMElement;
+  BEGIN
+    l_element := DBMS_XMLDOM.makeElement (p_node);
+
+    -- Prüfen, ob es sich um das Element "Include" aus dem Namespace http://www.w3.org/2004/08/xop/include
+    -- handelt
+    IF DBMS_XMLDOM.getLocalName(l_element) = 'Include' AND DBMS_XMLDOM.getNamespace(l_element) = c_ns_xop_include
+    THEN
+      -- Falls ja, dann Wert des Attribus "href" ermittelt - dieses enthält die ID, unter der die Binärdaten abgelegt sind
+      -- R4.18: Falls der String "cid:" der ID vorangestellt ist wird dieser weggeschnitten
+      l_id := regexp_replace (DBMS_XMLDOM.getAttribute (l_element, 'href'), '^cid:');
+    END IF;
+
+    IF l_id IS NOT NULL
+    THEN
+      -- Binärdaten zur ID ermitteln und zurückgeben
+      RETURN SOAP_ATTACHMENT_KONTEXT.get_attachment (l_id);
+    ELSE
+      -- Falls keine ID ermittelt werden konnte dann NULL zurückgeben
+      RETURN NULL;
+    END IF;
+  END getBlobFromNodeWithRef;
+
+  /**
   * Decodiert die Response im MTOM/XOP-Format und gibt die XML-Nachricht zurück. Falls binäre Attachments
   * enthalten sind werden diese an das Package SOAP_ATTACHMENT_KONTEXT übergeben.
   *
@@ -1109,7 +1181,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
 
     dbms_lob.createtemporary (l_attachment, TRUE, dbms_lob.call);
 
-    soa_api_attachment_kontext.reset_attachments;
+    soap_attachment_kontext.reset_attachments;
 
     -- Attachments extrahieren
     <<extract_attachments>>
@@ -1164,7 +1236,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
                     src_offset  => l_src_offset);
 
       -- Attachment speichern
-      soa_api_attachment_kontext.add_attachment(p_attachment_in    => l_attachment,
+      soap_attachment_kontext.add_attachment(p_attachment_in    => l_attachment,
                                                 p_mime_type_in     => l_content_type,
                                                 p_filename_in      => NULL,
                                                 p_attachment_id_io => l_att_id);
@@ -1241,7 +1313,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
     g_http_response_code := NULL;
 
     -- Flag für MTOM auf FALSE zurücksetzen
-    soa_api_attachment_kontext.set_mtom_flag(FALSE);
+    soap_attachment_kontext.set_mtom_flag(FALSE);
 
     IF g_charset IS NULL THEN
       SELECT VALUE INTO g_charset FROM NLS_DATABASE_PARAMETERS WHERE PARAMETER = 'NLS_CHARACTERSET';
@@ -1329,17 +1401,9 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
 
     IF p_url LIKE 'https://%'
     THEN
-      -- Bei Verwendung von HTTPS Request-Context mit dem Wallet-Pfad erzeugen
-      -- und Request mit dem Context erzeugen
-      v_req_context := utl_http.create_request_context(wallet_path          => 'file:' || soa_api_custom.getWalletPath(),
-                                                       wallet_password      => NULL,
-                                                       enable_cookies       => FALSE,
-                                                       max_cookies          => 0,
-                                                       max_cookies_per_site => 0);
       v_http_request := UTL_HTTP.begin_request(url             => p_url,
                                                method          => 'POST',
-                                               http_version    => 'HTTP/1.1',
-                                               request_context => v_req_context);
+                                               http_version    => 'HTTP/1.1');
     ELSE
       v_http_request := UTL_HTTP.begin_request(p_url, 'POST', 'HTTP/1.1');  
     END IF;
@@ -1387,7 +1451,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
     IF v_is_mtom
     THEN
       decode_mtom_response (v_http_response, v_content_type, v_response);
-      soa_api_attachment_kontext.set_mtom_flag(TRUE);
+      soap_attachment_kontext.set_mtom_flag(TRUE);
     ELSE
       -- Das Ergebnis wird in einer Schleife ausgelesen
       -- Es werden immer 32K grosse Teile der Antwort ausgelesen.
