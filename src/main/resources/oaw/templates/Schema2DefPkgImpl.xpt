@@ -193,20 +193,13 @@ END «XSD2PackageName()»;
     node                         DBMS_XMLDOM.DOMNode;
     elmt                         DBMS_XMLDOM.DOMElement;
     text                         DBMS_XMLDOM.DOMNode;
-«IF ct.attributeOrAttributeGroup.size > 0-»
+«IF ct.attributeOrAttributeGroup.size > 0 || ct.complexContent.extension.attributeOrAttributeGroup.size > 0-»
     attr                         DBMS_XMLDOM.DOMAttr;
 «ENDIF-»
     localName                    VARCHAR2(255);
     namespace                    VARCHAR2(999);
   BEGIN
 
-«IF ct.attributeOrAttributeGroup.size > 0-»
-	elmt := DBMS_XMLDOM.makeElement(p_node);
-«FOREACH ct.attributeOrAttributeGroup AS a-»
-«EXPAND XML2Oracle(a)-»
-«ENDFOREACH-»
-
-«ENDIF-»
 «EXPAND XML2Oracle_Init(ct, "v_return", name)-»
     children := DBMS_XMLDOM.getChildNodes(p_node);
     len := DBMS_XMLDOM.getLength(children);
@@ -245,13 +238,6 @@ END «XSD2PackageName()»;
 
   BEGIN
 
-«IF ct.attributeOrAttributeGroup.size > 0-»
-	elmt := DBMS_XMLDOM.makeElement(p_parent_node);
-«FOREACH ct.attributeOrAttributeGroup AS a-»
-«EXPAND Oracle2XML(a, "p_rec")-»
-«ENDFOREACH-»
-
-«ENDIF-»
 «EXPAND Oracle2XML(ct, "p_rec", name)»
     RETURN;
   END «XSDType2Oracle(name, ct, "2x")»;
@@ -292,6 +278,13 @@ END «XSD2PackageName()»;
 
 «REM»«ENDREM»
 «DEFINE XML2Oracle_Init(ComplexType ct, String parentParam, String name) FOR ServiceNamespace -»
+«IF ct.attributeOrAttributeGroup.size > 0-»
+	elmt := DBMS_XMLDOM.makeElement(p_node);
+«FOREACH ct.attributeOrAttributeGroup AS a-»
+«EXPAND XML2Oracle(a)-»
+«ENDFOREACH-»
+
+«ENDIF-»
 «IF ct.complexContent != null-»
 «IF ct.complexContent.extension != null-»
 «LET findUsedServiceNamespace(ct.complexContent.extension.base.namespaceURI) AS ns-»
@@ -317,6 +310,13 @@ END «XSD2PackageName()»;
 «ENDDEFINE»
 
 «DEFINE XML2Oracle_Init(ExtensionType et, String parentParam, String name) FOR ServiceNamespace-»
+«IF et.attributeOrAttributeGroup.size > 0-»
+	elmt := DBMS_XMLDOM.makeElement(p_node);
+«FOREACH et.attributeOrAttributeGroup AS a-»
+«EXPAND XML2Oracle(a)-»
+«ENDFOREACH-»
+
+«ENDIF-»
 «IF et.group != null-»
 «EXPAND XML2Oracle_Init(et.group, parentParam, name, null, null, "group")-»
 «ELSEIF et.all != null-»
@@ -523,6 +523,13 @@ END «XSD2PackageName()»;
 
 «REM»Logik um PL/SQL RECORD TYPEs nach XML zu transformieren«ENDREM»
 «DEFINE Oracle2XML(ComplexType ct, String parentParam, String name) FOR ServiceNamespace-»
+«IF ct.attributeOrAttributeGroup.size > 0-»
+	elmt := DBMS_XMLDOM.makeElement(p_parent_node);
+«FOREACH ct.attributeOrAttributeGroup AS a-»
+«EXPAND Oracle2XML(a, parentParam)-»
+«ENDFOREACH-»
+
+«ENDIF-»
 «IF ct.complexContent != null-»
 «IF ct.complexContent.extension != null-»
 «LET findUsedServiceNamespace(ct.complexContent.extension.base.namespaceURI) AS ns-»
@@ -548,6 +555,13 @@ END «XSD2PackageName()»;
 «ENDDEFINE»
 
 «DEFINE Oracle2XML(ExtensionType et, String parentParam, String name) FOR ServiceNamespace-»
+«IF et.attributeOrAttributeGroup.size > 0-»
+	elmt := DBMS_XMLDOM.makeElement(p_parent_node);
+«FOREACH et.attributeOrAttributeGroup AS a-»
+«EXPAND Oracle2XML(a, parentParam)-»
+«ENDFOREACH-»
+
+«ENDIF-»
 «IF et.group != null-»
 «EXPAND Oracle2XML(et.group, parentParam, name, null, null, "group")-»
 «ELSEIF et.all != null-»
@@ -638,9 +652,6 @@ END «XSD2PackageName()»;
 «ELSE-»
 «IF e.nillable && isArray(e, parentGroup)-»
       IF «getPackagePrefix(ns)»isNotNull(«elementAccess»(i)) THEN
-       DBMS_XMLDOM.setAttribute(elmt, 'xsi:nil', 'true');
-       DBMS_XMLDOM.setAttribute(elmt, 'xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
-      ELSE
 «ENDIF-»
 «LET getNonLocalComplexType(e) AS ct-»
 «IF e.complexType != null-»
@@ -661,6 +672,11 @@ END «XSD2PackageName()»;
 -- No Type found for «e.name»
 «ENDIF-»
 «ENDLET-»
+«IF e.nillable && isArray(e, parentGroup)-»
+      ELSE
+       DBMS_XMLDOM.setAttribute(elmt, 'xsi:nil', 'true');
+       DBMS_XMLDOM.setAttribute(elmt, 'xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
+«ENDIF-»
 «ENDIF-»
 «IF e.nillable && isArray(e, parentGroup)-»
       END IF;
