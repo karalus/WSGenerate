@@ -48,6 +48,9 @@ spool off
 «DEFINE EntryProvider(PortType portType, String prefix, String suffix) FOR Model-»
 «prefix»«WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»«suffix»"
 «prefix»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»«suffix»"
+«IF oracleAQ(portType).size > 0-»
+«prefix»«WSDL2PackageName(portType, ArtifactKind::ListenerAQ)»«suffix»"
+«ENDIF-»
 «ENDDEFINE»
 
 «DEFINE Entry(String prefix, boolean body) FOR ServiceNamespace-»

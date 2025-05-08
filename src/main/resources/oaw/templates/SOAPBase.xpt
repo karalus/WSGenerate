@@ -75,8 +75,8 @@ GRANT EXECUTE ON «getDBSchema(".")»SOAP_MESSAGE_T TO «dbInternalUser»
 «ENDFOREACH-»
 «ENDFILE»
 
-«FILE "plsql/" + getDBSchema("/") + "SOAP_ATTACHMENT_KONTEXT.PKS"-»
-CREATE OR REPLACE PACKAGE «getDBSchema(".")»SOAP_ATTACHMENT_KONTEXT
+«FILE "plsql/" + getDBSchema("/") + AttachmentContextPackageName() + ".PKS"-»
+CREATE OR REPLACE PACKAGE «getDBSchema(".")»«AttachmentContextPackageName()»
 /**
 * <pre>
 *
@@ -153,12 +153,12 @@ IS
   */
   FUNCTION get_mtom_flag RETURN BOOLEAN;
   
-END SOAP_ATTACHMENT_KONTEXT;
+END «AttachmentContextPackageName()»;
 /
 «ENDFILE»
 
-«FILE "plsql/" + getDBSchema("/") + "SOAP_ATTACHMENT_KONTEXT.PKB"-»
-CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»SOAP_ATTACHMENT_KONTEXT
+«FILE "plsql/" + getDBSchema("/") + AttachmentContextPackageName() + ".PKB"-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«AttachmentContextPackageName()»
 /**
 * <pre>
 *
@@ -248,7 +248,7 @@ IS
   END get_mtom_flag;
 
 
-END SOAP_ATTACHMENT_KONTEXT;
+END «AttachmentContextPackageName()»;
 /
 «ENDFILE»
 
@@ -445,7 +445,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«BasePackageName()» IS
   /**
   * Fügt den Binär-Inhalt als Referenz ein. Dazu wird ein neues Element xop:Include mit dem Namespace
   * xmlns:xop="http://www.w3.org/2004/08/xop/include" erzeugt. In dessen href-Attribut wird die ID des Attachments gespeichert. Der BLOB selbst
-  * wird unter dieser ID durch das Package SOAP_ATTACHMENT_KONTEXT in einer globalen Variablen
+  * wird unter dieser ID durch das Package «AttachmentContextPackageName()» in einer globalen Variablen
   * vorgehalten.
   *
   * @param   p_domdoc           IN  Dom-Document
@@ -652,6 +652,216 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
     «BasePackage_setBasicAuthCredential()»
   END;
 
+«IF mtomSupport()-»
+  /**
+  * Decodiert die Response im MTOM/XOP-Format und gibt die XML-Nachricht zurück. Falls binäre Attachments
+  * enthalten sind werden diese an das Package «AttachmentContextPackageName()» übergeben.
+  *
+  * @param   p_resp_io         <IN OUT>    HTTP-Response, aus der die Daten gelesen werden
+  * @param   p_content_type_in <IN>        HTTP-Header "Content-Type" aus der Response
+  * @param   p_xml_msg_io      <IN OUT>    Extrahierte XML-Nachricht
+  *
+  * @return  der SOAP Response im XML Format als CLOB
+  */
+  PROCEDURE decode_mtom_response (p_resp_io          IN OUT NOCOPY utl_http.resp
+                                 ,p_content_type_in  IN VARCHAR2
+                                 ,p_xml_msg_io       IN OUT NOCOPY CLOB)
+  IS
+    l_chunk    RAW(32767);
+    l_raw_resp BLOB;
+    l_boundary VARCHAR2(1000);
+    l_boundary_raw RAW(1000);
+    l_pos      INTEGER;
+    l_pos2     INTEGER;
+    l_pos3     INTEGER;
+
+    c_double_crlf CONSTANT RAW(4) := utl_raw.cast_to_raw (c_crlf || c_crlf);
+
+    l_header_part VARCHAR2(4000);
+    l_encoding    VARCHAR2(20);
+    l_csid        PLS_INTEGER;
+    l_lang_ctx    PLS_INTEGER := 0;
+    l_warn        VARCHAR2(4000);
+    l_dest_offset INTEGER := 1;
+    l_src_offset  INTEGER;
+    l_pos_ende    INTEGER;
+    l_content_type VARCHAR2(255);
+    l_att_id       VARCHAR2(1000);
+    l_attachment   BLOB;
+    c_routine CONSTANT oraclename_t := 'decode_mtom_response';
+  BEGIN
+    -- Gesamte Response-Nachricht in einen BLOB einlesen
+    dbms_lob.createtemporary (l_raw_resp, TRUE, dbms_lob.call);
+    BEGIN
+      LOOP
+        utl_http.read_raw (p_resp_io, l_chunk);
+        dbms_lob.writeappend(l_raw_resp, utl_raw.length(l_chunk), l_chunk);
+      END LOOP;
+    EXCEPTION
+      WHEN utl_http.end_of_body
+      THEN
+        NULL;
+    END;
+
+    -- Boundary-String aus Content-Type ermitteln
+    l_boundary := regexp_substr (srcstr => p_content_type_in, pattern => 'boundary="([^"]+)"',subexpression => 1);
+
+    IF l_boundary IS NULL
+    THEN
+      RAISE_APPLICATION_ERROR(-20004, 'Ungültiger Content Type Header - boundary nicht gefunden.');
+    END IF;
+
+    -- Suchmuster für Boundary erzeugen: in der Nachricht wird der Boundary-String mit vorangestelltem "--" verwendet
+    l_boundary_raw := utl_raw.cast_to_raw('--' || l_boundary);
+
+    -- Erste Position des Boundaries ermitteln
+    l_pos := dbms_lob.instr (l_raw_resp, l_boundary_raw);
+
+    IF l_pos = 0
+    THEN
+      RAISE_APPLICATION_ERROR(-20005, 'Fehler beim Parsen der Nachricht [1]: boundary wurde in der Nachricht nicht gefunden.');
+    END IF;
+
+    -- Position des doppelten Zeilenwechsels nach dem ersten Boundary -> markiert Ende des Headers des ersten Teils und somit den Anfang
+    -- der Daten des ersten Teils
+    l_pos2 := dbms_lob.instr(lob_loc => l_raw_resp,
+                             pattern => c_double_crlf,
+                             offset  => l_pos + 1,
+                             nth     => 1);
+
+    IF l_pos2 = 0
+    THEN
+      RAISE_APPLICATION_ERROR(-20006, 'Fehler beim Parsen der Nachricht [2]: Nachrichten-Header muss mit doppeltem CRLF abgeschlossen werden.');
+    END IF;
+
+    -- Header des ersten Teils extrahieren
+    l_header_part := utl_raw.cast_to_varchar2 (dbms_lob.substr (l_raw_resp,l_pos2 - l_pos - 1,l_pos + 1));
+
+    -- Encoding aus Header ermitteln
+    l_encoding := regexp_substr (srcstr => l_header_part,pattern => '^Content-Type: .*charset=([A-Za-z0-9\-]+)',modifier => 'm',subexpression => 1);
+
+    IF l_encoding IS NULL
+    THEN
+      RAISE_APPLICATION_ERROR(-20007, 'Fehler beim Parsen der Nachricht [3]: Angabe zu charset wurde in erstem Nachrichten-Teil nicht geunden');
+    END IF;
+
+    -- bei den nächsten Boundaries wird zusätzlich auf einen vorangestellten Zeilenwechsel geprüft
+    l_boundary_raw := utl_raw.cast_to_raw(chr(10) || '--' || l_boundary);
+
+    -- Nächst folge Boundary ermitteln
+    l_pos3 := dbms_lob.instr (lob_loc => l_raw_resp,
+                              pattern => l_boundary_raw,
+                              offset  => l_pos2 + 4,
+                              nth     => 1);
+    IF l_pos3 = 0
+    THEN
+      RAISE_APPLICATION_ERROR(-20005, 'Fehler beim Parsen der Nachricht [4]: boundary wurde in der Nachricht nicht gefunden.');
+    END IF;
+
+    -- interne Charset-ID zum Encoding des ersten Nachrichten-Teils ermitteln
+    l_csid := nls_charset_id (CASE upper (l_encoding)
+                               WHEN 'UTF-8' THEN 'AL32UTF8'
+                               WHEN 'WINDOWS-1252' THEN 'WE8MSWIN1252'
+                               WHEN 'ISO-8859-15' THEN 'WE8ISO8859P15'
+                               WHEN 'ISO-8859-1' THEN 'WE8ISO8859P1'
+                              END);
+
+    IF l_csid IS NULL
+    THEN
+      RAISE_APPLICATION_ERROR(-20008, 'Fehler beim Parsen der Nachricht [5]: Nicht unterstützter Zeichensatz ' || l_encoding);
+    END IF;
+
+    -- Beginn ist die Position des doppelten Zeilenwechsels + 4 Bytes, die der doppelte Zeilenwechsel einnimmt
+    l_src_offset := l_pos2 + 4;
+    -- XML-Nachricht in CLOB extrahieren
+    dbms_lob.convertToClob (dest_lob     => p_xml_msg_io,
+                            src_blob     => l_raw_resp,
+                            amount       => l_pos3 - l_pos2 - 5,
+                            dest_offset  => l_dest_offset,
+                            src_offset   => l_src_offset,
+                            blob_csid    => l_csid,
+                            lang_context => l_lang_ctx,
+                            warning      => l_warn);
+
+    -- Position der End-Boundary ermitteln
+    l_pos_ende := dbms_lob.instr(lob_loc => l_raw_resp,
+                                 pattern => utl_raw.cast_to_raw(chr(10) || '--' || l_boundary || '--'),
+                                 offset  => l_pos2 + 4,
+                                 nth     => 1);
+
+    IF l_pos_ende = 0
+    THEN
+      RAISE_APPLICATION_ERROR(-20009, 'Fehler beim Parsen der Nachricht [6]: Ende-Kennzeichen wurde in der Nachricht nicht gefunden.');
+    END IF;
+
+    dbms_lob.createtemporary (l_attachment, TRUE, dbms_lob.call);
+
+    «AttachmentContextPackageName()».reset_attachments;
+
+    -- Attachments extrahieren
+    <<extract_attachments>>
+    LOOP
+      -- Schleife beenden, wenn die Position des End-Boundaries gefunden wurde
+      EXIT extract_attachments WHEN l_pos3 = l_pos_ende;
+
+      l_pos := l_pos3;
+      -- Doppelter Zeilenwechsel nach dem Boundary
+      l_pos2 := dbms_lob.instr(lob_loc => l_raw_resp,
+                               pattern => c_double_crlf,
+                               offset  => l_pos + 1,
+                               nth     => 1);
+      IF l_pos2 = 0
+      THEN
+        RAISE_APPLICATION_ERROR(-20006, 'Fehler beim Parsen der Nachricht [7]: Nachrichten-Header muss mit doppeltem CRLF abgeschlossen werden.');
+      END IF;
+
+      -- Headeer extrahieren
+      l_header_part := utl_raw.cast_to_varchar2 (dbms_lob.substr (l_raw_resp,l_pos2 - l_pos - 1,l_pos + 1));
+
+      -- Content-Type aus Header extrahieren
+      l_content_type := regexp_substr (srcstr => l_header_part, pattern => '^Content-Type: (\S+)',modifier => 'm',subexpression => 1);
+
+      -- Content-ID aus Header extrahieren
+      l_att_id := regexp_substr (srcstr => l_header_part, pattern => '^Content-ID: <(\S+)>',modifier => 'm',subexpression => 1);
+
+      IF l_att_id IS NULL
+      THEN
+        RAISE_APPLICATION_ERROR(-20010, 'Fehler beim Parsen der Nachricht [8]: Content-ID wurde in Header nicht gefunden.');
+      END IF;
+
+      -- Nächste Boundary ermitteln
+      l_pos3 := dbms_lob.instr (lob_loc => l_raw_resp,
+                                pattern => l_boundary_raw,
+                                offset  => l_pos2,
+                                nth     => 1);
+
+      IF l_pos3 = 0
+      THEN
+        RAISE_APPLICATION_ERROR(-20005, 'Fehler beim Parsen der Nachricht [9]: boundary wurde in der Nachricht nicht gefunden.');
+      END IF;
+
+      l_dest_offset := 1;
+      l_src_offset := l_pos2 + 4;
+
+      -- Attachment in BLOB kopieren
+      dbms_lob.copy(dest_lob    => l_attachment,
+                    src_lob     => l_raw_resp,
+                    amount      => l_pos3 - l_pos2 - 5,
+                    dest_offset => l_dest_offset,
+                    src_offset  => l_src_offset);
+
+      -- Attachment speichern
+      «AttachmentContextPackageName()».add_attachment(p_attachment_in    => l_attachment,
+                                                p_mime_type_in     => l_content_type,
+                                                p_filename_in      => NULL,
+                                                p_attachment_id_io => l_att_id);
+    END LOOP;
+
+    dbms_lob.freetemporary (l_raw_resp);
+  END decode_mtom_response;
+
+«ENDIF-»
+
   FUNCTION call_soap_http(
     p_url         IN VARCHAR2,
     p_action      IN VARCHAR2,
@@ -680,7 +890,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
 «IF mtomSupport()-»
 
     -- Flag für MTOM auf FALSE zurücksetzen
-    soap_attachment_kontext.set_mtom_flag(FALSE);
+    «AttachmentContextPackageName()».set_mtom_flag(FALSE);
 
 «ENDIF-»
 
@@ -757,7 +967,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
     THEN
 «IF mtomSupport()-»
       decode_mtom_response (v_http_response, v_content_type, v_response);
-      soap_attachment_kontext.set_mtom_flag(TRUE);
+      «AttachmentContextPackageName()».set_mtom_flag(TRUE);
 «ELSE-»
       -- MTOM wird nicht benötigt
       NULL;
@@ -969,7 +1179,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
   /**
   * Fügt den Binär-Inhalt als Referenz ein. Dazu wird ein neues Element xop:Include mit dem Namespace
   * xmlns:xop="http://www.w3.org/2004/08/xop/include" erzeugt. In dessen href-Attribut wird die ID des Attachments gespeichert. Der BLOB selbst
-  * wird unter dieser ID durch das Package SOAP_ATTACHMENT_KONTEXT in einer globalen Variablen
+  * wird unter dieser ID durch das Package «AttachmentContextPackageName()» in einer globalen Variablen
   * vorgehalten.
   *
   * @param   p_domdoc           IN  Dom-Document
@@ -988,8 +1198,8 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
     l_element DBMS_XMLDOM.DOMElement;
     l_node DBMS_XMLDOM.DOMNode;
   BEGIN
-    -- Binary Content in SOAP_ATTACHMENT_KONTEXT speichern und ID generieren
-    SOAP_ATTACHMENT_KONTEXT.add_attachment(p_attachment_in => p_blob
+    -- Binary Content in «AttachmentContextPackageName()» speichern und ID generieren
+    «AttachmentContextPackageName()».add_attachment(p_attachment_in => p_blob
                                              ,p_mime_type_in => p_content_type
                                              ,p_filename_in => p_filename
                                              ,p_attachment_id_io => l_id);
@@ -1031,219 +1241,12 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
     IF l_id IS NOT NULL
     THEN
       -- Binärdaten zur ID ermitteln und zurückgeben
-      RETURN SOAP_ATTACHMENT_KONTEXT.get_attachment (l_id);
+      RETURN «AttachmentContextPackageName()».get_attachment (l_id);
     ELSE
       -- Falls keine ID ermittelt werden konnte dann NULL zurückgeben
       RETURN NULL;
     END IF;
   END getBlobFromNodeWithRef;
-
-  /**
-  * Decodiert die Response im MTOM/XOP-Format und gibt die XML-Nachricht zurück. Falls binäre Attachments
-  * enthalten sind werden diese an das Package SOAP_ATTACHMENT_KONTEXT übergeben.
-  *
-  * @param   p_resp_io         <IN OUT>    HTTP-Response, aus der die Daten gelesen werden
-  * @param   p_content_type_in <IN>        HTTP-Header "Content-Type" aus der Response
-  * @param   p_xml_msg_io      <IN OUT>    Extrahierte XML-Nachricht
-  *
-  * @return  der SOAP Response im XML Format als CLOB
-  */
-  PROCEDURE decode_mtom_response (p_resp_io          IN OUT NOCOPY utl_http.resp
-                                 ,p_content_type_in  IN VARCHAR2
-                                 ,p_xml_msg_io       IN OUT NOCOPY CLOB)
-  IS
-    l_chunk    RAW(32767);
-    l_raw_resp BLOB;
-    l_boundary VARCHAR2(1000);
-    l_boundary_raw RAW(1000);
-    l_pos      INTEGER;
-    l_pos2     INTEGER;
-    l_pos3     INTEGER;
-
-    c_double_crlf CONSTANT RAW(4) := utl_raw.cast_to_raw (c_crlf || c_crlf);
-
-    l_header_part VARCHAR2(4000);
-    l_encoding    VARCHAR2(20);
-    l_csid        PLS_INTEGER;
-    l_lang_ctx    PLS_INTEGER := 0;
-    l_warn        VARCHAR2(4000);
-    l_dest_offset INTEGER := 1;
-    l_src_offset  INTEGER;
-    l_pos_ende    INTEGER;
-    l_content_type VARCHAR2(255);
-    l_att_id       VARCHAR2(1000);
-    l_attachment   BLOB;
-    c_routine CONSTANT oraclename_t := 'decode_mtom_response';
-  BEGIN
-    -- Gesamte Response-Nachricht in einen BLOB einlesen
-    dbms_lob.createtemporary (l_raw_resp, TRUE, dbms_lob.call);
-    BEGIN
-      LOOP
-        utl_http.read_raw (p_resp_io, l_chunk);
-        dbms_lob.writeappend(l_raw_resp, utl_raw.length(l_chunk), l_chunk);
-      END LOOP;
-    EXCEPTION
-      WHEN utl_http.end_of_body
-      THEN
-        NULL;
-    END;
-
-    -- Boundary-String aus Content-Type ermitteln
-    l_boundary := regexp_substr (srcstr => p_content_type_in, pattern => 'boundary="([^"]+)"',subexpression => 1);
-
-    IF l_boundary IS NULL
-    THEN
-      RAISE_APPLICATION_ERROR(-20004, 'Ungültiger Content Type Header - boundary nicht gefunden.');
-    END IF;
-
-    -- Suchmuster für Boundary erzeugen: in der Nachricht wird der Boundary-String mit vorangestelltem "--" verwendet
-    l_boundary_raw := utl_raw.cast_to_raw('--' || l_boundary);
-
-    -- Erste Position des Boundaries ermitteln
-    l_pos := dbms_lob.instr (l_raw_resp, l_boundary_raw);
-
-    IF l_pos = 0
-    THEN
-      RAISE_APPLICATION_ERROR(-20005, 'Fehler beim Parsen der Nachricht [1]: boundary wurde in der Nachricht nicht gefunden.');
-    END IF;
-
-    -- Position des doppelten Zeilenwechsels nach dem ersten Boundary -> markiert Ende des Headers des ersten Teils und somit den Anfang
-    -- der Daten des ersten Teils
-    l_pos2 := dbms_lob.instr(lob_loc => l_raw_resp,
-                             pattern => c_double_crlf,
-                             offset  => l_pos + 1,
-                             nth     => 1);
-
-    IF l_pos2 = 0
-    THEN
-      RAISE_APPLICATION_ERROR(-20006, 'Fehler beim Parsen der Nachricht [2]: Nachrichten-Header muss mit doppeltem CRLF abgeschlossen werden.');
-    END IF;
-
-    -- Header des ersten Teils extrahieren
-    l_header_part := utl_raw.cast_to_varchar2 (dbms_lob.substr (l_raw_resp,l_pos2 - l_pos - 1,l_pos + 1));
-
-    -- Encoding aus Header ermitteln
-    l_encoding := regexp_substr (srcstr => l_header_part,pattern => '^Content-Type: .*charset=([A-Za-z0-9\-]+)',modifier => 'm',subexpression => 1);
-
-    IF l_encoding IS NULL
-    THEN
-      RAISE_APPLICATION_ERROR(-20007, 'Fehler beim Parsen der Nachricht [3]: Angabe zu charset wurde in erstem Nachrichten-Teil nicht geunden');
-    END IF;
-
-    -- bei den nächsten Boundaries wird zusätzlich auf einen vorangestellten Zeilenwechsel geprüft
-    l_boundary_raw := utl_raw.cast_to_raw(chr(10) || '--' || l_boundary);
-
-    -- Nächst folge Boundary ermitteln
-    l_pos3 := dbms_lob.instr (lob_loc => l_raw_resp,
-                              pattern => l_boundary_raw,
-                              offset  => l_pos2 + 4,
-                              nth     => 1);
-    IF l_pos3 = 0
-    THEN
-      RAISE_APPLICATION_ERROR(-20005, 'Fehler beim Parsen der Nachricht [4]: boundary wurde in der Nachricht nicht gefunden.');
-    END IF;
-
-    -- interne Charset-ID zum Encoding des ersten Nachrichten-Teils ermitteln
-    l_csid := nls_charset_id (CASE upper (l_encoding)
-                               WHEN 'UTF-8' THEN 'AL32UTF8'
-                               WHEN 'WINDOWS-1252' THEN 'WE8MSWIN1252'
-                               WHEN 'ISO-8859-15' THEN 'WE8ISO8859P15'
-                               WHEN 'ISO-8859-1' THEN 'WE8ISO8859P1'
-                              END);
-
-    IF l_csid IS NULL
-    THEN
-      RAISE_APPLICATION_ERROR(-20008, 'Fehler beim Parsen der Nachricht [5]: Nicht unterstützter Zeichensatz ' || l_encoding);
-    END IF;
-
-    -- Beginn ist die Position des doppelten Zeilenwechsels + 4 Bytes, die der doppelte Zeilenwechsel einnimmt
-    l_src_offset := l_pos2 + 4;
-    -- XML-Nachricht in CLOB extrahieren
-    dbms_lob.convertToClob (dest_lob     => p_xml_msg_io,
-                            src_blob     => l_raw_resp,
-                            amount       => l_pos3 - l_pos2 - 5,
-                            dest_offset  => l_dest_offset,
-                            src_offset   => l_src_offset,
-                            blob_csid    => l_csid,
-                            lang_context => l_lang_ctx,
-                            warning      => l_warn);
-
-    -- Position der End-Boundary ermitteln
-    l_pos_ende := dbms_lob.instr(lob_loc => l_raw_resp,
-                                 pattern => utl_raw.cast_to_raw(chr(10) || '--' || l_boundary || '--'),
-                                 offset  => l_pos2 + 4,
-                                 nth     => 1);
-
-    IF l_pos_ende = 0
-    THEN
-      RAISE_APPLICATION_ERROR(-20009, 'Fehler beim Parsen der Nachricht [6]: Ende-Kennzeichen wurde in der Nachricht nicht gefunden.');
-    END IF;
-
-    dbms_lob.createtemporary (l_attachment, TRUE, dbms_lob.call);
-
-    soap_attachment_kontext.reset_attachments;
-
-    -- Attachments extrahieren
-    <<extract_attachments>>
-    LOOP
-      -- Schleife beenden, wenn die Position des End-Boundaries gefunden wurde
-      EXIT extract_attachments WHEN l_pos3 = l_pos_ende;
-
-      l_pos := l_pos3;
-      -- Doppelter Zeilenwechsel nach dem Boundary
-      l_pos2 := dbms_lob.instr(lob_loc => l_raw_resp,
-                               pattern => c_double_crlf,
-                               offset  => l_pos + 1,
-                               nth     => 1);
-      IF l_pos2 = 0
-      THEN
-        RAISE_APPLICATION_ERROR(-20006, 'Fehler beim Parsen der Nachricht [7]: Nachrichten-Header muss mit doppeltem CRLF abgeschlossen werden.');
-      END IF;
-
-      -- Headeer extrahieren
-      l_header_part := utl_raw.cast_to_varchar2 (dbms_lob.substr (l_raw_resp,l_pos2 - l_pos - 1,l_pos + 1));
-
-      -- Content-Type aus Header extrahieren
-      l_content_type := regexp_substr (srcstr => l_header_part, pattern => '^Content-Type: (\S+)',modifier => 'm',subexpression => 1);
-
-      -- Content-ID aus Header extrahieren
-      l_att_id := regexp_substr (srcstr => l_header_part, pattern => '^Content-ID: <(\S+)>',modifier => 'm',subexpression => 1);
-
-      IF l_att_id IS NULL
-      THEN
-        RAISE_APPLICATION_ERROR(-20010, 'Fehler beim Parsen der Nachricht [8]: Content-ID wurde in Header nicht gefunden.');
-      END IF;
-
-      -- Nächste Boundary ermitteln
-      l_pos3 := dbms_lob.instr (lob_loc => l_raw_resp,
-                                pattern => l_boundary_raw,
-                                offset  => l_pos2,
-                                nth     => 1);
-
-      IF l_pos3 = 0
-      THEN
-        RAISE_APPLICATION_ERROR(-20005, 'Fehler beim Parsen der Nachricht [9]: boundary wurde in der Nachricht nicht gefunden.');
-      END IF;
-
-      l_dest_offset := 1;
-      l_src_offset := l_pos2 + 4;
-
-      -- Attachment in BLOB kopieren
-      dbms_lob.copy(dest_lob    => l_attachment,
-                    src_lob     => l_raw_resp,
-                    amount      => l_pos3 - l_pos2 - 5,
-                    dest_offset => l_dest_offset,
-                    src_offset  => l_src_offset);
-
-      -- Attachment speichern
-      soap_attachment_kontext.add_attachment(p_attachment_in    => l_attachment,
-                                                p_mime_type_in     => l_content_type,
-                                                p_filename_in      => NULL,
-                                                p_attachment_id_io => l_att_id);
-    END LOOP;
-
-    dbms_lob.freetemporary (l_raw_resp);
-  END decode_mtom_response;
 
   /**
   * Ruft zum angebenen Service den entsprechenden Webservice auf. Der Request wird dabei gemäß XOP-Spezifikation aufbereitet.
@@ -1313,7 +1316,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
     g_http_response_code := NULL;
 
     -- Flag für MTOM auf FALSE zurücksetzen
-    soap_attachment_kontext.set_mtom_flag(FALSE);
+    «AttachmentContextPackageName()».set_mtom_flag(FALSE);
 
     IF g_charset IS NULL THEN
       SELECT VALUE INTO g_charset FROM NLS_DATABASE_PARAMETERS WHERE PARAMETER = 'NLS_CHARACTERSET';
@@ -1451,7 +1454,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
     IF v_is_mtom
     THEN
       decode_mtom_response (v_http_response, v_content_type, v_response);
-      soap_attachment_kontext.set_mtom_flag(TRUE);
+      «AttachmentContextPackageName()».set_mtom_flag(TRUE);
     ELSE
       -- Das Ergebnis wird in einer Schleife ausgelesen
       -- Es werden immer 32K grosse Teile der Antwort ausgelesen.

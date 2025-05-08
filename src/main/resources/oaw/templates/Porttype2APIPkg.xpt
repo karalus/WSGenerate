@@ -119,6 +119,9 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageName(portType, Artifact
       p_param_in               IN         CLOB
     , p_param_out              OUT NOCOPY CLOB
     , p_fault_out              OUT        NUMBER
+«IF mtomSupport(portType).contains(operation.name)-»
+    , p_attachments            IN OUT NOCOPY SOAP_MESSAGE_T
+«ENDIF-»
   );
 «ENDLET-»
 «ENDFOREACH»

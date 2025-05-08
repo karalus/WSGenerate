@@ -15,13 +15,13 @@ boolean generateClient(Model this, PortType portType) : bindingDefinition.getPor
 boolean generateServer(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "generateServer", "true") == "true";
 boolean rawMessageIn(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "rawMessageIn", "false") == "true";
 boolean rawMessageOut(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "rawMessageOut", "false") == "true";
-Set[String] oracleAQ(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "oracleAQ", "").split(",").toSet();
-boolean mtomSupport(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "mtomSupport", "false") == "true";
-Set[String] usedOperations(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "usedOperations", "").split(",").toSet();
+Set[String] oracleAQ(Model this, PortType portType) : let p = bindingDefinition.getPortTypeProperty(portType, "oracleAQ", null) : p != null ? p.split(",").toSet() : {};
+cached Set[String] mtomSupport(Model this, PortType portType) : let p = bindingDefinition.getPortTypeProperty(portType, "mtomSupport", null) : p != null ? p.split(",").toSet() : {};
+Set[String] usedOperations(Model this, PortType portType) : let p = bindingDefinition.getPortTypeProperty(portType, "usedOperations", null) : p != null ? p.split(",").toSet() : {};
 String beginSection(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "beginSection", "");
 String endSection(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "endSection", "");
 String endSectionWithError(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "endSectionWithError", "");
-cached boolean mtomSupport(Model this) : serviceNamespaces.wsdls.getSOAPBindings().portType.exists(pt|mtomSupport(pt));
+cached boolean mtomSupport(Model this) : serviceNamespaces.wsdls.getSOAPBindings().portType.exists(pt|mtomSupport(pt).size > 0);
 cached String getDBSchema() : GLOBALVAR dbSchema;
 String getDBSchema(String suffix) : let p = getDBSchema() : p != null && p.length > 0 ? p + suffix : "";
 boolean isGenerateSmallXML(ServiceNamespace this) : false;
@@ -58,6 +58,7 @@ String getNsContextParam(ServiceNamespace this, ServiceNamespace elemNs) : isGen
 private String checkLen(String s, String uri, String name) : s.length > 128 ? "!!!Too long: " + name + " in " + uri + " mapped to " + s : s;
 
 cached String BasePackageName(Model this) : bindingDefinition.getGlobalProperty("BasePackage", "SOAP_BASE");
+cached String AttachmentContextPackageName(Model this) : bindingDefinition.getGlobalProperty("AttachmentContextPackage", "SOAP_ATTACHMENT_CONTEXT");
 String BasePackage_getUrlForServiceDelegate(Model this) : let s = bindingDefinition.getGlobalProperty("BasePackage_getUrlForServiceDelegate", null) :
 	s.contains("(") ? s : s + "(p_namespace, p_porttype)";
 String BasePackage_setBasicAuthCredential(Model this) : bindingDefinition.getGlobalProperty("BasePackage_setBasicAuthCredential", "NULL;");

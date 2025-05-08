@@ -369,6 +369,9 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
       p_param_in               IN         CLOB
     , p_param_out              OUT NOCOPY CLOB
     , p_fault_out              OUT        NUMBER
+«IF mtomSupport(portType).contains(operation.name)-»
+    , p_attachments            IN OUT NOCOPY SOAP_MESSAGE_T
+«ENDIF-»
   ) IS
 
     c_routine           CONSTANT «BasePackageName()».oraclename_t := '«operation.name»';
@@ -381,7 +384,20 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 
   BEGIN
     «beginSection(portType)»
+«IF mtomSupport(portType).contains(operation.name)-»
+    «AttachmentContextPackageName()».reset_attachments;
+    IF p_attachments IS NOT NULL
+    THEN
+      «AttachmentContextPackageName()».g_attachment_obj := p_attachments;
+    END IF;
+    «AttachmentContextPackageName()».set_mtom_flag(TRUE);
+    
+«ENDIF-»
     param_in := «getOracleFQN(getInputElementQName(binding, operation.name))»_4x(p_param_in);
+«IF mtomSupport(portType).contains(operation.name)-»
+    «AttachmentContextPackageName()».reset_attachments;
+
+«ENDIF-»
 
     «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)».«operation.name»(param_in«IF rawMessageIn(portType)», p_param_in«ENDIF», param_out«FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter», error_out«IF iter.counter0 > 0»«iter.counter0»«ENDIF»«ENDFOREACH»);
 
@@ -390,6 +406,9 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 «ENDIF-»
       p_param_out := «getOracleFQN(getOutputElementQName(binding, operation.name))»_2x(param_out);
       p_fault_out := 0;
+«IF mtomSupport(portType).contains(operation.name)-»
+      p_attachments := «AttachmentContextPackageName()».g_attachment_obj;
+«ENDIF-»
 «FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
     ELSIF «getParameterPackagePrefix(qName)»isNotNull(error_out«IF iter.counter0 > 0»«iter.counter0»«ENDIF») THEN
       p_param_out := «getOracleFQN(qName)»_2x(error_out«IF iter.counter0 > 0»«iter.counter0»«ENDIF»);
@@ -400,8 +419,15 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
       RAISE_APPLICATION_ERROR(-20005, 'No out-record');
     END IF;
 «ENDIF-»
+«IF mtomSupport(portType).contains(operation.name)-»
+    «AttachmentContextPackageName()».set_mtom_flag(FALSE);
+«ENDIF-»
     «endSection(portType)»
   EXCEPTION WHEN OTHERS THEN
+«IF mtomSupport(portType).contains(operation.name)-»
+    -- Im Falle einer Exception das MTOM-Flag wieder zurückstellen, so dass es für den nächsten Aufruf sauber initailisiert ist
+    «AttachmentContextPackageName()».set_mtom_flag(FALSE);
+«ENDIF-»
     «endSectionWithError(portType)»
     RAISE;
 
@@ -526,7 +552,11 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 «ENDIF-»
 
     v_url := «BasePackageName()».getUrlForService(c_PortType_URI, '«binding.portType.QName.localPart»', g_url);
+«IF mtomSupport(portType).contains(operation.name)-»
+    param_out := SOA_API_DEFAULT.call_soap_http_mtom(c_senderFQN, '"«bindingOperation.getSoapActionURI()»"', timeout, param_in, «AttachmentContextPackageName()».g_attachment_obj);
+«ELSE-» 
     param_out := «BasePackageName()».call_soap_http(v_url, '"«bindingOperation.getSoapActionURI()»"', timeout, param_in, «IF binding.isSOAP12()»TRUE«ELSE»FALSE«ENDIF»);
+«ENDIF-»
     DBMS_LOB.freeTemporary(param_in);
 «IF rawMessageOut(portType)-»
     p_raw_out := param_out;
