@@ -193,7 +193,7 @@ END «XSD2PackageName()»;
     node                         DBMS_XMLDOM.DOMNode;
     elmt                         DBMS_XMLDOM.DOMElement;
     text                         DBMS_XMLDOM.DOMNode;
-«IF ct.attributeOrAttributeGroup.size > 0 || ct.complexContent.extension.attributeOrAttributeGroup.size > 0-»
+«IF ct.hasAttributes()-»
     attr                         DBMS_XMLDOM.DOMAttr;
 «ENDIF-»
     localName                    VARCHAR2(255);
@@ -201,6 +201,7 @@ END «XSD2PackageName()»;
   BEGIN
 
 «EXPAND XML2Oracle_Init(ct, "v_return", name)-»
+«IF ct.simpleContent == null-»
     children := DBMS_XMLDOM.getChildNodes(p_node);
     len := DBMS_XMLDOM.getLength(children);
     FOR i IN 0..len-1 LOOP
@@ -219,6 +220,7 @@ END «XSD2PackageName()»;
       END IF;
     END LOOP;
 
+«ENDIF-»
     v_return.INTERN_isPresent := TRUE;
 
     RETURN v_return;
@@ -295,6 +297,16 @@ END «XSD2PackageName()»;
 «EXPAND XML2Oracle_Init(ct.complexContent.extension, parentParam, name)-»
 «ELSEIF ct.complexContent.restriction != null-»
 «EXPAND XML2Oracle_Init(ct.complexContent.restriction, parentParam, name)-»
+«ENDIF-»
+«ELSEIF ct.simpleContent != null-»
+	text := DBMS_XMLDOM.getFirstChild(p_node);
+	v_return.value := «convertXSDBasicType2Oracle(ct.simpleContent.extension.base, null, "DBMS_XMLDOM.getNodeValue(text)", "text")»;
+«IF ct.simpleContent.extension.attributeOrAttributeGroup.size > 0-»
+	elmt := DBMS_XMLDOM.makeElement(p_node);
+«FOREACH ct.simpleContent.extension.attributeOrAttributeGroup AS a-»
+«EXPAND XML2Oracle(a)-»
+«ENDFOREACH-»
+
 «ENDIF-»
 «ELSE-»
 «IF ct.group != null-»
@@ -541,6 +553,16 @@ END «XSD2PackageName()»;
 «ELSEIF ct.complexContent.restriction != null-»
 «EXPAND Oracle2XML(ct.complexContent.restriction, parentParam, name)-»
 «ENDIF-»
+«ELSEIF ct.simpleContent != null-»
+	text := DBMS_XMLDOM.createTextNode(p_domdoc, «convertOracle2XSDBasicType(ct.simpleContent.extension.base, null, parentParam + '.value')»);
+	node := DBMS_XMLDOM.appendChild(p_parent_node, DBMS_XMLDOM.makeNode(text));
+«IF ct.simpleContent.extension.attributeOrAttributeGroup.size > 0-»
+	elmt := DBMS_XMLDOM.makeElement(p_parent_node);
+«FOREACH ct.simpleContent.extension.attributeOrAttributeGroup AS a-»
+«EXPAND Oracle2XML(a, parentParam)-»
+«ENDFOREACH-»
+
+«ENDIF-»
 «ELSE-»
 «IF ct.group != null-»
 «EXPAND Oracle2XML(ct.group, parentParam, name, null, null, "group")-»
@@ -628,10 +650,7 @@ END «XSD2PackageName()»;
       node := DBMS_XMLDOM.appendChild(p_parent_node, DBMS_XMLDOM.makeNode(elmt));
 «IF hasSimpleType(e)-»
 «IF e.nillable && isArray(e, parentGroup)-»
-      IF «elementAccess»(i) IS NULL THEN
-       DBMS_XMLDOM.setAttribute(elmt, 'xsi:nil', 'true');
-       DBMS_XMLDOM.setAttribute(elmt, 'xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
-      ELSE
+      IF «elementAccess»(i) IS NOT NULL THEN
 «ENDIF-»
 «IF isSimpleTypeList(e) && e.simpleType.union == null-»
       text := DBMS_XMLDOM.createTextNode(p_domdoc, «getPackagePrefix(ns)»«XSDType2Oracle(ns, (TopLevelSimpleType) getSimpleType(e), "2l")»(«elementAccess»));
@@ -672,13 +691,11 @@ END «XSD2PackageName()»;
 -- No Type found for «e.name»
 «ENDIF-»
 «ENDLET-»
+«ENDIF-»
 «IF e.nillable && isArray(e, parentGroup)-»
       ELSE
        DBMS_XMLDOM.setAttribute(elmt, 'xsi:nil', 'true');
        DBMS_XMLDOM.setAttribute(elmt, 'xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
-«ENDIF-»
-«ENDIF-»
-«IF e.nillable && isArray(e, parentGroup)-»
       END IF;
 «ENDIF-»
 «IF isArray(e, parentGroup)-»

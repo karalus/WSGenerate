@@ -87,6 +87,8 @@ cached List[NamedAttributeGroup] namedAttributeGroupsWithAnonymousSimpleTypeList
 List[Element] elements(RealGroup group) : group.particle.typeSelect(JAXBElement).getValue().typeSelect(ExplicitGroup).first().elements();
 List[Element] elements(ExplicitGroup group) : group.particle.typeSelect(JAXBElement).getValue().typeSelect(Element);
 
+boolean hasAttributes(ComplexType this) : attributeOrAttributeGroup.size > 0 || complexContent.^extension.attributeOrAttributeGroup.size > 0 || simpleContent.^extension.attributeOrAttributeGroup.size > 0;
+
 // Extensions um Typen und BasisTypen finden
 boolean isBuiltInType(QName this) : namespaceURI == javax::xml::XMLConstants::W3C_XML_SCHEMA_NS_URI;
 
