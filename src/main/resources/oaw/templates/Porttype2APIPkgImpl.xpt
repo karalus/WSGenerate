@@ -298,10 +298,12 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 «IF rawMessageIn(portType)-»
   * @param   p_raw_in               IN  eingehende Message im Rohformat.
 «ENDIF-»
+«IF !(isJmsTransport(binding) || oracleAQ(portType).contains(operation.name))-»
   * @param   p_param_out            OUT ausgehende Message des Service.
 «FOREACH getFaultElementQName(binding, operation.name) AS qName ITERATOR iter-»
   * @param   p_error_out«IF iter.counter0 > 0»«iter.counter0»«ELSE» «ENDIF»           OUT ausgehende Fault Message des Service.
 «ENDFOREACH-»
+«ENDIF-»
   *
   */
   PROCEDURE «operation.name» (
