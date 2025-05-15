@@ -553,7 +553,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 
     v_url := «BasePackageName()».getUrlForService(c_PortType_URI, '«binding.portType.QName.localPart»', g_url);
 «IF mtomSupport(portType).contains(operation.name)-»
-    param_out := SOA_API_DEFAULT.call_soap_http_mtom(c_senderFQN, '"«bindingOperation.getSoapActionURI()»"', timeout, param_in, «AttachmentContextPackageName()».g_attachment_obj);
+    param_out := «BasePackageName()».call_soap_http_mtom(v_url, '"«bindingOperation.getSoapActionURI()»"', timeout, param_in, «AttachmentContextPackageName()».g_attachment_obj);
 «ELSE-» 
     param_out := «BasePackageName()».call_soap_http(v_url, '"«bindingOperation.getSoapActionURI()»"', timeout, param_in, «IF binding.isSOAP12()»TRUE«ELSE»FALSE«ENDIF»);
 «ENDIF-»
