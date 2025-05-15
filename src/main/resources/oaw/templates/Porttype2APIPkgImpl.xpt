@@ -253,7 +253,13 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, Art
   *
   */
 
-  g_url CONSTANT VARCHAR2(255) := '«bindingDefinition.getPortTypeProperty(portType, "addressLocation", definition.getPort(definition.getSOAPBindings(portType).selectFirst(b|b.isSOAP11())).getLocation())»';
+  FUNCTION c_url 
+    RETURN VARCHAR2 
+  DETERMINISTIC 
+  IS 
+  BEGIN 
+    RETURN '«bindingDefinition.getPortTypeProperty(portType, "addressLocation", definition.getPort(definition.getSOAPBindings(portType).selectFirst(b|b.isSOAP11())).getLocation())»';
+  END c_url;
 
   FUNCTION c_PortType_URI 
     RETURN VARCHAR2 
@@ -551,7 +557,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
     p_raw_in := param_in;
 «ENDIF-»
 
-    v_url := «BasePackageName()».getUrlForService(c_PortType_URI, '«binding.portType.QName.localPart»', g_url);
+    v_url := «BasePackageName()».getUrlForService(c_PortType_URI, '«binding.portType.QName.localPart»', c_url);
 «IF mtomSupport(portType).contains(operation.name)-»
     param_out := «BasePackageName()».call_soap_http_mtom(v_url, '"«bindingOperation.getSoapActionURI()»"', timeout, param_in, «AttachmentContextPackageName()».g_attachment_obj);
 «ELSE-» 
