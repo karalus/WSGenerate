@@ -158,6 +158,8 @@ QName getBuiltInType(ServiceNamespace owner, Attribute this) :
 QName getBuiltInType(ServiceNamespace owner, SimpleType this) :
 	let baseType = getBaseType() : baseType.isBuiltInType() ? baseType : getBuiltInType(owner, findReferencedSimpleType(owner, baseType));
 
+QName getBuiltInType(ServiceNamespace owner, QName baseType) : baseType.isBuiltInType() ? baseType : getBuiltInType(owner, findReferencedSimpleType(owner, baseType));
+
 // Extensions zur Interpretation von Restrictions
 List[Object] getFacets(ServiceNamespace this, Element e) : let st = getSimpleType(e) : st != null ? getFacets(st) : null;
 List[Object] getFacets(ServiceNamespace this, Attribute a) : let st = getSimpleType(a) : st != null ? getFacets(st) : null;
@@ -203,7 +205,7 @@ cached boolean isWithoutTimezone(QName this, List[Object] facets) : facets == nu
 		default : true
 	});
 private boolean matchesAll(List[Pattern] patterns, String s) : patterns.forAll(e|newRegExHelper(e.value).matches(s));
-boolean isStringType(QName this) : localPart == "string" || localPart == "normalizedString" || localPart == "token" || localPart == "NMTOKEN";
+boolean isStringType(QName this) : localPart == "string" || localPart == "normalizedString" || localPart == "token" || localPart == "NMTOKEN" || localPart == "Name";
 boolean isInt32Type(QName this) : isInt32TypeSigned() || localPart == "unsignedShort" || localPart == "unsignedByte";
 boolean isInt32TypeSigned(QName this) : localPart == "int" || localPart == "short" || localPart == "byte";
 boolean isIntegerType(QName this) : isIntegerTypeSigned() || localPart == "unsignedInt" || localPart == "unsignedLong" || localPart == "nonNegativeInteger" || localPart == "positiveInteger";

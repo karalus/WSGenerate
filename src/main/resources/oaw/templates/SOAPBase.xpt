@@ -425,7 +425,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«BasePackageName()» IS
   /**
   * Ruft zum angebenen Service den entsprechenden Webservice auf. Der Request wird dabei gemäß XOP-Spezifikation aufbereitet.
   *
-  * @param   p_service         <IN>    der definierte CEISeR FQN des Senders
+  * @param   p_url             <IN>    die Aufruf URL beim Service Gateway
   * @param   p_action          <IN>    die SOAPAction
   * @param   p_timeout         <IN>    der timeout in ms
   * @param   p_request         <IN>    die Daten fuer den SOAP Request im XML Format als CLOB
@@ -1251,7 +1251,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
   /**
   * Ruft zum angebenen Service den entsprechenden Webservice auf. Der Request wird dabei gemäß XOP-Spezifikation aufbereitet.
   *
-  * @param   p_service         <IN>    der definierte CEISeR FQN des Senders
+  * @param   p_url             <IN>    die Aufruf URL beim Service Gateway
   * @param   p_action          <IN>    die SOAPAction
   * @param   p_timeout         <IN>    der timeout in ms
   * @param   p_request         <IN>    die Daten fuer den SOAP Request im XML Format als CLOB
