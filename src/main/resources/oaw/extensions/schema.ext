@@ -158,7 +158,9 @@ QName getBuiltInType(ServiceNamespace owner, Attribute this) :
 QName getBuiltInType(ServiceNamespace owner, SimpleType this) :
 	let baseType = getBaseType() : baseType.isBuiltInType() ? baseType : getBuiltInType(owner, findReferencedSimpleType(owner, baseType));
 
-QName getBuiltInType(ServiceNamespace owner, QName baseType) : baseType.isBuiltInType() ? baseType : getBuiltInType(owner, findReferencedSimpleType(owner, baseType));
+private QName getBuiltInType(ServiceNamespace owner, QName baseType) : baseType.isBuiltInType() ? baseType : 
+	(let ct = findReferencedComplexType(owner, baseType) : ct != null ? getBuiltInType(owner, ct.simpleContent) : getBuiltInType(owner, findReferencedSimpleType(owner, baseType)));
+QName getBuiltInType(ServiceNamespace owner, SimpleContent this) : getBuiltInType(owner, ^extension != null ? ^extension.base : restriction.base);
 
 // Extensions zur Interpretation von Restrictions
 List[Object] getFacets(ServiceNamespace this, Element e) : let st = getSimpleType(e) : st != null ? getFacets(st) : null;

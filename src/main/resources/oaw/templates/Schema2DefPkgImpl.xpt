@@ -300,7 +300,7 @@ END «XSD2PackageName()»;
 «ENDIF-»
 «ELSEIF ct.simpleContent != null-»
 	text := DBMS_XMLDOM.getFirstChild(p_node);
-	v_return.value := «convertXSDBasicType2Oracle(getBuiltInType(ct.simpleContent.extension.base), null, "DBMS_XMLDOM.getNodeValue(text)", "text")»;
+	v_return.value := «convertXSDBasicType2Oracle(getBuiltInType(ct.simpleContent), null, "DBMS_XMLDOM.getNodeValue(text)", "text")»;
 «IF ct.simpleContent.extension.attributeOrAttributeGroup.size > 0-»
 	elmt := DBMS_XMLDOM.makeElement(p_node);
 «FOREACH ct.simpleContent.extension.attributeOrAttributeGroup AS a-»
@@ -554,7 +554,7 @@ END «XSD2PackageName()»;
 «EXPAND Oracle2XML(ct.complexContent.restriction, parentParam, name)-»
 «ENDIF-»
 «ELSEIF ct.simpleContent != null-»
-	text := DBMS_XMLDOM.createTextNode(p_domdoc, «convertOracle2XSDBasicType(getBuiltInType(ct.simpleContent.extension.base), null, parentParam + '.value')»);
+	text := DBMS_XMLDOM.createTextNode(p_domdoc, «convertOracle2XSDBasicType(getBuiltInType(ct.simpleContent), null, parentParam + '.value')»);
 	node := DBMS_XMLDOM.appendChild(p_parent_node, DBMS_XMLDOM.makeNode(text));
 «IF ct.simpleContent.extension.attributeOrAttributeGroup.size > 0-»
 	elmt := DBMS_XMLDOM.makeElement(p_parent_node);
