@@ -221,7 +221,7 @@ String getOracleTypeForRefElement(ServiceNamespace ns, Element this, boolean isA
 				(let ct = findComplexType(ns2, type) : ct != null ? XSD2PackageName(ns2) + '.' + XSDType2Oracle(ns2, ct, isArray || isArray(parentGroup)) :	"UNKNOWN_TYPE"))) : "NO_TYPE");
 
 String getOracleTypeForRefAttribute(ServiceNamespace ns, Attribute this) :
-	simpleType != null ? XSD2PackageName(ns) + '.' + name + "Type" :
+	simpleType != null ? XSD2PackageName(ns) + '.' + name + "_T" :
 		(type != null ? (isBuiltInType(type) ? convertXSDBasicTypeOracle(type) :
 			(let ns2 = ns.findUsedServiceNamespace(type.namespaceURI) : XSD2PackageName(ns2) + '.' + XSDType2Oracle(ns2, type, false))) : "NO_TYPE");
 

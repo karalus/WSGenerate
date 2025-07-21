@@ -340,11 +340,13 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«BasePackageName()» IS
   /**
   * Füllt einen Textknoten mit dem Inhalt eines BLOB, der base64-codiert wird.
   *
-  * @param   p_node             IN  Dom-Node, die mit dem Inhalt des BLOB gefüllt werden soll
-  * @param   p_blob             IN  BLOB, der codiert wird
+  * @param   p_domdoc       IN  DOM-Document, in das der XML-Type eingefügt werden soll
+  * @param   p_parent_node  IN  Knoten, der als Parent für den Inhalt des XMLType dienen soll
+  * @param   p_blob         IN  BLOB, der codiert wird
   */
-  PROCEDURE fillTextNode(
-    p_node  IN DBMS_XMLDOM.DOMNode
+  PROCEDURE fillBase64BinaryNode(
+    p_domdoc                  IN DBMS_XMLDOM.DOMDocument
+  , p_parent_node             IN DBMS_XMLDOM.DOMNode
   , p_blob  IN BLOB);
 
 
@@ -1019,12 +1021,15 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
 
 
   -- https://community.oracle.com/thread/1026102
-  PROCEDURE fillTextNode(
-    p_node  IN DBMS_XMLDOM.DOMNode
+  PROCEDURE fillBase64BinaryNode(
+    p_domdoc                  IN DBMS_XMLDOM.DOMDocument
+  , p_parent_node             IN DBMS_XMLDOM.DOMNode
   , p_blob  IN BLOB) IS
 
     bloblen    CONSTANT INTEGER := dbms_lob.getlength(p_blob);
 
+    node       DBMS_XMLDOM.DOMNode;
+    text       DBMS_XMLDOM.DOMText;
     ostream    sys.utl_CharacterOutputStream;
     chunksize  CONSTANT INTEGER := 57;
     offset     integer := 1;
@@ -1032,7 +1037,9 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
     chunk_b64  varchar2(78);
     dummy      integer;
   BEGIN
-    ostream := DBMS_XMLDOM.setNodeValueAsCharacterStream(p_node);
+    text := DBMS_XMLDOM.createTextNode(p_domdoc, NULL);
+    node := DBMS_XMLDOM.appendChild(p_parent_node, DBMS_XMLDOM.makeNode(text));
+    ostream := DBMS_XMLDOM.setNodeValueAsCharacterStream(node);
 
     while offset < bloblen
     loop
@@ -1045,7 +1052,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
 
     ostream.close();
 
-  END fillTextNode;
+  END fillBase64BinaryNode;
 
 
   FUNCTION getBlobFromNode(p_node IN DBMS_XMLDOM.DOMNode) RETURN BLOB AS

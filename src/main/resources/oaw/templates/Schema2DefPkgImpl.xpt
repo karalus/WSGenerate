@@ -510,11 +510,11 @@ END «XSD2PackageName()»;
 
 «DEFINE XML2Oracle(Attribute a) FOR ServiceNamespace-»
 «IF a.use == "required"-»
-	v_return.«XSD2Oracle(a.name, a)» := «convertXSDBasicType2Oracle(getBuiltInType(a), getFacets(a), "DBMS_XMLDOM.getAttribute(elmt, '" + a.name + "')", null)»;
+	v_return.«XSD2Oracle(a.ref != null ? a.ref.localPart : a.name, a)» := «convertXSDBasicType2Oracle(getBuiltInType(a), getFacets(a), "DBMS_XMLDOM.getAttribute(elmt, '" + (a.ref != null ? a.ref.localPart + "', '"+ a.ref.namespaceURI : a.name) + "')", null)»;
 «ELSE-»
-	attr := DBMS_XMLDOM.getAttributeNode(elmt, '«a.name»');
+	attr := DBMS_XMLDOM.getAttributeNode(elmt, «IF a.ref != null»'«a.ref.localPart»', '«a.ref.namespaceURI»'«ELSE»'«a.name»'«ENDIF»);
 	IF NOT DBMS_XMLDOM.ISNULL(attr) THEN
-      v_return.«XSD2Oracle(a.name, a)» := «convertXSDBasicType2Oracle(getBuiltInType(a), getFacets(a), "DBMS_XMLDOM.getValue(attr)", null)»;
+      v_return.«XSD2Oracle(a.ref != null ? a.ref.localPart : a.name, a)» := «convertXSDBasicType2Oracle(getBuiltInType(a), getFacets(a), "DBMS_XMLDOM.getValue(attr)", null)»;
 	END IF;
 «ENDIF-»
 «ENDDEFINE»
@@ -554,8 +554,14 @@ END «XSD2PackageName()»;
 «EXPAND Oracle2XML(ct.complexContent.restriction, parentParam, name)-»
 «ENDIF-»
 «ELSEIF ct.simpleContent != null-»
-	text := DBMS_XMLDOM.createTextNode(p_domdoc, «convertOracle2XSDBasicType(getBuiltInType(ct.simpleContent), null, parentParam + '.value')»);
+«LET convertOracle2XSDBasicType(getBuiltInType(ct.simpleContent), null, parentParam + '.value') AS expr-»
+«IF isLOB(expr)-»
+	«BasePackageName(model)».fillBase64BinaryNode(p_domdoc, p_parent_node, «parentParam».value);
+«ELSE-»
+	text := DBMS_XMLDOM.createTextNode(p_domdoc, «expr»);
 	node := DBMS_XMLDOM.appendChild(p_parent_node, DBMS_XMLDOM.makeNode(text));
+«ENDIF-»
+«ENDLET-»
 «IF ct.simpleContent.extension.attributeOrAttributeGroup.size > 0-»
 	elmt := DBMS_XMLDOM.makeElement(p_parent_node);
 «FOREACH ct.simpleContent.extension.attributeOrAttributeGroup AS a-»
@@ -660,10 +666,11 @@ END «XSD2PackageName()»;
 «IF isXMLType(expr)-»
       «BasePackageName(model)».appendXMLType(«isArrayElement(e) ? elementAccess + "(i)" : elementAccess», p_domdoc, node);
 «ELSE-»
+«IF isLOB(expr)-»
+      «BasePackageName(model)».fillBase64BinaryNode(p_domdoc, p_parent_node, «isArrayElement(e) ? elementAccess + "(i)" : elementAccess»);
+«ELSE-»
       text := DBMS_XMLDOM.createTextNode(p_domdoc, «expr»);
       node := DBMS_XMLDOM.appendChild(node, DBMS_XMLDOM.makeNode(text));
-«IF isLOB(expr)-»
-      «BasePackageName(model)».fillTextNode(node, «isArrayElement(e) ? elementAccess + "(i)" : elementAccess»);
 «ENDIF-»
 «ENDIF-»
 «ENDLET-»
@@ -724,9 +731,9 @@ END «XSD2PackageName()»;
 «ENDDEFINE»
 
 «DEFINE Oracle2XML(Attribute a, String parentParam) FOR ServiceNamespace-»
-«LET parentParam + '.' + XSD2Oracle(a.name, a) AS attributeAccess-»
+«LET parentParam + '.' + XSD2Oracle(a.ref != null ? a.ref.localPart : a.name, a) AS attributeAccess-»
 	IF «attributeAccess» IS NOT NULL THEN
-      DBMS_XMLDOM.setAttribute(elmt, '«a.name»', «convertOracle2XSDBasicType(getBuiltInType(a), getFacets(a), attributeAccess)»);
+      DBMS_XMLDOM.setAttribute(elmt, '«IF a.ref != null»«a.ref.localPart»«ELSE»«a.name»«ENDIF»', «convertOracle2XSDBasicType(getBuiltInType(a), getFacets(a), attributeAccess)»«IF a.ref != null», '«a.ref.namespaceURI»'«ENDIF»);
 «IF a.use == "required"-»
     ELSE
       SOAP_BASE.fehler_pflichtelement_fehlt('«attributeAccess»');

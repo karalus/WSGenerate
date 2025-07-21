@@ -49,6 +49,10 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«XSD2PackageName()» IS
 -- SimpleType for top-level element with name: «topLevelElementWithAnonymousSimpleType.name»
 «EXPAND XSDSchema(anonymousTypeName(topLevelElementWithAnonymousSimpleType, ""), topLevelElementWithAnonymousSimpleType.simpleType)»
 «ENDFOREACH-»
+«FOREACH topLevelAttributes().select(e|e.simpleType != null) AS topLevelAttributeWithAnonymousSimpleType-»
+-- SimpleType for top-level attributes with name: «topLevelAttributeWithAnonymousSimpleType.name»
+«EXPAND XSDSchema(anonymousTypeName(topLevelAttributeWithAnonymousSimpleType, ""), topLevelAttributeWithAnonymousSimpleType.simpleType)»
+«ENDFOREACH-»
   ------------------------------------------------------------------------------
   -- ComplexTypes -> RECORD TYPE
   ------------------------------------------------------------------------------
