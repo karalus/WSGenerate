@@ -299,8 +299,6 @@ END «XSD2PackageName()»;
 «EXPAND XML2Oracle_Init(ct.complexContent.restriction, parentParam, name)-»
 «ENDIF-»
 «ELSEIF ct.simpleContent != null-»
-	text := DBMS_XMLDOM.getFirstChild(p_node);
-	v_return.value := «convertXSDBasicType2Oracle(getBuiltInType(ct.simpleContent), null, "DBMS_XMLDOM.getNodeValue(text)", "text")»;
 «IF ct.simpleContent.extension.attributeOrAttributeGroup.size > 0-»
 	elmt := DBMS_XMLDOM.makeElement(p_node);
 «FOREACH ct.simpleContent.extension.attributeOrAttributeGroup AS a-»
@@ -308,6 +306,8 @@ END «XSD2PackageName()»;
 «ENDFOREACH-»
 
 «ENDIF-»
+	text := DBMS_XMLDOM.getFirstChild(p_node);
+	v_return.value := «convertXSDBasicType2Oracle(getBuiltInType(ct.simpleContent), null, "DBMS_XMLDOM.getNodeValue(text)", "text")»;
 «ELSE-»
 «IF ct.group != null-»
 «EXPAND XML2Oracle_Init(ct.group, parentParam, name, null, null, "group")-»
@@ -554,6 +554,13 @@ END «XSD2PackageName()»;
 «EXPAND Oracle2XML(ct.complexContent.restriction, parentParam, name)-»
 «ENDIF-»
 «ELSEIF ct.simpleContent != null-»
+«IF ct.simpleContent.extension.attributeOrAttributeGroup.size > 0-»
+	elmt := DBMS_XMLDOM.makeElement(p_parent_node);
+«FOREACH ct.simpleContent.extension.attributeOrAttributeGroup AS a-»
+«EXPAND Oracle2XML(a, parentParam)-»
+«ENDFOREACH-»
+
+«ENDIF-»
 «LET convertOracle2XSDBasicType(getBuiltInType(ct.simpleContent), null, parentParam + '.value') AS expr-»
 «IF isLOB(expr)-»
 	«BasePackageName(model)».fillBase64BinaryNode(p_domdoc, p_parent_node, «parentParam».value);
@@ -562,13 +569,6 @@ END «XSD2PackageName()»;
 	node := DBMS_XMLDOM.appendChild(p_parent_node, DBMS_XMLDOM.makeNode(text));
 «ENDIF-»
 «ENDLET-»
-«IF ct.simpleContent.extension.attributeOrAttributeGroup.size > 0-»
-	elmt := DBMS_XMLDOM.makeElement(p_parent_node);
-«FOREACH ct.simpleContent.extension.attributeOrAttributeGroup AS a-»
-«EXPAND Oracle2XML(a, parentParam)-»
-«ENDFOREACH-»
-
-«ENDIF-»
 «ELSE-»
 «IF ct.group != null-»
 «EXPAND Oracle2XML(ct.group, parentParam, name, null, null, "group")-»
@@ -733,7 +733,12 @@ END «XSD2PackageName()»;
 «DEFINE Oracle2XML(Attribute a, String parentParam) FOR ServiceNamespace-»
 «LET parentParam + '.' + XSD2Oracle(a.ref != null ? a.ref.localPart : a.name, a) AS attributeAccess-»
 	IF «attributeAccess» IS NOT NULL THEN
-      DBMS_XMLDOM.setAttribute(elmt, '«IF a.ref != null»«a.ref.localPart»«ELSE»«a.name»«ENDIF»', «convertOracle2XSDBasicType(getBuiltInType(a), getFacets(a), attributeAccess)»«IF a.ref != null», '«a.ref.namespaceURI»'«ENDIF»);
+      «IF a.ref != null-»
+      DBMS_XMLDOM.setAttribute(elmt, 'ns:«a.ref.localPart»', «convertOracle2XSDBasicType(getBuiltInType(a), getFacets(a), attributeAccess)», '«a.ref.namespaceURI»');
+      DBMS_XMLDOM.setAttribute(elmt, 'xmlns:ns', '«a.ref.namespaceURI»');
+      «ELSE-»
+      DBMS_XMLDOM.setAttribute(elmt, '«a.name»', «convertOracle2XSDBasicType(getBuiltInType(a), getFacets(a), attributeAccess)»);
+      «ENDIF-»
 «IF a.use == "required"-»
     ELSE
       SOAP_BASE.fehler_pflichtelement_fehlt('«attributeAccess»');

@@ -340,6 +340,17 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«BasePackageName()» IS
   /**
   * Füllt einen Textknoten mit dem Inhalt eines BLOB, der base64-codiert wird.
   *
+  * @param   p_node             IN  Dom-Node, die mit dem Inhalt des BLOB gefüllt werden soll
+  * @param   p_blob             IN  BLOB, der codiert wird
+  */
+  PROCEDURE fillTextNode(
+    p_node  IN DBMS_XMLDOM.DOMNode
+  , p_blob  IN BLOB);
+
+
+  /**
+  * Füllt einen Knoten mit dem Inhalt eines BLOB. Entweder als base64 inline oder als XOP-Pointer.
+  *
   * @param   p_domdoc       IN  DOM-Document, in das der XML-Type eingefügt werden soll
   * @param   p_parent_node  IN  Knoten, der als Parent für den Inhalt des XMLType dienen soll
   * @param   p_blob         IN  BLOB, der codiert wird
@@ -617,7 +628,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
 
   /**
   * Ermittelt den Content-Type der Response und prüft auf eine MTOM-Nachricht. Als MTOM-Nachricht werden Responses erkannt,
-  * die als Content-Type "multipart/related" und zusätzlich type="applicatiion/xop+xml" haben.
+  * die als Content-Type "multipart/related" und zusätzlich type="application/xop+xml" haben.
   *
   * @param   p_resp_io          <IN OUT>    HTTP-Response, aus der die Daten gelesen werden
   * @param   p_content_type_out <OUT>       HTTP-Header "Content-Type" aus der Response
@@ -1021,15 +1032,12 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
 
 
   -- https://community.oracle.com/thread/1026102
-  PROCEDURE fillBase64BinaryNode(
-    p_domdoc                  IN DBMS_XMLDOM.DOMDocument
-  , p_parent_node             IN DBMS_XMLDOM.DOMNode
+  PROCEDURE fillTextNode(
+    p_node  IN DBMS_XMLDOM.DOMNode
   , p_blob  IN BLOB) IS
 
     bloblen    CONSTANT INTEGER := dbms_lob.getlength(p_blob);
 
-    node       DBMS_XMLDOM.DOMNode;
-    text       DBMS_XMLDOM.DOMText;
     ostream    sys.utl_CharacterOutputStream;
     chunksize  CONSTANT INTEGER := 57;
     offset     integer := 1;
@@ -1037,9 +1045,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
     chunk_b64  varchar2(78);
     dummy      integer;
   BEGIN
-    text := DBMS_XMLDOM.createTextNode(p_domdoc, NULL);
-    node := DBMS_XMLDOM.appendChild(p_parent_node, DBMS_XMLDOM.makeNode(text));
-    ostream := DBMS_XMLDOM.setNodeValueAsCharacterStream(node);
+    ostream := DBMS_XMLDOM.setNodeValueAsCharacterStream(p_node);
 
     while offset < bloblen
     loop
@@ -1052,6 +1058,38 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
 
     ostream.close();
 
+  END fillTextNode;
+
+
+  PROCEDURE fillBase64BinaryNode(
+    p_domdoc                  IN DBMS_XMLDOM.DOMDocument
+  , p_parent_node             IN DBMS_XMLDOM.DOMNode
+  , p_blob  IN BLOB) IS
+
+    node        DBMS_XMLDOM.DOMNode;
+    text        DBMS_XMLDOM.DOMText;
+    elmt        DBMS_XMLDOM.DOMElement;
+    attr        DBMS_XMLDOM.DOMAttr;
+    contentType VARCHAR2(255) := 'application/octet-stream';
+  BEGIN
+«IF mtomSupport()-»
+    IF «AttachmentContextPackageName()».get_mtom_flag() THEN
+      elmt := DBMS_XMLDOM.makeElement(p_parent_node);
+      attr := DBMS_XMLDOM.getAttributeNode(elmt, 'contentType', 'http://www.w3.org/2005/05/xmlmime');
+      IF NOT DBMS_XMLDOM.isNull(attr) THEN
+        contentType := DBMS_XMLDOM.getValue(attr);
+      END IF;
+      appendBinaryContentAsRef(p_domdoc, p_parent_node, p_blob, contentType);
+    ELSE
+      text := DBMS_XMLDOM.createTextNode(p_domdoc, NULL);
+      node := DBMS_XMLDOM.appendChild(p_parent_node, DBMS_XMLDOM.makeNode(text));
+      fillTextNode(node, p_blob);
+    END IF;
+«ELSE-»
+    text := DBMS_XMLDOM.createTextNode(p_domdoc, NULL);
+    node := DBMS_XMLDOM.appendChild(p_parent_node, DBMS_XMLDOM.makeNode(text));
+    fillTextNode(node, p_blob);
+«ENDIF-»
   END fillBase64BinaryNode;
 
 
@@ -1067,40 +1105,44 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
     v_lastValid                   integer;
     v_buffer                      raw(12288);
   BEGIN
-    v_istream := DBMS_XMLDOM.getNodeValueAsCharacterStream(p_node);
-    DBMS_LOB.createTemporary(v_response, TRUE, dbms_lob.call);
-    IF NOT v_istream.isnull() THEN
-      -- Read stream in chunks
-      LOOP
-         v_chunksize := 16384 - v_offset;
-         v_istream.read(v_chunk, v_offset, v_chunksize);
-         EXIT WHEN v_chunksize <= 0;
-         -- Find last valid end of a 4 char block
-         v_lastValid := 0;
-         FOR v_pos IN 1 + v_offset..length(v_chunk)
-         LOOP
-            v_char := substr(v_chunk, v_pos, 1);
-            IF ASCII(v_char) > 32 AND ASCII(v_char) < 128 THEN
-               v_count := v_count + 1;
-            END IF;
-            IF BITAND(v_count, 3) = 0 THEN
-               v_lastValid := v_pos;
-            END IF;
-         END LOOP;
-         EXIT WHEN v_lastValid = 0;
-         v_offset := length(v_chunk) - v_lastValid;
-         IF v_offset > 0 THEN
-            v_buffer := utl_encode.base64_decode(utl_raw.cast_to_raw(substr(v_chunk, 1, v_lastValid)));
-            -- Take remaining chars into next iteration
-            v_chunk := substr(v_chunk, v_lastValid + 1, v_offset);
-         ELSE
-            v_buffer := utl_encode.base64_decode(utl_raw.cast_to_raw(v_chunk));
-         END IF;
-         DBMS_LOB.writeappend(v_response, utl_raw.length(v_buffer), v_buffer);
-      END LOOP;
+    IF DBMS_XMLDOM.getNodeType(p_node) = DBMS_XMLDOM.ELEMENT_NODE THEN
+      return «IF mtomSupport()»getBlobFromNodeWithRef(p_node)«ELSE»NULL«ENDIF»;
+    ELSE
+      v_istream := DBMS_XMLDOM.getNodeValueAsCharacterStream(p_node);
+      DBMS_LOB.createTemporary(v_response, TRUE, dbms_lob.call);
+      IF NOT v_istream.isnull() THEN
+        -- Read stream in chunks
+        LOOP
+           v_chunksize := 16384 - v_offset;
+           v_istream.read(v_chunk, v_offset, v_chunksize);
+           EXIT WHEN v_chunksize <= 0;
+           -- Find last valid end of a 4 char block
+           v_lastValid := 0;
+           FOR v_pos IN 1 + v_offset..length(v_chunk)
+           LOOP
+              v_char := substr(v_chunk, v_pos, 1);
+              IF ASCII(v_char) > 32 AND ASCII(v_char) < 128 THEN
+                 v_count := v_count + 1;
+              END IF;
+              IF BITAND(v_count, 3) = 0 THEN
+                 v_lastValid := v_pos;
+              END IF;
+           END LOOP;
+           EXIT WHEN v_lastValid = 0;
+           v_offset := length(v_chunk) - v_lastValid;
+           IF v_offset > 0 THEN
+              v_buffer := utl_encode.base64_decode(utl_raw.cast_to_raw(substr(v_chunk, 1, v_lastValid)));
+              -- Take remaining chars into next iteration
+              v_chunk := substr(v_chunk, v_lastValid + 1, v_offset);
+           ELSE
+              v_buffer := utl_encode.base64_decode(utl_raw.cast_to_raw(v_chunk));
+           END IF;
+           DBMS_LOB.writeappend(v_response, utl_raw.length(v_buffer), v_buffer);
+        END LOOP;
+      END IF;
+      v_istream.close();
+      return v_response;
     END IF;
-    v_istream.close();
-    return v_response;
   END getBlobFromNode;
 
   
@@ -1317,7 +1359,6 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
 
      v_content_type    VARCHAR2(1000);
      v_is_mtom         BOOLEAN;
-     v_req_context     utl_http.request_context_key;
   BEGIN
     -- Variable für Response-Code zurücksetzen
     g_http_response_code := NULL;
@@ -1409,14 +1450,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
 
     l_blob_length := dbms_lob.getlength(l_blob);
 
-    IF p_url LIKE 'https://%'
-    THEN
-      v_http_request := UTL_HTTP.begin_request(url             => p_url,
-                                               method          => 'POST',
-                                               http_version    => 'HTTP/1.1');
-    ELSE
-      v_http_request := UTL_HTTP.begin_request(p_url, 'POST', 'HTTP/1.1');  
-    END IF;
+    v_http_request := UTL_HTTP.begin_request(p_url, 'POST', 'HTTP/1.1');  
 
     IF p_timeout IS NOT NULL THEN
       UTL_HTTP.set_transfer_timeout(v_http_request, p_timeout / 1000);
@@ -1430,6 +1464,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
     -- Response im Charset der Datenbank anfordern
     UTL_HTTP.set_header(v_http_request, 'Accept-Charset', g_charset); -- R4.10
     UTL_HTTP.set_header(v_http_request, 'SOAPAction', p_action);
+    setBasicAuthCredential(p_url, v_http_request);
     -- write_raw kann nur 32 K pro Aufruf schreiben, deshalb mehrmaliger
     -- Aufruf um auch groessere Datenmengen uebergeben zu koennen.
     WHILE v_zaehler <= l_blob_length
@@ -1472,15 +1507,11 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
           DBMS_LOB.writeappend(v_response, LENGTH(v_response_line), v_response_line);
         END LOOP;
       EXCEPTION
-        WHEN UTL_HTTP.end_of_body THEN
-          UTL_HTTP.end_response(v_http_response);
+        WHEN UTL_HTTP.end_of_body THEN NULL;
       END;
     END IF;
     
-    IF p_url LIKE 'https://%'
-    THEN
-      utl_http.destroy_request_context(v_req_context); 
-    END IF;
+    UTL_HTTP.end_response(v_http_response);
 
     return v_response;
 
