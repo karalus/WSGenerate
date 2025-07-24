@@ -380,11 +380,9 @@ FUNCTION isNotEmpty(p_table IN «XSDType2Oracle(name, ct, true)») RETURN BOOLEAN;
 «getPackagePrefix(ns)»«XSDType2Oracle(ns, type)-»
 «ENDIF-»
 «ENDIF-»
-«LET ct.simpleContent.extension != null ? ct.simpleContent.extension.attributeOrAttributeGroup : ct.simpleContent.restriction.attributeOrAttributeGroup AS attributes-»
 «FOREACH ct.simpleContent.extension.attributeOrAttributeGroup AS a-»
 «EXPAND XSDSchemaElements(a)-»
 «ENDFOREACH-»
-«ENDLET-»
 «ENDLET-»
 «ENDLET-»
 «ELSE-»

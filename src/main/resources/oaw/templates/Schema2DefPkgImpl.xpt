@@ -299,13 +299,15 @@ END «XSD2PackageName()»;
 «EXPAND XML2Oracle_Init(ct.complexContent.restriction, parentParam, name)-»
 «ENDIF-»
 «ELSEIF ct.simpleContent != null-»
-«IF ct.simpleContent.extension.attributeOrAttributeGroup.size > 0-»
+«LET ct.simpleContent.extension != null ? ct.simpleContent.extension.attributeOrAttributeGroup : ct.simpleContent.restriction.attributeOrAttributeGroup AS attributes-»
+«IF attributes.size > 0-»
 	elmt := DBMS_XMLDOM.makeElement(p_node);
-«FOREACH ct.simpleContent.extension.attributeOrAttributeGroup AS a-»
+«FOREACH attributes AS a-»
 «EXPAND XML2Oracle(a)-»
 «ENDFOREACH-»
 
 «ENDIF-»
+«ENDLET-»
 	text := DBMS_XMLDOM.getFirstChild(p_node);
 	v_return.value := «convertXSDBasicType2Oracle(getBuiltInType(ct.simpleContent), null, "DBMS_XMLDOM.getNodeValue(text)", "text")»;
 «ELSE-»
@@ -554,13 +556,15 @@ END «XSD2PackageName()»;
 «EXPAND Oracle2XML(ct.complexContent.restriction, parentParam, name)-»
 «ENDIF-»
 «ELSEIF ct.simpleContent != null-»
-«IF ct.simpleContent.extension.attributeOrAttributeGroup.size > 0-»
+«LET ct.simpleContent.extension != null ? ct.simpleContent.extension.attributeOrAttributeGroup : ct.simpleContent.restriction.attributeOrAttributeGroup AS attributes-»
+«IF attributes.size > 0-»
 	elmt := DBMS_XMLDOM.makeElement(p_parent_node);
-«FOREACH ct.simpleContent.extension.attributeOrAttributeGroup AS a-»
+«FOREACH attributes AS a-»
 «EXPAND Oracle2XML(a, parentParam)-»
 «ENDFOREACH-»
 
 «ENDIF-»
+«ENDLET-»
 «LET convertOracle2XSDBasicType(getBuiltInType(ct.simpleContent), null, parentParam + '.value') AS expr-»
 «IF isLOB(expr)-»
 	«BasePackageName(model)».fillBase64BinaryNode(p_domdoc, p_parent_node, «parentParam».value);

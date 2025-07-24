@@ -238,11 +238,12 @@ private String getIsNotNullExpression(ComplexType this, ServiceNamespace owner, 
 				(exp != null ? exp : getIsNotNullExpression(complexContent.^extension, owner, parentParam, byPK)) :
 				makeOrExpression(exp, getIsNotNullExpression(complexContent.^extension, owner, parentParam, byPK))) :
 			(complexContent.restriction != null ? getIsNotNullExpression(complexContent.restriction, owner, parentParam, byPK) : null)) :
-		(let exp = group != null ? getIsNotNullExpression(group, owner, parentParam, null, null, "group", byPK) :
-			(all != null ? getIsNotNullExpression(all, owner, parentParam, null, null, "all", byPK) :
-				(choice != null ? getIsNotNullExpression(choice, owner, parentParam, null, null, "choice", byPK) :
-					(sequence != null ? getIsNotNullExpression(sequence, owner, parentParam, null, null, "sequence", byPK) : null))) :
-			byPK ? (exp != null ? exp : getIsNotNullExpressionAttributes(attributeOrAttributeGroup, owner, parentParam, byPK)) : makeOrExpression(exp, getIsNotNullExpressionAttributes(attributeOrAttributeGroup, owner, parentParam, byPK)));
+		(simpleContent != null ? (byPK ? (simpleContent.restriction != null ? getIsNotNullExpression(simpleContent.restriction, owner, parentParam, byPK) : getIsNotNullExpression(simpleContent.^extension, owner, parentParam, byPK)) : parentParam + ".value IS NOT NULL") :
+			(let exp = group != null ? getIsNotNullExpression(group, owner, parentParam, null, null, "group", byPK) :
+				(all != null ? getIsNotNullExpression(all, owner, parentParam, null, null, "all", byPK) :
+					(choice != null ? getIsNotNullExpression(choice, owner, parentParam, null, null, "choice", byPK) :
+						(sequence != null ? getIsNotNullExpression(sequence, owner, parentParam, null, null, "sequence", byPK) : null))) :
+				byPK ? (exp != null ? exp : getIsNotNullExpressionAttributes(attributeOrAttributeGroup, owner, parentParam, byPK)) : makeOrExpression(exp, getIsNotNullExpressionAttributes(attributeOrAttributeGroup, owner, parentParam, byPK))));
 
 private String makeOrExpression(String exp1, String exp2) : exp1 != null ? (exp2 != null ? exp1 + " OR " + exp2 : exp1) : (exp2 != null ? exp2 : null);
 
@@ -253,7 +254,7 @@ private String getIsNotNullExpression(ExtensionType this, ServiceNamespace owner
 				(sequence != null ? getIsNotNullExpression(sequence, owner, parentParam, null, null, "sequence", byPK) : null))) :
 		byPK ? (exp != null ? exp : getIsNotNullExpressionAttributes(attributeOrAttributeGroup, owner, parentParam, byPK)) : makeOrExpression(exp, getIsNotNullExpressionAttributes(attributeOrAttributeGroup, owner, parentParam, byPK));
 
-private String getIsNotNullExpression(ComplexRestrictionType this, ServiceNamespace owner, String parentParam, boolean byPK) :
+private String getIsNotNullExpression(RestrictionType this, ServiceNamespace owner, String parentParam, boolean byPK) :
 	let exp = group != null ? getIsNotNullExpression(group, owner, parentParam, null, null, "group", byPK) :
 		(all != null ? getIsNotNullExpression(all, owner, parentParam, null, null, "all", byPK) :
 			(choice != null ? getIsNotNullExpression(choice, owner, parentParam, null, null, "choice", byPK) :
@@ -285,7 +286,7 @@ private String getIsNotNullExpressionAttributes(List[Annotated] attributeOrAttri
 		byPK ? expressions.selectFirst(e|e != null) : expressions.makeOrExpression();
 
 private String getIsNotNullExpression(Attribute this, ServiceNamespace owner, String parentParam, boolean byPK) :
-	!byPK || use == "required" ? parentParam + '.' + XSD2Oracle(owner, name, this) + " IS NOT NULL" : null;
+	!byPK || use == "required" ? parentParam + '.' + XSD2Oracle(owner, ref != null ? ref.localPart : name, this) + " IS NOT NULL" : null;
 
 private String getIsNotNullExpression(AttributeGroup this, ServiceNamespace owner, String parentParam, boolean byPK) :
 	let expressions = attributeOrAttributeGroup.getIsNotNullExpression(owner, parentParam, byPK) :
