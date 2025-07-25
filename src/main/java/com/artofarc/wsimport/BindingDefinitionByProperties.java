@@ -94,8 +94,7 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 			}
 		}
 		String uriDots = UriHelper.convertUri(ns, ".", false);
-		Integer version = split[1].isEmpty() ? 0 : new Integer(split[1]);
-		return String.format(formatPattern, uri, version, uriDots);
+		return split[1].isEmpty() ? mapping : String.format(formatPattern, uri, Integer.valueOf(split[1]), uriDots);
 	}
 
 	@Override
