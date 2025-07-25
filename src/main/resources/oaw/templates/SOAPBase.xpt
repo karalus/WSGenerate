@@ -1073,7 +1073,7 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
     contentType VARCHAR2(255) := 'application/octet-stream';
   BEGIN
 «IF mtomSupport()-»
-    IF «AttachmentContextPackageName()».get_mtom_flag() THEN
+    IF «AttachmentContextPackageName()».get_mtom_flag THEN
       elmt := DBMS_XMLDOM.makeElement(p_parent_node);
       attr := DBMS_XMLDOM.getAttributeNode(elmt, 'contentType', 'http://www.w3.org/2005/05/xmlmime');
       IF NOT DBMS_XMLDOM.isNull(attr) THEN

@@ -238,7 +238,8 @@ private String getIsNotNullExpression(ComplexType this, ServiceNamespace owner, 
 				(exp != null ? exp : getIsNotNullExpression(complexContent.^extension, owner, parentParam, byPK)) :
 				makeOrExpression(exp, getIsNotNullExpression(complexContent.^extension, owner, parentParam, byPK))) :
 			(complexContent.restriction != null ? getIsNotNullExpression(complexContent.restriction, owner, parentParam, byPK) : null)) :
-		(simpleContent != null ? (byPK ? (simpleContent.restriction != null ? getIsNotNullExpression(simpleContent.restriction, owner, parentParam, byPK) : getIsNotNullExpression(simpleContent.^extension, owner, parentParam, byPK)) : parentParam + ".value IS NOT NULL") :
+		(simpleContent != null ? (byPK ? (simpleContent.restriction != null ? getIsNotNullExpression(simpleContent.restriction, owner, parentParam, byPK) : getIsNotNullExpression(simpleContent.^extension, owner, parentParam, byPK)) :
+				makeOrExpression(parentParam + ".value IS NOT NULL", simpleContent.restriction != null ? getIsNotNullExpression(simpleContent.restriction, owner, parentParam, byPK) : getIsNotNullExpression(simpleContent.^extension, owner, parentParam, byPK))) :
 			(let exp = group != null ? getIsNotNullExpression(group, owner, parentParam, null, null, "group", byPK) :
 				(all != null ? getIsNotNullExpression(all, owner, parentParam, null, null, "all", byPK) :
 					(choice != null ? getIsNotNullExpression(choice, owner, parentParam, null, null, "choice", byPK) :
