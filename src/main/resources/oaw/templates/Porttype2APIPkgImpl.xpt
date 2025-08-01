@@ -276,9 +276,12 @@ CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, Art
 «ELSE-»
 «EXPAND OperationContentC(portType, binding, bindingOperation)»
 «ENDIF-»
+«ENDFOREACH-»
 «ENDFOREACH»
-«ENDFOREACH»
+«IF bindingDefinition.getPortTypeProperty(portType, "bodySupplement", null) != null-»
+«bindingDefinition.getPortTypeProperty(portType, "bodySupplement", null)»
 
+«ENDIF-»
 END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 /
 «IF bindingDefinition.getGlobalProperty("footer", null) != null-»

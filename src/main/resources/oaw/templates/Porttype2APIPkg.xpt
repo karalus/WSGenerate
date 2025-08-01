@@ -306,8 +306,12 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, Art
 «ENDIF-»
   );
 «ENDLET-»
+«ENDFOREACH-»
 «ENDFOREACH»
-«ENDFOREACH»
+«IF bindingDefinition.getPortTypeProperty(portType, "specSupplement", null) != null-»
+«bindingDefinition.getPortTypeProperty(portType, "specSupplement", null)»
+
+«ENDIF-»
 END «WSDL2PackageName(portType, ArtifactKind::ClientStub)»;
 /
 «FOREACH bindingDefinition.getGlobalPropertyAsList("dbInternalUser") AS dbInternalUser-»
