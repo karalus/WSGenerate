@@ -12,9 +12,9 @@ spool s
 
 «LET "@\"" AS prefix-»
 «EXPAND Entry(prefix, false) FOREACH serviceNamespacesTopologicalSorted-»
-«EXPAND Entry(this, prefix, ".PKS") FOREACH serviceNamespaces.wsdls-»
+«EXPAND Entry(this, prefix, specFileExtension()) FOREACH serviceNamespaces.wsdls-»
 «EXPAND Entry(prefix, true) FOREACH serviceNamespacesTopologicalSorted-»
-«EXPAND Entry(this, prefix, ".PKB") FOREACH serviceNamespaces.wsdls-»
+«EXPAND Entry(this, prefix, bodyFileExtension()) FOREACH serviceNamespaces.wsdls-»
 «ENDLET-»
 spool off
 «ENDFILE»
@@ -23,9 +23,9 @@ spool off
 «getDBSchema()»/DB/
 «LET "\"" AS prefix-»
 «EXPAND Entry(prefix, false) FOREACH serviceNamespacesTopologicalSorted-»
-«EXPAND Entry(this, prefix, ".PKS") FOREACH serviceNamespaces.wsdls-»
+«EXPAND Entry(this, prefix, specFileExtension()) FOREACH serviceNamespaces.wsdls-»
 «EXPAND Entry(prefix, true) FOREACH serviceNamespacesTopologicalSorted-»
-«EXPAND Entry(this, prefix, ".PKB") FOREACH serviceNamespaces.wsdls-»
+«EXPAND Entry(this, prefix, bodyFileExtension()) FOREACH serviceNamespaces.wsdls-»
 «ENDLET-»
 «ENDFILE»
 «ENDDEFINE»

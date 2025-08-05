@@ -75,7 +75,7 @@ GRANT EXECUTE ON «getDBSchema(".")»SOAP_MESSAGE_T TO «dbInternalUser»
 «ENDFOREACH-»
 «ENDFILE»
 
-«FILE "plsql/" + getDBSchema("/") + AttachmentContextPackageName() + ".PKS"-»
+«FILE "plsql/" + getDBSchema("/") + AttachmentContextPackageName() + specFileExtension()-»
 CREATE OR REPLACE PACKAGE «getDBSchema(".")»«AttachmentContextPackageName()»
 /**
 * <pre>
@@ -157,7 +157,7 @@ END «AttachmentContextPackageName()»;
 /
 «ENDFILE»
 
-«FILE "plsql/" + getDBSchema("/") + AttachmentContextPackageName() + ".PKB"-»
+«FILE "plsql/" + getDBSchema("/") + AttachmentContextPackageName() + bodyFileExtension()-»
 CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«AttachmentContextPackageName()»
 /**
 * <pre>
@@ -254,7 +254,7 @@ END «AttachmentContextPackageName()»;
 
 «ENDIF»
 
-«FILE "plsql/" + getDBSchema("/") + BasePackageName() + ".PKS"-»
+«FILE "plsql/" + getDBSchema("/") + BasePackageName() + specFileExtension()-»
 CREATE OR REPLACE PACKAGE «getDBSchema(".")»«BasePackageName()» IS
 /**
 * <pre>
@@ -490,7 +490,7 @@ END «BasePackageName()»;
 «ENDFILE»
 
 
-«FILE "plsql/" + getDBSchema("/") + BasePackageName() + ".PKB"-»
+«FILE "plsql/" + getDBSchema("/") + BasePackageName() + bodyFileExtension()-»
 CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«BasePackageName()» IS
 /**
 * <pre>

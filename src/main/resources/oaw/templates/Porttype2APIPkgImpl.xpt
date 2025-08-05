@@ -17,7 +17,7 @@
 «ENDDEFINE»
 
 «DEFINE Provider(Definition definition, PortType portType) FOR Model»
-«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton) + ".PKB"-»
+«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton) + bodyFileExtension()-»
 CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)» IS
   /**
   * <pre>
@@ -75,7 +75,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»;
 «REM»========================================================================«ENDREM»
 «LET definition.getSOAPBindings(portType).reject(e|isJmsTransport(e) || oracleAQ(portType).size > 0) AS bindings»
 «IF bindings.size > 0»
-«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + ".PKB"-»
+«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + bodyFileExtension()-»
 CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
   /**
   * <pre>
@@ -117,7 +117,7 @@ END «WSDL2PackageName(portType, ArtifactKind::XMLAdapter)»;
 «ENDLET»
 «REM»========================================================================«ENDREM»
 «IF oracleAQ(portType).size > 0»
-«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ListenerAQ) + ".PKB"-»
+«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ListenerAQ) + bodyFileExtension()-»
 CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
   /**
   * <pre>
@@ -228,7 +228,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ListenerAQ)»;
 «ENDDEFINE»
 
 «DEFINE Consumer(Definition definition, PortType portType) FOR Model»
-«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ClientStub) + ".PKB"-»
+«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ClientStub) + bodyFileExtension()-»
 CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::ClientStub)» IS
   /**
   * <pre>

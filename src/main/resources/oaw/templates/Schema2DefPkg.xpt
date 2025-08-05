@@ -9,8 +9,8 @@
 
 «DEFINE Root FOR ServiceNamespace»
 «IF XSD2PackageName() != null»
-«FILE "plsql/" + getDBSchema("/") + XSD2PackageName() + ".PKS"-»
-CREATE OR REPLACE PACKAGE «getDBSchema(".")»«XSD2PackageName()» IS
+«FILE "plsql/" + getDBSchema(model, "/") + XSD2PackageName() + specFileExtension(model)-»
+CREATE OR REPLACE PACKAGE «getDBSchema(model, ".")»«XSD2PackageName()» IS
   /**
   * <pre>
 «IF model.bindingDefinition.getGlobalProperty("vcsHeader", null) != null-»
@@ -74,7 +74,7 @@ CREATE OR REPLACE PACKAGE «getDBSchema(".")»«XSD2PackageName()» IS
 END «XSD2PackageName()»;
 /
 «FOREACH model.bindingDefinition.getGlobalPropertyAsList("dbInternalUser") AS dbInternalUser-»
-GRANT EXECUTE ON «getDBSchema(".")»«XSD2PackageName()» TO «dbInternalUser»
+GRANT EXECUTE ON «getDBSchema(model, ".")»«XSD2PackageName()» TO «dbInternalUser»
 /
 «ENDFOREACH-»
 «IF model.bindingDefinition.getGlobalProperty("footer", null) != null-»

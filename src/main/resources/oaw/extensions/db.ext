@@ -11,6 +11,8 @@ extension oaw::extensions::wsdl;
 // For debugging purposes
 Void introspect(List l) : JAVA com.artofarc.WSGenerateTest.introspect(java.util.List);
 
+cached String specFileExtension(Model this) : bindingDefinition.getGlobalProperty("specFileExtension", ".PKS");
+cached String bodyFileExtension(Model this) : bindingDefinition.getGlobalProperty("bodyFileExtension", ".PKB");
 boolean generateClient(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "generateClient", "true") == "true";
 boolean generateServer(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "generateServer", "true") == "true";
 boolean rawMessageIn(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "rawMessageIn", "false") == "true";
@@ -21,9 +23,10 @@ Set[String] usedOperations(Model this, PortType portType) : let p = bindingDefin
 String beginSection(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "beginSection", "");
 String endSection(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "endSection", "");
 String endSectionWithError(Model this, PortType portType) : bindingDefinition.getPortTypeProperty(portType, "endSectionWithError", "");
-cached boolean mtomSupport(Model this) : serviceNamespaces.wsdls.getSOAPBindings().portType.exists(pt|mtomSupport(pt).size > 0);
-cached String getDBSchema() : GLOBALVAR dbSchema;
-String getDBSchema(String suffix) : let p = getDBSchema() : p != null && p.length > 0 ? p + suffix : "";
+cached boolean mtomSupport(Model this) : bindingDefinition.getGlobalProperty("mtomSupport", "false") == "true" || serviceNamespaces.wsdls.getSOAPBindings().portType.exists(pt|mtomSupport(pt).size > 0);
+private String getDBSchema() : GLOBALVAR dbSchema;
+cached String getDBSchema(Model this) : let g = getDBSchema() : g != null ? g : bindingDefinition.getGlobalProperty("dbSchema", null);
+String getDBSchema(Model model, String suffix) : let p = getDBSchema(model) : p != null && p.length > 0 ? p + suffix : "";
 boolean isGenerateSmallXML(ServiceNamespace this) : false;
 String getGeneratorVersion() : GLOBALVAR WSGenerateVersion;
 String getGeneratorBuildTime() : GLOBALVAR WSGenerateBuildTime;

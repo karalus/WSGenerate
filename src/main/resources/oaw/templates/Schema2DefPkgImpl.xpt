@@ -10,8 +10,8 @@
 
 «DEFINE Root FOR ServiceNamespace»
 «IF XSD2PackageName() != null»
-«FILE "plsql/" + getDBSchema("/") + XSD2PackageName() + ".PKB"-»
-CREATE OR REPLACE PACKAGE BODY «getDBSchema(".")»«XSD2PackageName()» IS
+«FILE "plsql/" + getDBSchema(model, "/") + XSD2PackageName() + bodyFileExtension(model)-»
+CREATE OR REPLACE PACKAGE BODY «getDBSchema(model, ".")»«XSD2PackageName()» IS
   /**
   * <pre>
 «IF model.bindingDefinition.getGlobalProperty("vcsHeader", null) != null-»

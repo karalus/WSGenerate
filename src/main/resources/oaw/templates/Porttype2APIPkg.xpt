@@ -18,7 +18,7 @@
 «ENDDEFINE»
 
 «DEFINE Provider(Definition definition, PortType portType) FOR Model»
-«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton) + ".PKS"-»
+«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton) + specFileExtension()-»
 CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, ArtifactKind::ProviderSkeleton)» IS
   /**
   * <pre>
@@ -87,7 +87,7 @@ END «WSDL2PackageName(portType, ArtifactKind::ProviderSkeleton)»;
 «REM»========================================================================«ENDREM»
 «FOREACH definition.getSOAPBindings(portType) AS binding»
 «IF isHttpTransport(binding)»
-«FILE "plsql/" + getDBSchema("/") +  WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + ".PKS"-»
+«FILE "plsql/" + getDBSchema("/") +  WSDL2PackageName(portType, ArtifactKind::XMLAdapter) + specFileExtension()-»
 CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
   /**
   * <pre>
@@ -151,7 +151,7 @@ END;
 «ENDIF»
 «REM»========================================================================«ENDREM»
 «IF isJmsTransport(binding) || oracleAQ(portType).size > 0»
-«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ListenerAQ) + ".PKS"-»
+«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ListenerAQ) + specFileExtension()-»
 CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageName(portType, ArtifactKind::XMLAdapter)» IS
   /**
   * <pre>
@@ -239,7 +239,7 @@ END;
 «ENDDEFINE»
 
 «DEFINE Consumer(Definition definition, PortType portType) FOR Model»
-«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ClientStub) + ".PKS"-»
+«FILE "plsql/" + getDBSchema("/") + WSDL2PackageName(portType, ArtifactKind::ClientStub) + specFileExtension()-»
 CREATE OR REPLACE PACKAGE «getDBSchema(".")»«WSDL2PackageNameCheck(portType, ArtifactKind::ClientStub)» IS
   /**
   * <pre>
