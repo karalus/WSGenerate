@@ -93,8 +93,15 @@ public class BindingDefinitionByProperties implements BindingDefinition {
 				}
 			}
 		}
-		String uriDots = UriHelper.convertUri(ns, ".", false);
-		return split[1].isEmpty() ? mapping : String.format(formatPattern, uri, Integer.valueOf(split[1]), uriDots);
+		if (split[1].isEmpty()) {
+			if (mapping == ns) {
+				throw new IllegalStateException("No version determined(" + uri + "). A mapping must be defined for " + ns);
+			}
+			return mapping;
+		} else {
+			String uriDots = UriHelper.convertUri(ns, ".", false);
+			return String.format(formatPattern, uri, Integer.valueOf(split[1]), uriDots);
+		}
 	}
 
 	@Override
